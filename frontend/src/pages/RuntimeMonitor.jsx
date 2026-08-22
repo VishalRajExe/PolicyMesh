@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Play,
@@ -9,16 +9,17 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  Sparkles,
   Zap,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import SearchableCombobox from "../components/ui/SearchableCombobox";
 import { enforcementApi, servicesApi, auditApi } from "../api";
 import { useFormDraft } from "../hooks/useFormDraft";
 
 const REGIONS = ["EU", "US", "IN", "CN", "GLOBAL", "AP", "ME"];
 const DATA_CLASSES = ["PII", "PCI", "PHI", "NON_SENSITIVE", "UNKNOWN"];
+
 const DEFAULT_FORM = {
   sourceService: "",
   destinationService: "",
@@ -30,36 +31,36 @@ const DEFAULT_FORM = {
 const QUICK_SCENARIOS = [
   {
     label: "EU → EU (PII) • Expected ALLOW",
-    sourceService: "orders-api",
-    destinationService: "payments-api",
     sourceRegion: "EU",
     destinationRegion: "EU",
     dataClass: "PII",
+    suggestedSource: "orders-api",
+    suggestedDestination: "payments-api",
     tone: "good",
   },
   {
     label: "EU → US (PII) • Expected DENY",
-    sourceService: "orders-api",
-    destinationService: "analytics-api",
     sourceRegion: "EU",
     destinationRegion: "US",
     dataClass: "PII",
+    suggestedSource: "orders-api",
+    suggestedDestination: "analytics-api",
     tone: "bad",
   },
   {
     label: "EU → US (PCI) • Expected DENY",
-    sourceService: "payments-api",
-    destinationService: "analytics-api",
     sourceRegion: "EU",
     destinationRegion: "US",
     dataClass: "PCI",
+    suggestedSource: "payments-api",
+    suggestedDestination: "analytics-api",
     tone: "bad",
   },
 ];
 
 export default function RuntimeMonitor() {
   const [searchParams] = useSearchParams();
-  const { values: form, setValues: setForm, clearDraft, resetForm } = useFormDraft(
+  const { values: form, setValues: setForm, resetForm } = useFormDraft(
     "runtime-monitor",
     DEFAULT_FORM
   );
@@ -69,6 +70,8 @@ export default function RuntimeMonitor() {
   const [formError, setFormError] = useState(null);
   const [history, setHistory] = useState([]);
   const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
 
@@ -76,10 +79,35 @@ export default function RuntimeMonitor() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    servicesApi.list().then(setServices).catch(() => {});
-    loadHistory();
+  const loadServices = useCallback(async () => {
+    setServicesLoading(true);
+    setServicesError(null);
+    try {
+      const data = await servicesApi.list();
+      setServices(data || []);
+    } catch (err) {
+      setServicesError(err.message || "Failed to load services");
+    } finally {
+      setServicesLoading(false);
+    }
   }, []);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const items = await auditApi.recent(100);
+      setHistory(items || []);
+    } catch {
+      // history is optional
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadServices();
+    loadHistory();
+  }, [loadServices, loadHistory]);
 
   // Override draft with URL query params if supplied
   useEffect(() => {
@@ -96,46 +124,39 @@ export default function RuntimeMonitor() {
     }
   }, [searchParams, setForm]);
 
-  async function loadHistory() {
-    setHistoryLoading(true);
-    try {
-      const items = await auditApi.recent(100);
-      setHistory(items);
-    } catch {
-      // history is optional
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
-  const setField = (field) => (val) => {
-    setForm((f) => {
-      const next = { ...f, [field]: val };
-      // Auto-populate region if known service selected
-      if (field === "sourceService") {
-        const found = services.find((s) => s.id === val || s.name === val);
-        if (found && found.region && !next.sourceRegion) {
-          next.sourceRegion = found.region;
-        }
-      }
-      if (field === "destinationService") {
-        const found = services.find((s) => s.id === val || s.name === val);
-        if (found && found.region && !next.destinationRegion) {
-          next.destinationRegion = found.region;
-        }
+  const setSourceService = (val, opt) => {
+    setForm((prev) => {
+      const next = { ...prev, sourceService: val };
+      if (opt && opt.region && !prev.sourceRegion) {
+        next.sourceRegion = opt.region;
       }
       return next;
     });
   };
 
+  const setDestinationService = (val, opt) => {
+    setForm((prev) => {
+      const next = { ...prev, destinationService: val };
+      if (opt && opt.region && !prev.destinationRegion) {
+        next.destinationRegion = opt.region;
+      }
+      return next;
+    });
+  };
+
+  const setField = (field) => (val) => {
+    setForm((f) => ({ ...f, [field]: val }));
+  };
+
   function applyScenario(sc) {
-    setForm({
-      sourceService: sc.sourceService,
-      destinationService: sc.destinationService,
+    setForm((prev) => ({
+      ...prev,
       sourceRegion: sc.sourceRegion,
       destinationRegion: sc.destinationRegion,
       dataClass: sc.dataClass,
-    });
+      sourceService: prev.sourceService || sc.suggestedSource || "",
+      destinationService: prev.destinationService || sc.suggestedDestination || "",
+    }));
     setFormError(null);
   }
 
@@ -164,7 +185,7 @@ export default function RuntimeMonitor() {
       setResult({ ...resp, _ts: new Date().toISOString(), _form: { ...form } });
       await loadHistory();
     } catch (err) {
-      setFormError(err.message);
+      setFormError(err.message || "Failed to evaluate policy decision.");
     } finally {
       setSubmitting(false);
     }
@@ -199,7 +220,7 @@ export default function RuntimeMonitor() {
               </button>
             </div>
 
-            {/* Quick Demo Scenarios */}
+            {/* Quick Scenario Shortcuts */}
             <div className="mb-4 space-y-1.5">
               <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
                 <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
@@ -216,8 +237,8 @@ export default function RuntimeMonitor() {
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                         sc.tone === "good"
-                          ? "bg-[var(--color-good)]/15 text-[var(--color-good)]"
-                          : "bg-[var(--color-bad)]/15 text-[var(--color-bad)]"
+                          ? "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
+                          : "bg-[var(--color-bad)]/15 text-[var(--color-bad)] border border-[var(--color-bad)]/30"
                       }`}
                     >
                       {sc.dataClass}
@@ -230,20 +251,32 @@ export default function RuntimeMonitor() {
             {/* Main Form */}
             <form onSubmit={handleCheck} className="space-y-4">
               <FormField label="Source Service *">
-                <ServiceInput
+                <SearchableCombobox
                   value={form.sourceService}
-                  onChange={setField("sourceService")}
-                  services={services}
-                  placeholder="orders-api"
+                  onChange={setSourceService}
+                  options={services}
+                  getOptionLabel={(s) => s.name || s.id}
+                  getOptionValue={(s) => s.name || s.id}
+                  placeholder="Select source service..."
+                  searchPlaceholder="Search services..."
+                  loading={servicesLoading}
+                  error={servicesError}
+                  onRetry={loadServices}
                 />
               </FormField>
 
               <FormField label="Destination Service *">
-                <ServiceInput
+                <SearchableCombobox
                   value={form.destinationService}
-                  onChange={setField("destinationService")}
-                  services={services}
-                  placeholder="payments-api"
+                  onChange={setDestinationService}
+                  options={services}
+                  getOptionLabel={(s) => s.name || s.id}
+                  getOptionValue={(s) => s.name || s.id}
+                  placeholder="Select destination service..."
+                  searchPlaceholder="Search services..."
+                  loading={servicesLoading}
+                  error={servicesError}
+                  onRetry={loadServices}
                 />
               </FormField>
 
@@ -262,6 +295,7 @@ export default function RuntimeMonitor() {
                     ))}
                   </select>
                 </FormField>
+
                 <FormField label="Destination Region">
                   <select
                     value={form.destinationRegion}
@@ -452,52 +486,6 @@ function FormField({ label, children }) {
     <div>
       <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function ServiceInput({ value, onChange, services, placeholder }) {
-  const serviceList = services || [];
-  const quickSuggestions = serviceList.slice(0, 4);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="relative">
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          list="svc-list"
-          className="field-input"
-          autoComplete="off"
-        />
-        <datalist id="svc-list">
-          {serviceList.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.region})
-            </option>
-          ))}
-        </datalist>
-      </div>
-
-      {quickSuggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-0.5">
-          {quickSuggestions.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onChange(s.id)}
-              className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
-                value === s.id
-                  ? "bg-[var(--color-brand)]/20 border-[var(--color-brand)] text-white"
-                  : "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-faint)] hover:text-white hover:border-[var(--color-text-faint)]"
-              }`}
-            >
-              {s.id}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

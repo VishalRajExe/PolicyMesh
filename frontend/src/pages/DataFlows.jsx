@@ -9,10 +9,10 @@ import {
   RefreshCw,
   X,
   Search,
-  RotateCcw,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import SearchableCombobox from "../components/ui/SearchableCombobox";
 import { servicesApi, edgesApi, graphApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useFormDraft } from "../hooks/useFormDraft";
@@ -45,7 +45,7 @@ export default function DataFlows() {
 
   // Form draft state
   const [showForm, setShowForm] = useState(false);
-  const { values: form, setValues: setForm, clearDraft, resetForm } = useFormDraft(
+  const { values: form, setValues: setForm, clearDraft } = useFormDraft(
     "dataflow-edge",
     DEFAULT_EDGE_FORM
   );
@@ -60,10 +60,10 @@ export default function DataFlows() {
     setError(null);
     try {
       const [svcs, edg] = await Promise.all([servicesApi.list(), edgesApi.list()]);
-      setServices(svcs);
-      setEdges(edg);
+      setServices(svcs || []);
+      setEdges(edg || []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to load data flows");
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ export default function DataFlows() {
       setFormError("Select at least one data class.");
       return;
     }
-    if (form.sourceServiceId === form.destinationServiceId) {
+    if (String(form.sourceServiceId) === String(form.destinationServiceId)) {
       setFormError("Source and destination must be different services.");
       return;
     }
@@ -122,7 +122,7 @@ export default function DataFlows() {
       await load();
       await runValidation();
     } catch (err) {
-      setFormError(err.message);
+      setFormError(err.message || "Failed to create data flow edge");
     } finally {
       setSubmitting(false);
     }
@@ -412,36 +412,28 @@ export default function DataFlows() {
 
             <div>
               <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">Source Service *</label>
-              <select
+              <SearchableCombobox
                 value={form.sourceServiceId}
-                onChange={(e) => setForm((prev) => ({ ...prev, sourceServiceId: e.target.value }))}
-                className="field-input text-xs"
-                required
-              >
-                <option value="">Select source service…</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.region})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setForm((prev) => ({ ...prev, sourceServiceId: val }))}
+                options={services}
+                getOptionLabel={(s) => s.name || s.id}
+                getOptionValue={(s) => String(s.id)}
+                placeholder="Select source service..."
+                searchPlaceholder="Search services..."
+              />
             </div>
 
             <div>
               <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">Destination Service *</label>
-              <select
+              <SearchableCombobox
                 value={form.destinationServiceId}
-                onChange={(e) => setForm((prev) => ({ ...prev, destinationServiceId: e.target.value }))}
-                className="field-input text-xs"
-                required
-              >
-                <option value="">Select destination service…</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.region})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setForm((prev) => ({ ...prev, destinationServiceId: val }))}
+                options={services}
+                getOptionLabel={(s) => s.name || s.id}
+                getOptionValue={(s) => String(s.id)}
+                placeholder="Select destination service..."
+                searchPlaceholder="Search services..."
+              />
             </div>
 
             <div>

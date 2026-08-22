@@ -10,6 +10,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
+import SearchableCombobox from "../components/ui/SearchableCombobox";
 import { ciApi } from "../api";
 import { useFormDraft } from "../hooks/useFormDraft";
 
@@ -141,21 +142,13 @@ export default function CiCheck() {
             <form onSubmit={handleRun} className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">Git Branch *</label>
-                <div className="flex gap-2">
-                  <input
-                    value={form.branch}
-                    onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))}
-                    placeholder="main"
-                    list="branch-list"
-                    className="field-input text-xs"
-                    required
-                  />
-                  <datalist id="branch-list">
-                    {DEMO_BRANCHES.map((b) => (
-                      <option key={b} value={b} />
-                    ))}
-                  </datalist>
-                </div>
+                <SearchableCombobox
+                  value={form.branch}
+                  onChange={(val) => setForm((f) => ({ ...f, branch: val }))}
+                  options={DEMO_BRANCHES}
+                  placeholder="Select branch..."
+                  searchPlaceholder="Search branches..."
+                />
               </div>
 
               <div>
