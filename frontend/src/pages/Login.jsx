@@ -23,9 +23,11 @@ export default function Login() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[var(--color-bg)] px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7c6cf9] to-[#5b3df0] flex items-center justify-center mb-4">
-            <Shield size={24} className="text-white" strokeWidth={2.5} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="PolicyMesh"
+            className="w-16 h-16 object-contain mb-3 drop-shadow-xl animate-in fade-in zoom-in-90"
+          />
           <h1 className="text-xl font-semibold text-white">PolicyMesh</h1>
           <p className="text-sm text-[var(--color-text-faint)]">Govern. Enforce. Trust.</p>
         </div>

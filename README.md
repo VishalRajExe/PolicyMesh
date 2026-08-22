@@ -1,6 +1,8 @@
-# PolicyMesh
-
-**Policy-as-code platform for data-residency and cross-border data-flow compliance.**
+<div align="center">
+  <img src="docs/images/logo.png" alt="PolicyMesh Logo" width="120" height="120" />
+  <h1>PolicyMesh</h1>
+  <p><strong>Policy-as-code platform for data-residency and cross-border data-flow compliance.</strong></p>
+</div>
 
 PolicyMesh lets an organization declare data-residency rules once — in a single declarative YAML policy — and enforces those rules at two points in the software lifecycle:
 

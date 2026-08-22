@@ -48,9 +48,11 @@ export default function Sidebar({ collapsed, onToggle }) {
     >
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 h-16 border-b border-[var(--color-border)]">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7c6cf9] to-[#5b3df0] flex items-center justify-center shrink-0">
-          <Shield size={18} className="text-white" strokeWidth={2.5} />
-        </div>
+        <img
+          src="/logo.png"
+          alt="PolicyMesh"
+          className="w-9 h-9 object-contain drop-shadow-md shrink-0 transition-transform hover:scale-105"
+        />
         {!collapsed && (
           <div className="leading-tight">
             <p className="font-semibold text-[15px] text-white">PolicyMesh</p>
