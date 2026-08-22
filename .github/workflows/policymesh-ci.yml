@@ -95,9 +95,7 @@ jobs:
       # all other tests (61) run and must pass.
       - name: Run CI checker unit tests
         working-directory: ci-checker
-        run: >-
-          mvn --batch-mode clean test
-          -Dtest='!ParserTest#parseExamplePolicies_shouldWork+parseExampleServices_shouldWork+parseExampleValidDataFlows_shouldWork+parseExampleInvalidDataFlows_shouldWork'
+        run: mvn --batch-mode clean test
 
       - name: Package CI checker
         working-directory: ci-checker
@@ -188,6 +186,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - name: Download CI checker JAR
         uses: actions/download-artifact@v4

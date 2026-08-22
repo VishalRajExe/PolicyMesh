@@ -43,14 +43,9 @@ jobs:
         working-directory: backend
         run: mvn --batch-mode clean verify
 
-      # Same 4 stale ParserTest methods excluded as in policymesh-ci.yml
-      # (they reference fixtures at repo-root paths; see that workflow's
-      # KNOWN ISSUE note). All other tests run and must pass.
       - name: Build and test CI checker
         working-directory: ci-checker
-        run: >-
-          mvn --batch-mode clean verify
-          -Dtest='!ParserTest#parseExamplePolicies_shouldWork+parseExampleServices_shouldWork+parseExampleValidDataFlows_shouldWork+parseExampleInvalidDataFlows_shouldWork'
+        run: mvn --batch-mode clean verify
 
       # Release artifacts must come from a compliant configuration.
       - name: Run PolicyMesh compliance check
