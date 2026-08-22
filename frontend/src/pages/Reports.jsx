@@ -12,16 +12,26 @@ import {
   RefreshCw,
   Loader2,
   Filter,
+  Search,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
+import Pagination from "../components/ui/Pagination";
 import { reportsApi } from "../api";
+import { useQueryState } from "../hooks/useQueryState";
 
 export default function Reports() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [violationFilter, setViolationFilter] = useState("ALL");
+
+  // URL query state
+  const [violationFilter, setViolationFilter] = useQueryState("vClass", "ALL");
+  const [policySearch, setPolicySearch] = useQueryState("pSearch", "");
+  const [policyPage, setPolicyPage] = useQueryState("pPage", 1);
+  const [policySize, setPolicySize] = useQueryState("pSize", 5);
+  const [violationPage, setViolationPage] = useQueryState("vPage", 1);
+  const [violationSize, setViolationSize] = useQueryState("vSize", 5);
 
   async function loadReport() {
     setLoading(true);
@@ -51,11 +61,21 @@ export default function Reports() {
     }
   }
 
+  // Filtered policies
+  const policyList = report?.policyBreakdown || [];
+  const filteredPolicies = policyList.filter((p) => {
+    const q = policySearch.trim().toLowerCase();
+    return !q || p.policyCode.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+  });
+  const paginatedPolicies = filteredPolicies.slice((policyPage - 1) * policySize, policyPage * policySize);
+
+  // Filtered violations
   const violations = report?.recentViolations || [];
   const filteredViolations = violations.filter((v) => {
     if (violationFilter === "ALL") return true;
     return v.dataClass === violationFilter;
   });
+  const paginatedViolations = filteredViolations.slice((violationPage - 1) * violationSize, violationPage * violationSize);
 
   return (
     <div>
@@ -97,7 +117,9 @@ export default function Reports() {
         {error && (
           <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
             {error}
-            <button onClick={loadReport} className="underline text-xs ml-4">Retry</button>
+            <button onClick={loadReport} className="underline text-xs ml-4">
+              Retry
+            </button>
           </div>
         )}
 
@@ -109,9 +131,7 @@ export default function Reports() {
               <ShieldCheck size={18} className="text-[var(--color-good)]" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white">
-                {report?.summary?.complianceScore ?? 100}%
-              </span>
+              <span className="text-2xl font-bold text-white">{report?.summary?.complianceScore ?? 100}%</span>
               <span className="text-[11px] text-[var(--color-good)] font-medium">Real-time</span>
             </div>
           </div>
@@ -138,9 +158,7 @@ export default function Reports() {
               <FileText size={18} className="text-purple-400" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white">
-                {report?.summary?.activePolicies ?? 0}
-              </span>
+              <span className="text-2xl font-bold text-white">{report?.summary?.activePolicies ?? 0}</span>
               <span className="text-xs text-[var(--color-text-faint)]">
                 of {report?.summary?.totalPolicies ?? 0} total
               </span>
@@ -163,14 +181,24 @@ export default function Reports() {
 
         {/* Section 1: Policy Governance Breakdown */}
         <div className="card p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-semibold text-white">Policy Audit & Residency Scope</h3>
-              <p className="text-xs text-[var(--color-text-dim)]">Jurisdictional enforcement parameters and live evaluation metrics.</p>
+              <p className="text-xs text-[var(--color-text-dim)]">Jurisdictional enforcement parameters and evaluation metrics.</p>
             </div>
-            <span className="text-xs bg-[var(--color-surface-2)] text-[var(--color-text-dim)] px-2.5 py-1 rounded-lg border border-[var(--color-border)]">
-              {report?.policyBreakdown?.length ?? 0} Policies
-            </span>
+
+            <div className="relative w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+              <input
+                value={policySearch}
+                onChange={(e) => {
+                  setPolicySearch(e.target.value);
+                  setPolicyPage(1);
+                }}
+                placeholder="Search policy breakdown..."
+                className="field-input pl-9 py-1 text-xs"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -193,15 +221,15 @@ export default function Reports() {
                     </td>
                   </tr>
                 )}
-                {!loading && (report?.policyBreakdown?.length ?? 0) === 0 && (
+                {!loading && filteredPolicies.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-[var(--color-text-faint)]">
-                      No policies defined in repository.
+                      No policies match the search criteria.
                     </td>
                   </tr>
                 )}
                 {!loading &&
-                  report?.policyBreakdown?.map((p) => (
+                  paginatedPolicies.map((p) => (
                     <tr
                       key={p.id || p.policyCode}
                       className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-2)] transition-colors"
@@ -221,7 +249,9 @@ export default function Reports() {
                         </span>
                       </td>
                       <td className="py-3 text-xs text-[var(--color-text-dim)] font-mono">
-                        {p.allowedRegions && p.allowedRegions.length > 0 ? Array.from(p.allowedRegions).join(", ") : "GLOBAL"}
+                        {p.allowedRegions && p.allowedRegions.length > 0
+                          ? Array.from(p.allowedRegions).join(", ")
+                          : "GLOBAL"}
                       </td>
                       <td className="py-3">
                         <span
@@ -237,7 +267,9 @@ export default function Reports() {
                       <td className="py-3 text-right text-xs">
                         <span className="text-[var(--color-good)] font-medium">{p.allowedEvaluations} ALLOW</span>
                         {p.blockedEvaluations > 0 && (
-                          <span className="text-[var(--color-bad)] font-medium ml-2">{p.blockedEvaluations} DENY</span>
+                          <span className="text-[var(--color-bad)] font-medium ml-2">
+                            {p.blockedEvaluations} DENY
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -245,11 +277,21 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={policyPage}
+            totalItems={filteredPolicies.length}
+            pageSize={policySize}
+            onPageChange={setPolicyPage}
+            onPageSizeChange={(sz) => {
+              setPolicySize(sz);
+              setPolicyPage(1);
+            }}
+          />
         </div>
 
         {/* Section 2: AI Sensitivity Audit & Lineage Cryptography */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* AI Sensitivity */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-purple-400" />
@@ -273,7 +315,6 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Lineage Hash-Chain */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Database size={18} className="text-emerald-400" />
@@ -312,7 +353,10 @@ export default function Reports() {
               <Filter size={14} className="text-[var(--color-text-faint)]" />
               <select
                 value={violationFilter}
-                onChange={(e) => setViolationFilter(e.target.value)}
+                onChange={(e) => {
+                  setViolationFilter(e.target.value);
+                  setViolationPage(1);
+                }}
                 className="field-input py-1 text-xs"
               >
                 <option value="ALL">All Sensitivity Classes</option>
@@ -351,7 +395,7 @@ export default function Reports() {
                   </tr>
                 )}
                 {!loading &&
-                  filteredViolations.map((v) => (
+                  paginatedViolations.map((v) => (
                     <tr
                       key={v.id}
                       className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-2)] transition-colors"
@@ -372,17 +416,24 @@ export default function Reports() {
                           {v.dataClass}
                         </span>
                       </td>
-                      <td className="py-3 text-xs font-mono text-white">
-                        {v.policyId}
-                      </td>
-                      <td className="py-3 text-xs text-[var(--color-text-dim)]">
-                        {v.reason}
-                      </td>
+                      <td className="py-3 text-xs font-mono text-white">{v.policyId}</td>
+                      <td className="py-3 text-xs text-[var(--color-text-dim)]">{v.reason}</td>
                     </tr>
                   ))}
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={violationPage}
+            totalItems={filteredViolations.length}
+            pageSize={violationSize}
+            onPageChange={setViolationPage}
+            onPageSizeChange={(sz) => {
+              setViolationSize(sz);
+              setViolationPage(1);
+            }}
+          />
         </div>
       </div>
     </div>

@@ -14,8 +14,10 @@ import {
   UserCheck,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
+import Pagination from "../components/ui/Pagination";
 import { usersApi } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useQueryState } from "../hooks/useQueryState";
 
 const ROLES = ["ADMIN", "COMPLIANCE_OFFICER", "ENGINEER", "VIEWER"];
 
@@ -32,12 +34,14 @@ export default function UsersRoles() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("directory"); // "directory" | "matrix"
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  // URL query state
+  const [activeTab, setActiveTab] = useQueryState("tab", "directory"); // "directory" | "matrix"
+  const [search, setSearch] = useQueryState("search", "");
+  const [roleFilter, setRoleFilter] = useQueryState("role", "ALL");
+  const [statusFilter, setStatusFilter] = useQueryState("status", "ALL");
+  const [page, setPage] = useQueryState("page", 1);
+  const [pageSize, setPageSize] = useQueryState("size", 10);
 
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,10 +63,7 @@ export default function UsersRoles() {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, rolesData] = await Promise.allSettled([
-        usersApi.list(),
-        usersApi.roles(),
-      ]);
+      const [usersData, rolesData] = await Promise.allSettled([usersApi.list(), usersApi.roles()]);
       if (usersData.status === "fulfilled") setUsers(usersData.value);
       else setError(usersData.reason?.message || "Failed to load users");
       if (rolesData.status === "fulfilled") setRoles(rolesData.value);
@@ -144,11 +145,14 @@ export default function UsersRoles() {
   }
 
   const filteredUsers = users.filter((u) => {
-    const matchSearch = u.email.toLowerCase().includes(search.toLowerCase());
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q || u.email.toLowerCase().includes(q);
     const matchRole = roleFilter === "ALL" || u.role === roleFilter;
     const matchStatus = statusFilter === "ALL" || u.status === statusFilter;
     return matchSearch && matchRole && matchStatus;
   });
+
+  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
   const activeCount = users.filter((u) => u.status === "ACTIVE").length;
   const adminCount = users.filter((u) => u.role === "ADMIN").length;
@@ -160,7 +164,7 @@ export default function UsersRoles() {
         subtitle="Manage platform identities, credential access, and Role-Based Access Controls (RBAC)."
       />
 
-      <div className="px-6 lg:px-8 mt-4">
+      <div className="px-6 lg:px-8 mt-4 pb-12">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card p-4">
@@ -215,9 +219,7 @@ export default function UsersRoles() {
             <button
               onClick={() => setActiveTab("directory")}
               className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                activeTab === "directory"
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "text-[var(--color-text-dim)] hover:text-white"
+                activeTab === "directory" ? "bg-[var(--color-brand)] text-white" : "text-[var(--color-text-dim)] hover:text-white"
               }`}
             >
               User Directory
@@ -225,9 +227,7 @@ export default function UsersRoles() {
             <button
               onClick={() => setActiveTab("matrix")}
               className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                activeTab === "matrix"
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "text-[var(--color-text-dim)] hover:text-white"
+                activeTab === "matrix" ? "bg-[var(--color-brand)] text-white" : "text-[var(--color-text-dim)] hover:text-white"
               }`}
             >
               RBAC Permission Matrix
@@ -235,10 +235,7 @@ export default function UsersRoles() {
           </div>
 
           {isAdmin && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary flex items-center gap-1.5"
-            >
+            <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-1.5 text-xs">
               <Plus size={15} /> Add New User
             </button>
           )}
@@ -247,22 +244,27 @@ export default function UsersRoles() {
         {error && (
           <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] mb-4 flex items-center justify-between">
             {error}
-            <button onClick={loadData} className="underline ml-4 text-xs">Retry</button>
+            <button onClick={loadData} className="underline ml-4 text-xs">
+              Retry
+            </button>
           </div>
         )}
 
         {/* Tab 1: User Directory */}
         {activeTab === "directory" && (
-          <div className="space-y-4 pb-8">
+          <div className="space-y-4">
             {/* Search & Filters */}
             <div className="card p-4 flex flex-wrap items-center justify-between gap-3">
               <div className="relative min-w-[240px] flex-1 max-w-md">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Search users by email..."
-                  className="field-input pl-9"
+                  className="field-input pl-9 text-xs"
                 />
               </div>
 
@@ -271,12 +273,17 @@ export default function UsersRoles() {
                   <span className="text-xs text-[var(--color-text-faint)]">Role:</span>
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value);
+                      setPage(1);
+                    }}
                     className="field-input py-1.5 text-xs"
                   >
                     <option value="ALL">All Roles</option>
                     {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -285,7 +292,10 @@ export default function UsersRoles() {
                   <span className="text-xs text-[var(--color-text-faint)]">Status:</span>
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
                     className="field-input py-1.5 text-xs"
                   >
                     <option value="ALL">All Statuses</option>
@@ -324,7 +334,7 @@ export default function UsersRoles() {
                     </tr>
                   )}
                   {!loading &&
-                    filteredUsers.map((u) => {
+                    paginatedUsers.map((u) => {
                       const isSelf = u.email.toLowerCase() === currentUser?.email?.toLowerCase();
                       return (
                         <tr
@@ -338,14 +348,21 @@ export default function UsersRoles() {
                               </div>
                               <div>
                                 <p className="font-medium text-white text-sm">
-                                  {u.email} {isSelf && <span className="text-xs text-[var(--color-brand)] font-normal">(You)</span>}
+                                  {u.email}{" "}
+                                  {isSelf && (
+                                    <span className="text-xs text-[var(--color-brand)] font-normal">(You)</span>
+                                  )}
                                 </p>
                                 <p className="text-[11px] text-[var(--color-text-faint)]">ID #{u.id}</p>
                               </div>
                             </div>
                           </td>
                           <td className="px-5 py-3.5">
-                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${ROLE_BADGE[u.role] || ROLE_BADGE.VIEWER}`}>
+                            <span
+                              className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                                ROLE_BADGE[u.role] || ROLE_BADGE.VIEWER
+                              }`}
+                            >
                               {u.role}
                             </span>
                           </td>
@@ -390,18 +407,33 @@ export default function UsersRoles() {
                     })}
                 </tbody>
               </table>
+
+              <Pagination
+                currentPage={page}
+                totalItems={filteredUsers.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setPage(1);
+                }}
+              />
             </div>
           </div>
         )}
 
         {/* Tab 2: RBAC Matrix */}
         {activeTab === "matrix" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {roles.map((r) => (
               <div key={r.role} className="card p-5 space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${ROLE_BADGE[r.role] || ROLE_BADGE.VIEWER}`}>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                        ROLE_BADGE[r.role] || ROLE_BADGE.VIEWER
+                      }`}
+                    >
                       {r.role}
                     </span>
                     <h3 className="text-base font-semibold text-white mt-2">{r.title}</h3>
@@ -439,40 +471,44 @@ export default function UsersRoles() {
                   value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                   placeholder="analyst@policymesh.io"
-                  className="field-input"
+                  className="field-input text-xs"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs text-[var(--color-text-dim)] mb-1">Initial Password * (min 8 chars)</label>
+                <label className="block text-xs text-[var(--color-text-dim)] mb-1">
+                  Initial Password * (min 8 chars)
+                </label>
                 <input
                   type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  placeholder="••••••••••••"
-                  className="field-input"
+                  placeholder="••••••••"
+                  className="field-input text-xs"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Assigned Role *</label>
+                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Role *</label>
                   <select
                     value={createForm.role}
                     onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
-                    className="field-input"
+                    className="field-input text-xs"
                   >
                     {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Account Status</label>
+                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Status *</label>
                   <select
                     value={createForm.status}
                     onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
-                    className="field-input"
+                    className="field-input text-xs"
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="INACTIVE">INACTIVE</option>
@@ -481,7 +517,7 @@ export default function UsersRoles() {
               </div>
 
               {createError && (
-                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
+                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 p-2.5 rounded-lg">
                   {createError}
                 </p>
               )}
@@ -489,14 +525,16 @@ export default function UsersRoles() {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn-ghost"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError(null);
+                  }}
+                  className="btn-ghost text-xs"
                 >
                   Cancel
                 </button>
-                <button type="submit" disabled={createSubmitting} className="btn-primary">
-                  {createSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  Create Account
+                <button type="submit" disabled={createSubmitting} className="btn-primary text-xs">
+                  {createSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create User
                 </button>
               </div>
             </form>
@@ -511,23 +549,33 @@ export default function UsersRoles() {
             <h2 className="text-lg font-semibold text-white">Edit User: {editingUser.email}</h2>
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div>
-                <label className="block text-xs text-[var(--color-text-dim)] mb-1">Role</label>
+                <label className="block text-xs text-[var(--color-text-dim)] mb-1">Role *</label>
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="field-input"
+                  className="field-input text-xs"
+                  disabled={editingUser.email.toLowerCase() === currentUser?.email?.toLowerCase()}
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{r}</option>
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
                   ))}
                 </select>
+                {editingUser.email.toLowerCase() === currentUser?.email?.toLowerCase() && (
+                  <p className="text-[11px] text-[var(--color-text-faint)] mt-1">
+                    Self-role modification is disabled to prevent lockout.
+                  </p>
+                )}
               </div>
+
               <div>
-                <label className="block text-xs text-[var(--color-text-dim)] mb-1">Status</label>
+                <label className="block text-xs text-[var(--color-text-dim)] mb-1">Status *</label>
                 <select
                   value={editForm.status}
                   onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  className="field-input"
+                  className="field-input text-xs"
+                  disabled={editingUser.email.toLowerCase() === currentUser?.email?.toLowerCase()}
                 >
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="INACTIVE">INACTIVE</option>
@@ -535,16 +583,23 @@ export default function UsersRoles() {
               </div>
 
               {editError && (
-                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
+                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 p-2.5 rounded-lg">
                   {editError}
                 </p>
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn-ghost">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null);
+                    setEditError(null);
+                  }}
+                  className="btn-ghost text-xs"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={editSubmitting} className="btn-primary">
+                <button type="submit" disabled={editSubmitting} className="btn-primary text-xs">
                   {editSubmitting ? <Loader2 size={14} className="animate-spin" /> : "Save Changes"}
                 </button>
               </div>
@@ -556,26 +611,25 @@ export default function UsersRoles() {
       {/* Modal: Delete User Confirmation */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="card w-full max-w-md p-6 space-y-4 border-[var(--color-bad)]/30 animate-in fade-in zoom-in-95">
+          <div className="card w-full max-w-sm p-6 space-y-4 border-[var(--color-bad)]/30 animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3 text-[var(--color-bad)]">
               <ShieldAlert size={24} />
-              <h2 className="text-lg font-semibold text-white">Confirm Deletion</h2>
+              <h2 className="text-base font-semibold text-white">Delete User Account?</h2>
             </div>
-            <p className="text-sm text-[var(--color-text-dim)]">
-              Are you sure you want to delete user <strong className="text-white">{deletingUser.email}</strong>? This action cannot be undone.
+            <p className="text-xs text-[var(--color-text-dim)] leading-relaxed">
+              This will permanently revoke all access for{" "}
+              <strong className="text-white">{deletingUser.email}</strong>.
             </p>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setDeletingUser(null)} className="btn-ghost">
+              <button onClick={() => setDeletingUser(null)} className="btn-ghost text-xs">
                 Cancel
               </button>
               <button
-                type="button"
                 onClick={handleDeleteUser}
                 disabled={deleteSubmitting}
-                className="btn-primary bg-[var(--color-bad)] hover:bg-[var(--color-bad)]/80"
+                className="btn-primary bg-[var(--color-bad)] hover:bg-[var(--color-bad)]/80 text-xs"
               >
-                {deleteSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                Delete User
+                {deleteSubmitting ? <Loader2 size={14} className="animate-spin" /> : "Delete User"}
               </button>
             </div>
           </div>

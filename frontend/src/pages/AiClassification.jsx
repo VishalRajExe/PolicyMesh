@@ -1,35 +1,86 @@
-import { useState } from "react";
-import { Sparkles, CheckCircle2, XCircle, Loader2, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Sparkles,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  HelpCircle,
+  RotateCcw,
+  Zap,
+  Tag,
+} from "lucide-react";
 import Topbar from "../components/layout/Topbar";
+import Pagination from "../components/ui/Pagination";
 import { aiApi } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useFormDraft } from "../hooks/useFormDraft";
 
 const CONFIDENCE_COLOR = (c) =>
   c >= 0.85 ? "var(--color-good)" : c >= 0.6 ? "var(--color-warn)" : "var(--color-bad)";
 
+const QUICK_FIELD_PRESETS = [
+  { fieldName: "customer_email", sampleValue: "alex.smith@example.com", label: "Email Address (PII)" },
+  { fieldName: "credit_card_number", sampleValue: "4111-2222-3333-4444", label: "Credit Card (PCI)" },
+  { fieldName: "patient_prescription", sampleValue: "Amoxicillin 500mg daily", label: "Medical Rx (PHI)" },
+  { fieldName: "customer_ssn", sampleValue: "987-65-4321", label: "Social Security (PII)" },
+  { fieldName: "product_inventory_sku", sampleValue: "SKU-9921-EU", label: "Product SKU (Non-Sensitive)" },
+];
+
 export default function AiClassification() {
   const { user } = useAuth();
-  const [fieldName, setFieldName] = useState("");
-  const [sampleValue, setSampleValue] = useState("");
+  const { values: form, setValues: setForm, clearDraft, resetForm } = useFormDraft(
+    "ai-classification",
+    { fieldName: "", sampleValue: "" }
+  );
+
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
-  const [results, setResults] = useState([]);
+
+  // Restore classification results from sessionStorage if present
+  const [results, setResults] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("policymesh:ai-classification:results");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Pagination for results list
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("policymesh:ai-classification:results", JSON.stringify(results));
+    } catch {}
+  }, [results]);
 
   const canApprove = user?.role === "ADMIN" || user?.role === "COMPLIANCE_OFFICER";
-  const isValidFieldName = /^[a-zA-Z0-9_.-]+$/.test(fieldName.trim());
+  const isValidFieldName = /^[a-zA-Z0-9_.-]+$/.test(form.fieldName.trim());
+
+  function applyPreset(p) {
+    setForm({ fieldName: p.fieldName, sampleValue: p.sampleValue });
+    setFormError(null);
+  }
 
   async function handleClassify(e) {
     e.preventDefault();
-    const name = fieldName.trim();
-    if (!name) { setFormError("Field name is required."); return; }
-    if (!isValidFieldName) { setFormError("Field name must be alphanumeric (dots, underscores, hyphens allowed)."); return; }
+    const name = form.fieldName.trim();
+    if (!name) {
+      setFormError("Field name is required.");
+      return;
+    }
+    if (!isValidFieldName) {
+      setFormError("Field name must be alphanumeric (dots, underscores, hyphens allowed).");
+      return;
+    }
     setFormError(null);
     setSubmitting(true);
     try {
-      const res = await aiApi.classify(name, sampleValue.trim() || undefined);
+      const res = await aiApi.classify(name, form.sampleValue.trim() || undefined);
       setResults((prev) => [res, ...prev]);
-      setFieldName("");
-      setSampleValue("");
+      clearDraft();
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -55,169 +106,244 @@ export default function AiClassification() {
     }
   }
 
+  function clearHistory() {
+    setResults([]);
+    try {
+      sessionStorage.removeItem("policymesh:ai-classification:results");
+    } catch {}
+  }
+
   const statusBadge = (status) => {
     const map = {
-      PENDING: { bg: "bg-[var(--color-warn)]/15", text: "text-[var(--color-warn)]" },
-      APPROVED: { bg: "bg-[var(--color-good)]/15", text: "text-[var(--color-good)]" },
-      REJECTED: { bg: "bg-[var(--color-bad)]/15", text: "text-[var(--color-bad)]" },
+      PENDING: { bg: "bg-amber-500/15 border-amber-500/30", text: "text-amber-400" },
+      APPROVED: { bg: "bg-[var(--color-good)]/15 border-[var(--color-good)]/30", text: "text-[var(--color-good)]" },
+      REJECTED: { bg: "bg-[var(--color-bad)]/15 border-[var(--color-bad)]/30", text: "text-[var(--color-bad)]" },
     };
     const s = map[status] || map.PENDING;
-    return `text-xs font-medium px-2 py-0.5 rounded-lg ${s.bg} ${s.text}`;
+    return `text-xs font-semibold px-2 py-0.5 rounded-lg border ${s.bg} ${s.text}`;
   };
+
+  const paginatedResults = results.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
       <Topbar
-        title="AI Classification"
-        subtitle="Automatically classify schema fields by data sensitivity using the AI service."
+        title="AI Schema Classification"
+        subtitle="Automated data sensitivity tagging and human-in-the-loop compliance review."
       />
 
-      <div className="px-6 lg:px-8 mt-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-8">
-        {/* Form */}
-        <div className="xl:col-span-2">
+      <div className="px-6 lg:px-8 mt-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
+        {/* Form Column */}
+        <div className="xl:col-span-2 space-y-4">
           <div className="card p-5 space-y-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={16} className="text-[var(--color-brand)]" />
-              <h2 className="font-semibold text-white text-sm">Classify a Field</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles size={17} className="text-[var(--color-brand)]" />
+                <h2 className="font-semibold text-white text-sm">Classify Schema Field</h2>
+              </div>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="text-xs text-[var(--color-text-faint)] hover:text-white flex items-center gap-1 transition-colors"
+                title="Reset Form"
+              >
+                <RotateCcw size={12} /> Reset
+              </button>
             </div>
 
-            <form onSubmit={handleClassify} className="space-y-4">
+            {/* Quick Sample Presets */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
+                <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
+              </label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {QUICK_FIELD_PRESETS.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="w-full text-left px-3 py-1.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-xs text-[var(--color-text-dim)] hover:text-white transition-colors flex items-center justify-between"
+                  >
+                    <span>{p.label}</span>
+                    <Tag size={12} className="text-[var(--color-text-faint)]" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleClassify} className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">
-                  Field Name *
-                  <span className="ml-1 text-[var(--color-text-faint)]">(alphanumeric, dots, underscores)</span>
+                  Field Name * <span className="text-[var(--color-text-faint)]">(alphanumeric, dots, underscores)</span>
                 </label>
                 <input
-                  value={fieldName}
-                  onChange={(e) => setFieldName(e.target.value)}
+                  value={form.fieldName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, fieldName: e.target.value }))}
                   placeholder="credit_card_number"
-                  className="field-input"
+                  className="field-input text-xs"
                 />
               </div>
 
               <div>
                 <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">
-                  Sample Value <span className="text-[var(--color-text-faint)]">(optional, aids classification)</span>
+                  Sample Value <span className="text-[var(--color-text-faint)]">(optional, enhances LLM accuracy)</span>
                 </label>
                 <input
-                  value={sampleValue}
-                  onChange={(e) => setSampleValue(e.target.value)}
+                  value={form.sampleValue}
+                  onChange={(e) => setForm((prev) => ({ ...prev, sampleValue: e.target.value }))}
                   placeholder="4111-XXXX-XXXX-1111"
-                  className="field-input"
+                  className="field-input text-xs"
                 />
               </div>
 
               {formError && (
-                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">{formError}</p>
+                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
+                  {formError}
+                </p>
               )}
 
               <button type="submit" disabled={submitting} className="btn-primary w-full justify-center">
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                {submitting ? "Classifying…" : "Classify Field"}
+                {submitting ? "Analyzing Sensitivity…" : "Classify Field"}
               </button>
             </form>
 
             {/* Info */}
             <div className="bg-[var(--color-surface-2)] rounded-xl p-3 text-xs text-[var(--color-text-faint)] space-y-1">
-              <p className="font-medium text-[var(--color-text-dim)]">Classification labels</p>
-              {["PII — Personally Identifiable Information", "PCI — Payment Card Industry", "PHI — Protected Health Information", "NON_SENSITIVE — Safe to transfer freely", "UNKNOWN — Could not determine class"].map((l) => (
-                <p key={l}>{l}</p>
+              <p className="font-medium text-[var(--color-text-dim)]">Supported Sensitivity Tags</p>
+              {[
+                "PII — Personally Identifiable Information",
+                "PCI — Payment Card Industry Data",
+                "PHI — Protected Health Information",
+                "NON_SENSITIVE — Freely shareable operational data",
+              ].map((l) => (
+                <p key={l}>• {l}</p>
               ))}
             </div>
 
             {!canApprove && (
               <div className="flex items-start gap-2 text-xs text-[var(--color-text-faint)] bg-[var(--color-surface-2)] rounded-xl p-3">
-                <HelpCircle size={13} className="shrink-0 mt-0.5" />
-                <span>Approve/reject actions require <strong className="text-[var(--color-text-dim)]">Admin</strong> or <strong className="text-[var(--color-text-dim)]">Compliance Officer</strong> role.</span>
+                <HelpCircle size={13} className="shrink-0 mt-0.5 text-amber-400" />
+                <span>
+                  Approval workflows require <strong className="text-white">Admin</strong> or{" "}
+                  <strong className="text-white">Compliance Officer</strong> role.
+                </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results Column */}
         <div className="xl:col-span-3">
           <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-[var(--color-border)]">
-              <h2 className="font-semibold text-white text-sm">
-                Classification Results
-                <span className="ml-2 text-xs font-normal text-[var(--color-text-faint)]">
-                  (this session)
-                </span>
-              </h2>
+            <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-white text-sm">Classification & Human Review Ledger</h2>
+                <p className="text-xs text-[var(--color-text-faint)]">Pending and approved sensitivity tags.</p>
+              </div>
+              {results.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-[var(--color-text-faint)] hover:text-white transition-colors"
+                >
+                  Clear Results
+                </button>
+              )}
             </div>
 
             {results.length === 0 && (
-              <div className="px-5 py-12 text-center">
-                <Sparkles size={28} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
-                <p className="text-[var(--color-text-faint)] text-sm">
-                  Submit a field name above to see AI classification results.
+              <div className="px-5 py-16 text-center">
+                <Sparkles size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
+                <p className="text-sm text-[var(--color-text-dim)]">No schema fields classified in this session.</p>
+                <p className="text-xs text-[var(--color-text-faint)] mt-1">
+                  Choose a preset or submit a custom field name on the left.
                 </p>
               </div>
             )}
 
             {results.length > 0 && (
-              <div className="divide-y divide-[var(--color-border)]">
-                {results.map((r) => (
-                  <div key={r.id} className="px-5 py-4 hover:bg-[var(--color-surface-2)] transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-medium text-white">{r.fieldName}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-[var(--color-brand)]/15 text-[var(--color-brand)]">
-                            {r.suggestedClass}
-                          </span>
-                          <span className={statusBadge(r.status)}>{r.status}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-[var(--color-text-faint)]">
-                          <span>
-                            Confidence:{" "}
-                            <span style={{ color: CONFIDENCE_COLOR(r.confidence) }} className="font-medium">
-                              {Math.round(r.confidence * 100)}%
+              <>
+                <div className="divide-y divide-[var(--color-border)]">
+                  {paginatedResults.map((r) => (
+                    <div key={r.id} className="px-5 py-4 hover:bg-[var(--color-surface-2)] transition-colors">
+                      <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+                        <div className="min-w-0 space-y-1.5 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-sm font-semibold text-white">{r.fieldName}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-[var(--color-brand)]/15 text-[var(--color-brand)] border border-[var(--color-brand)]/30">
+                              {r.suggestedClass}
                             </span>
+                            <span className={statusBadge(r.status)}>{r.status}</span>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-xs text-[var(--color-text-faint)]">
+                            <span>
+                              Confidence:{" "}
+                              <span style={{ color: CONFIDENCE_COLOR(r.confidence) }} className="font-semibold">
+                                {Math.round(r.confidence * 100)}%
+                              </span>
+                            </span>
+                            <span>Engine: {r.provider}</span>
+                            {r.reviewedBy && <span>Reviewer: {r.reviewedBy}</span>}
+                          </div>
+
+                          {/* Confidence Bar */}
+                          <div className="h-1.5 w-full max-w-40 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.round(r.confidence * 100)}%`,
+                                backgroundColor: CONFIDENCE_COLOR(r.confidence),
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        {canApprove && r.status === "PENDING" && (
+                          <div className="flex gap-2 shrink-0 pt-1">
+                            <button
+                              onClick={() => handleApprove(r.id)}
+                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-good)]/15 text-[var(--color-good)] hover:bg-[var(--color-good)]/25 transition-colors border border-[var(--color-good)]/30 font-medium"
+                            >
+                              <CheckCircle2 size={13} /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleReject(r.id)}
+                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-bad)]/15 text-[var(--color-bad)] hover:bg-[var(--color-bad)]/25 transition-colors border border-[var(--color-bad)]/30 font-medium"
+                            >
+                              <XCircle size={13} /> Reject
+                            </button>
+                          </div>
+                        )}
+
+                        {r.status === "APPROVED" && (
+                          <span className="flex items-center gap-1 text-xs text-[var(--color-good)] shrink-0 font-medium pt-1">
+                            <CheckCircle2 size={14} /> Approved
                           </span>
-                          <span>Provider: {r.provider}</span>
-                          {r.reviewedBy && <span>Reviewed by: {r.reviewedBy}</span>}
-                        </div>
-                        {/* Confidence bar */}
-                        <div className="h-1 w-full max-w-32 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${Math.round(r.confidence * 100)}%`, backgroundColor: CONFIDENCE_COLOR(r.confidence) }}
-                          />
-                        </div>
+                        )}
+                        {r.status === "REJECTED" && (
+                          <span className="flex items-center gap-1 text-xs text-[var(--color-bad)] shrink-0 font-medium pt-1">
+                            <XCircle size={14} /> Rejected
+                          </span>
+                        )}
                       </div>
-
-                      {canApprove && r.status === "PENDING" && (
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => handleApprove(r.id)}
-                            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-good)]/15 text-[var(--color-good)] hover:bg-[var(--color-good)]/25 transition-colors border border-[var(--color-good)]/30"
-                          >
-                            <CheckCircle2 size={12} /> Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(r.id)}
-                            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-bad)]/15 text-[var(--color-bad)] hover:bg-[var(--color-bad)]/25 transition-colors border border-[var(--color-bad)]/30"
-                          >
-                            <XCircle size={12} /> Reject
-                          </button>
-                        </div>
-                      )}
-
-                      {r.status === "APPROVED" && (
-                        <span className="flex items-center gap-1 text-xs text-[var(--color-good)] shrink-0">
-                          <CheckCircle2 size={13} /> Approved
-                        </span>
-                      )}
-                      {r.status === "REJECTED" && (
-                        <span className="flex items-center gap-1 text-xs text-[var(--color-bad)] shrink-0">
-                          <XCircle size={13} /> Rejected
-                        </span>
-                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+
+                <Pagination
+                  currentPage={page}
+                  totalItems={results.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(sz) => {
+                    setPageSize(sz);
+                    setPage(1);
+                  }}
+                />
+              </>
             )}
           </div>
         </div>
