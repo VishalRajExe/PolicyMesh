@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/enforce")
+@RequestMapping({"/api/v1/enforce", "/api/v1/compliance"})
 public class EnforcementController {
   private final EnforcementService service;
 

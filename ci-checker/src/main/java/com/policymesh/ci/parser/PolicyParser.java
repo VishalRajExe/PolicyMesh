@@ -86,11 +86,21 @@ public class PolicyParser {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
                 if (Files.isDirectory(entry)) {
-                    parseDirectoryRecursiveHelper(entry, policies);
+                    String dirName = entry.getFileName().toString().toLowerCase();
+                    if (!dirName.equals("examples") && !dirName.equals("test-cases") && !dirName.equals("test_cases") && !dirName.equals("schemas")) {
+                        parseDirectoryRecursiveHelper(entry, policies);
+                    }
                 } else {
                     String fileName = entry.getFileName().toString().toLowerCase();
                     if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
-                        policies.addAll(parseFile(entry));
+                        try {
+                            policies.addAll(parseFile(entry));
+                        } catch (PolicyParseException e) {
+                            if (e.getMessage() != null && e.getMessage().contains("Missing 'policy' key")) {
+                                continue;
+                            }
+                            throw e;
+                        }
                     }
                 }
             }

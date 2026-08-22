@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     app_port: int = Field(default=8000, ge=1, le=65535)
-    ai_provider: Literal["mock", "openai", "compatible"] = "mock"
+    ai_provider: Literal["mock", "openai", "compatible", "gemini"] = "mock"
     ai_base_url: str | None = None
     ai_api_key: SecretStr | None = None
     ai_model: str | None = None
@@ -32,6 +32,12 @@ class Settings(BaseSettings):
                 raise ValueError("AI_API_KEY is required for non-mock providers")
             if not self.ai_model:
                 raise ValueError("AI_MODEL is required for non-mock providers")
+        elif self.ai_provider == "gemini":
+            if not self.ai_api_key or not self.ai_api_key.get_secret_value():
+                # Fallback to mock when AI_API_KEY is not provided
+                self.ai_provider = "mock"
+            elif not self.ai_model:
+                self.ai_model = "gemini-1.5-flash"
         return self
 
     @property

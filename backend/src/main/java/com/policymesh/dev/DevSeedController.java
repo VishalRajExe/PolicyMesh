@@ -15,7 +15,7 @@ import java.util.Map;
  * Requires ADMIN and can be disabled entirely with policymesh.demo.seed-endpoint-enabled=false.
  */
 @RestController
-@RequestMapping("/api/v1/dev")
+@RequestMapping({"/api/v1/dev", "/api/v1/demo"})
 public class DevSeedController {
   private final DemoDataSeeder seeder;
   private final boolean enabled;

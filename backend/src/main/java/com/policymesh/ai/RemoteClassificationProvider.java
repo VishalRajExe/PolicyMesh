@@ -31,17 +31,23 @@ public class RemoteClassificationProvider implements ClassificationProvider {
   @Override
   public Result classify(String fieldName, String sampleValue) {
     try {
+      java.util.Map<String, Object> fieldItem = new java.util.HashMap<>();
+      fieldItem.put("name", fieldName == null ? "" : fieldName);
+      if (sampleValue != null && !sampleValue.isBlank()) {
+        fieldItem.put("sampleValue", sampleValue);
+      }
       JsonNode response = client.post()
-          .uri("/classify")
-          .body(Map.of("fieldName", fieldName == null ? "" : fieldName,
-              "sampleValue", sampleValue == null ? "" : sampleValue))
+          .uri("/api/v1/classify")
+          .body(java.util.Map.of("fields", java.util.List.of(fieldItem)))
           .retrieve()
           .body(JsonNode.class);
       if (response != null) {
-        String classification = response.hasNonNull("classification") ? response.get("classification").asText()
-            : (response.hasNonNull("class") ? response.get("class").asText() : null);
+        JsonNode classifications = response.path("classifications");
+        JsonNode first = (classifications.isArray() && classifications.size() > 0) ? classifications.get(0) : response;
+        String classification = first.hasNonNull("classification") ? first.get("classification").asText()
+            : (first.hasNonNull("class") ? first.get("class").asText() : null);
         if (classification != null && !classification.isBlank()) {
-          double confidence = response.path("confidence").asDouble(0.5);
+          double confidence = first.path("confidence").asDouble(0.9);
           return new Result(classification.toUpperCase(), confidence, "remote");
         }
       }
