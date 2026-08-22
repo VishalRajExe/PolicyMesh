@@ -83,7 +83,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* User + collapse */}
       <div className="border-t border-[var(--color-border)] p-3 space-y-2">
-        <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+        <NavLink to="/settings" className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-[var(--color-surface-2)] transition-colors">
           <div className="w-9 h-9 rounded-full bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center text-xs font-semibold text-white shrink-0">
             {initials}
           </div>
@@ -92,10 +92,10 @@ export default function Sidebar({ collapsed, onToggle }) {
               <p className="text-sm font-medium text-white truncate">
                 {user?.role ? toTitleCase(user.role) : "Compliance Officer"}
               </p>
-              <p className="text-[11px] text-[var(--color-text-faint)] truncate">View all permissions</p>
+              <p className="text-[11px] text-[var(--color-text-faint)] truncate">Settings & Profile</p>
             </div>
           )}
-        </div>
+        </NavLink>
         <button
           onClick={onToggle}
           className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-2)] hover:text-white transition-colors focus-ring"

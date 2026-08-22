@@ -64,6 +64,13 @@ public class SecurityConfig {
             .accessDeniedHandler((req, res, ex) -> problem(res, HttpStatus.FORBIDDEN, "Access denied: your role is not permitted to perform this action", req)))
         .authorizeHttpRequests(a -> a
             .requestMatchers("/api/v1/auth/**", "/actuator/health").permitAll()
+            .requestMatchers("/api/v1/users/roles").authenticated()
+            .requestMatchers("GET", "/api/v1/users/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers("POST", "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers("PUT", "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers("DELETE", "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers("/api/v1/reports/**").authenticated()
+            .requestMatchers("/api/v1/settings/**").authenticated()
             .requestMatchers("POST", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
             .requestMatchers("PUT", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
             .requestMatchers("DELETE", "/api/v1/policies/**").hasRole("ADMIN")

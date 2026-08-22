@@ -9,3 +9,6 @@ export * from "./lineage";
 export * from "./dashboard";
 export * from "./audit";
 export * from "./ai";
+export * from "./users";
+export * from "./reports";
+export * from "./settings";

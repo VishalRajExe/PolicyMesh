@@ -12,7 +12,9 @@ import Lineage from "./pages/Lineage";
 import AiClassification from "./pages/AiClassification";
 import CiCheck from "./pages/CiCheck";
 import Alerts from "./pages/Alerts";
-import ComingSoon from "./pages/ComingSoon";
+import Reports from "./pages/Reports";
+import UsersRoles from "./pages/UsersRoles";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -33,41 +35,9 @@ export default function App() {
           <Route path="/ai-classification" element={<ProtectedRoute><AiClassification /></ProtectedRoute>} />
           <Route path="/ci-check" element={<ProtectedRoute><CiCheck /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-
-          {/* Coming soon — no backend API available yet */}
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute>
-                <ComingSoon
-                  title="Reports"
-                  subtitle="Scheduled compliance exports, audit summaries, and regulatory reports are on the roadmap."
-                />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/users-roles"
-            element={
-              <ProtectedRoute>
-                <ComingSoon
-                  title="Users & Roles"
-                  subtitle="Team member management and fine-grained role assignment will be available in a future release."
-                />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <ComingSoon
-                  title="Settings"
-                  subtitle="Workspace configuration, integrations, and notification settings are coming soon."
-                />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/users-roles" element={<ProtectedRoute><UsersRoles /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
           {/* 404 catch-all */}
           <Route
