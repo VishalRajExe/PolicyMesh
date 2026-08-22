@@ -1,0 +1,9 @@
+{
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "payments-api",
+      "dataClasses": ["PII"]
+    }
+  ]
+}

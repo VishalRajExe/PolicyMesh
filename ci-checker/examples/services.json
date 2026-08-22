@@ -1,0 +1,22 @@
+{
+  "services": [
+    {
+      "id": "orders-api",
+      "name": "Orders API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "payments-api",
+      "name": "Payments API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "analytics-api",
+      "name": "Analytics API",
+      "region": "US",
+      "environment": "production"
+    }
+  ]
+}

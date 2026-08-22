@@ -1,0 +1,13 @@
+policy:
+  id: EU-PII-001
+  name: EU PII Protection
+  jurisdiction: EU
+  dataClass: PII
+
+  allowedRegions:
+    - EU
+    - UK
+
+  deniedRegions:
+    - US
+    - CN

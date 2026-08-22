@@ -1,0 +1,17 @@
+# Compose overlay: merge with the PolicyMesh backend compose file.
+# The backend should use http://ai-service:8000 as its AI-service base URL.
+services:
+  ai-service:
+    build:
+      context: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - policymesh
+
+networks:
+  policymesh:
+    external: true
+    name: policymesh

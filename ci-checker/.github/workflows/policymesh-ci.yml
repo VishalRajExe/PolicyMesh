@@ -1,0 +1,65 @@
+name: PolicyMesh Compliance Check
+
+on:
+  pull_request:
+    branches: ["*"]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  compliance-check:
+    name: PolicyMesh Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build CI Checker
+        run: |
+          cd ci-checker
+          mvn clean package -DskipTests -q
+
+      - name: Run CI Checker Tests
+        run: |
+          cd ci-checker
+          mvn test
+
+      - name: Run PolicyMesh Compliance Check (Offline)
+        id: compliance
+        run: |
+          java -jar ci-checker/target/policymesh-ci.jar check \
+            --policy-dir ./ci-checker/policies \
+            --services ./ci-checker/examples/services.json \
+            --dataflows ./ci-checker/examples/dataflows.json \
+            --output console || true
+
+      - name: Generate GitHub Summary
+        if: always()
+        run: |
+          java -jar ci-checker/target/policymesh-ci.jar check \
+            --policy-dir ./ci-checker/policies \
+            --services ./ci-checker/examples/services.json \
+            --dataflows ./ci-checker/examples/dataflows.json \
+            --output github > /tmp/compliance-report.md 2>/dev/null || true
+          echo "## PolicyMesh Compliance Check" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/compliance-report.md >> $GITHUB_STEP_SUMMARY || echo "No report generated" >> $GITHUB_STEP_SUMMARY
+
+      - name: Enforce Compliance
+        run: |
+          java -jar ci-checker/target/policymesh-ci.jar check \
+            --policy-dir ./ci-checker/policies \
+            --services ./ci-checker/examples/services.json \
+            --dataflows ./ci-checker/examples/dataflows.json \
+            --output console
