@@ -6,15 +6,86 @@ import {
   Loader2,
   HelpCircle,
   RotateCcw,
+  Check,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import SearchableCombobox from "../components/ui/SearchableCombobox";
 import { aiApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useFormDraft } from "../hooks/useFormDraft";
 
 const CONFIDENCE_COLOR = (c) =>
   c >= 0.85 ? "var(--color-good)" : c >= 0.6 ? "var(--color-warn)" : "var(--color-bad)";
+
+const STANDARD_SCHEMA_FIELDS = [
+  {
+    fieldName: "credit_card_number",
+    sampleValue: "4111-2222-3333-4444",
+    classification: "PCI",
+    description: "Primary Account Number (PAN)",
+  },
+  {
+    fieldName: "customer_email",
+    sampleValue: "alex.smith@example.com",
+    classification: "PII",
+    description: "Personal Email Address",
+  },
+  {
+    fieldName: "customer_ssn",
+    sampleValue: "987-65-4321",
+    classification: "PII",
+    description: "US Social Security Number",
+  },
+  {
+    fieldName: "patient_prescription",
+    sampleValue: "Amoxicillin 500mg daily",
+    classification: "PHI",
+    description: "Protected Health Information",
+  },
+  {
+    fieldName: "medical_diagnosis",
+    sampleValue: "Hypertension (ICD-10 I10)",
+    classification: "PHI",
+    description: "Clinical Diagnosis / ICD Code",
+  },
+  {
+    fieldName: "bank_account_number",
+    sampleValue: "987654321098",
+    classification: "PCI",
+    description: "Direct Deposit Financial Account",
+  },
+  {
+    fieldName: "phone_number",
+    sampleValue: "+1-555-0199",
+    classification: "PII",
+    description: "Mobile Phone Number",
+  },
+  {
+    fieldName: "user_full_name",
+    sampleValue: "Dr. Sarah Connor",
+    classification: "PII",
+    description: "Full Legal Identity Name",
+  },
+  {
+    fieldName: "passport_number",
+    sampleValue: "A12345678",
+    classification: "PII",
+    description: "Government Travel Document",
+  },
+  {
+    fieldName: "ip_address",
+    sampleValue: "192.168.1.1",
+    classification: "PII",
+    description: "Client IPv4 / IPv6 Address",
+  },
+  {
+    fieldName: "product_inventory_sku",
+    sampleValue: "SKU-9921-EU",
+    classification: "NON_SENSITIVE",
+    description: "E-Commerce Product SKU",
+  },
+];
 
 export default function AiClassification() {
   const { user } = useAuth();
@@ -48,6 +119,15 @@ export default function AiClassification() {
 
   const canApprove = user?.role === "ADMIN" || user?.role === "COMPLIANCE_OFFICER";
   const isValidFieldName = /^[a-zA-Z0-9_.-]+$/.test(form.fieldName.trim());
+
+  function handleSelectField(val, opt) {
+    setForm((prev) => ({
+      ...prev,
+      fieldName: val,
+      sampleValue: opt?.sampleValue || prev.sampleValue,
+    }));
+    setFormError(null);
+  }
 
   async function handleClassify(e) {
     e.preventDefault();
@@ -140,13 +220,50 @@ export default function AiClassification() {
             <form onSubmit={handleClassify} className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">
-                  Field Name * <span className="text-[var(--color-text-faint)]">(alphanumeric, dots, underscores)</span>
+                  Field Name * <span className="text-[var(--color-text-faint)]">(select standard field or type custom)</span>
                 </label>
-                <input
+                <SearchableCombobox
                   value={form.fieldName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, fieldName: e.target.value }))}
-                  placeholder="credit_card_number"
-                  className="field-input text-xs"
+                  onChange={handleSelectField}
+                  options={STANDARD_SCHEMA_FIELDS}
+                  getOptionLabel={(opt) => opt.fieldName}
+                  getOptionValue={(opt) => opt.fieldName}
+                  placeholder="Select schema field or type custom..."
+                  searchPlaceholder="Search standard fields or type..."
+                  allowCustom={true}
+                  renderOption={(opt, { isSelected, isHighlighted }) => (
+                    <div className="px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold font-mono text-white truncate">{opt.fieldName}</span>
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                              opt.classification === "PII"
+                                ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                                : opt.classification === "PCI"
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : opt.classification === "PHI"
+                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                : "bg-slate-500/15 text-slate-400 border-slate-500/30"
+                            }`}
+                          >
+                            {opt.classification}
+                          </span>
+                        </div>
+                        {opt.description && (
+                          <p className="text-[11px] text-[var(--color-text-faint)] truncate mt-0.5">
+                            {opt.description}
+                          </p>
+                        )}
+                        {opt.sampleValue && (
+                          <p className="text-[10px] text-[var(--color-text-dim)] font-mono truncate mt-0.5">
+                            ex: {opt.sampleValue}
+                          </p>
+                        )}
+                      </div>
+                      {isSelected && <Check size={14} className="text-[var(--color-brand)] shrink-0" />}
+                    </div>
+                  )}
                 />
               </div>
 
@@ -157,8 +274,8 @@ export default function AiClassification() {
                 <input
                   value={form.sampleValue}
                   onChange={(e) => setForm((prev) => ({ ...prev, sampleValue: e.target.value }))}
-                  placeholder="4111-XXXX-XXXX-1111"
-                  className="field-input text-xs"
+                  placeholder="e.g. 4111-XXXX-XXXX-1111"
+                  className="field-input text-xs font-mono"
                 />
               </div>
 
@@ -178,24 +295,17 @@ export default function AiClassification() {
             <div className="bg-[var(--color-surface-2)] rounded-xl p-3 text-xs text-[var(--color-text-faint)] space-y-1">
               <p className="font-medium text-[var(--color-text-dim)]">Supported Sensitivity Tags</p>
               {[
-                "PII — Personally Identifiable Information",
-                "PCI — Payment Card Industry Data",
-                "PHI — Protected Health Information",
-                "NON_SENSITIVE — Freely shareable operational data",
-              ].map((l) => (
-                <p key={l}>• {l}</p>
+                { tag: "PII", desc: "Personally Identifiable Info (GDPR Art. 4)" },
+                { tag: "PCI", desc: "Payment Card Data (PCI-DSS Req. 3)" },
+                { tag: "PHI", desc: "Protected Health Info (HIPAA § 164.514)" },
+                { tag: "NON_SENSITIVE", desc: "Public or internal operational data" },
+              ].map(({ tag, desc }) => (
+                <div key={tag} className="flex gap-2">
+                  <span className="font-mono text-white font-semibold w-24 shrink-0">{tag}</span>
+                  <span>{desc}</span>
+                </div>
               ))}
             </div>
-
-            {!canApprove && (
-              <div className="flex items-start gap-2 text-xs text-[var(--color-text-faint)] bg-[var(--color-surface-2)] rounded-xl p-3">
-                <HelpCircle size={13} className="shrink-0 mt-0.5 text-amber-400" />
-                <span>
-                  Approval workflows require <strong className="text-white">Admin</strong> or{" "}
-                  <strong className="text-white">Compliance Officer</strong> role.
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -204,15 +314,17 @@ export default function AiClassification() {
           <div className="card overflow-hidden">
             <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-white text-sm">Classification & Human Review Ledger</h2>
-                <p className="text-xs text-[var(--color-text-faint)]">Pending and approved sensitivity tags.</p>
+                <h2 className="font-semibold text-white text-sm">Classification Results & Human Review</h2>
+                <p className="text-xs text-[var(--color-text-faint)]">
+                  Approve or reject automated sensitivity tags. Approved classifications feed active policy ASTs.
+                </p>
               </div>
               {results.length > 0 && (
                 <button
                   onClick={clearHistory}
                   className="text-xs text-[var(--color-text-faint)] hover:text-white transition-colors"
                 >
-                  Clear Results
+                  Clear
                 </button>
               )}
             </div>
@@ -222,7 +334,7 @@ export default function AiClassification() {
                 <Sparkles size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
                 <p className="text-sm text-[var(--color-text-dim)]">No schema fields classified in this session.</p>
                 <p className="text-xs text-[var(--color-text-faint)] mt-1">
-                  Submit a field name and optional sample value on the left to classify.
+                  Select a standard field from the dropdown or type a custom field name on the left to classify.
                 </p>
               </div>
             )}
@@ -231,67 +343,67 @@ export default function AiClassification() {
               <>
                 <div className="divide-y divide-[var(--color-border)]">
                   {paginatedResults.map((r) => (
-                    <div key={r.id} className="px-5 py-4 hover:bg-[var(--color-surface-2)] transition-colors">
-                      <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
-                        <div className="min-w-0 space-y-1.5 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
+                    <div key={r.id} className="p-5 space-y-3 hover:bg-[var(--color-surface-2)] transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-semibold text-white">{r.fieldName}</span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-[var(--color-brand)]/15 text-[var(--color-brand)] border border-[var(--color-brand)]/30">
-                              {r.suggestedClass}
-                            </span>
                             <span className={statusBadge(r.status)}>{r.status}</span>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-xs text-[var(--color-text-faint)]">
-                            <span>
-                              Confidence:{" "}
-                              <span style={{ color: CONFIDENCE_COLOR(r.confidence) }} className="font-semibold">
-                                {Math.round(r.confidence * 100)}%
-                              </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-faint)] font-mono">
+                              via {r.provider || "heuristics"}
                             </span>
-                            <span>Engine: {r.provider}</span>
-                            {r.reviewedBy && <span>Reviewer: {r.reviewedBy}</span>}
                           </div>
-
-                          {/* Confidence Bar */}
-                          <div className="h-1.5 w-full max-w-40 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.round(r.confidence * 100)}%`,
-                                backgroundColor: CONFIDENCE_COLOR(r.confidence),
-                              }}
-                            />
-                          </div>
+                          {r.sampleValue && (
+                            <p className="text-xs text-[var(--color-text-faint)] mt-0.5 font-mono truncate max-w-sm">
+                              sample: {r.sampleValue}
+                            </p>
+                          )}
                         </div>
 
-                        {/* Action Buttons */}
                         {canApprove && r.status === "PENDING" && (
-                          <div className="flex gap-2 shrink-0 pt-1">
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               onClick={() => handleApprove(r.id)}
-                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-good)]/15 text-[var(--color-good)] hover:bg-[var(--color-good)]/25 transition-colors border border-[var(--color-good)]/30 font-medium"
+                              className="btn-ghost flex items-center gap-1 text-xs text-[var(--color-good)] hover:bg-[var(--color-good)]/10"
+                              title="Approve tag"
                             >
-                              <CheckCircle2 size={13} /> Approve
+                              <CheckCircle2 size={14} /> Approve
                             </button>
                             <button
                               onClick={() => handleReject(r.id)}
-                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[var(--color-bad)]/15 text-[var(--color-bad)] hover:bg-[var(--color-bad)]/25 transition-colors border border-[var(--color-bad)]/30 font-medium"
+                              className="btn-ghost flex items-center gap-1 text-xs text-[var(--color-bad)] hover:bg-[var(--color-bad)]/10"
+                              title="Reject tag"
                             >
-                              <XCircle size={13} /> Reject
+                              <XCircle size={14} /> Reject
                             </button>
                           </div>
                         )}
+                      </div>
 
-                        {r.status === "APPROVED" && (
-                          <span className="flex items-center gap-1 text-xs text-[var(--color-good)] shrink-0 font-medium pt-1">
-                            <CheckCircle2 size={14} /> Approved
+                      <div className="flex flex-wrap items-center gap-4 text-xs">
+                        <div>
+                          <span className="text-[var(--color-text-faint)]">Classification: </span>
+                          <span className="font-semibold text-white">{r.classification}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-text-faint)]">Confidence: </span>
+                          <span
+                            className="font-semibold font-mono"
+                            style={{ color: CONFIDENCE_COLOR(r.confidence) }}
+                          >
+                            {(r.confidence * 100).toFixed(1)}%
                           </span>
+                        </div>
+                        {r.reviewedBy && (
+                          <div>
+                            <span className="text-[var(--color-text-faint)]">Reviewer: </span>
+                            <span className="text-[var(--color-text-dim)]">{r.reviewedBy}</span>
+                          </div>
                         )}
-                        {r.status === "REJECTED" && (
-                          <span className="flex items-center gap-1 text-xs text-[var(--color-bad)] shrink-0 font-medium pt-1">
-                            <XCircle size={14} /> Rejected
-                          </span>
+                        {r.explanation && (
+                          <div className="w-full text-xs text-[var(--color-text-dim)] bg-[var(--color-surface)] p-2.5 rounded-lg border border-[var(--color-border)]">
+                            {r.explanation}
+                          </div>
                         )}
                       </div>
                     </div>

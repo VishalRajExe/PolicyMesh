@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef, useId } from "react";
-import { Search, ChevronDown, X, Loader2, RefreshCw, Check } from "lucide-react";
+import { Search, ChevronDown, X, Loader2, RefreshCw, Check, Plus } from "lucide-react";
 
 export default function SearchableCombobox({
   value = "",
   onChange,
   options = [],
   placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search or type...",
   loading = false,
   error = null,
   onRetry,
-  getOptionLabel = (opt) => (typeof opt === "string" ? opt : opt.name || opt.label || String(opt)),
-  getOptionValue = (opt) => (typeof opt === "string" ? opt : opt.name || opt.id || String(opt)),
+  getOptionLabel = (opt) => (typeof opt === "string" ? opt : opt.fieldName || opt.name || opt.label || String(opt)),
+  getOptionValue = (opt) => (typeof opt === "string" ? opt : opt.fieldName || opt.name || opt.id || String(opt)),
   renderOption,
+  allowCustom = true,
   disabled = false,
   className = "",
   id,
@@ -27,7 +28,9 @@ export default function SearchableCombobox({
   const comboboxId = id || generatedId;
 
   // Find the selected option object if available
-  const selectedOption = options.find((opt) => getOptionValue(opt) === value || getOptionLabel(opt) === value);
+  const selectedOption = options.find(
+    (opt) => getOptionValue(opt) === value || getOptionLabel(opt) === value
+  );
 
   // Filter options based on query
   const filteredOptions = options.filter((opt) => {
@@ -38,14 +41,24 @@ export default function SearchableCombobox({
     const region = opt.region ? String(opt.region).toLowerCase() : "";
     const env = opt.environment ? String(opt.environment).toLowerCase() : "";
     const desc = opt.description ? String(opt.description).toLowerCase() : "";
+    const cls = opt.classification ? String(opt.classification).toLowerCase() : "";
+    const sample = opt.sampleValue ? String(opt.sampleValue).toLowerCase() : "";
     return (
       label.includes(q) ||
       val.includes(q) ||
       region.includes(q) ||
       env.includes(q) ||
-      desc.includes(q)
+      desc.includes(q) ||
+      cls.includes(q) ||
+      sample.includes(q)
     );
   });
+
+  const hasExactMatch = filteredOptions.some(
+    (opt) => getOptionValue(opt).toLowerCase() === searchQuery.trim().toLowerCase()
+  );
+
+  const showCustomOption = allowCustom && searchQuery.trim() && !hasExactMatch;
 
   // Handle click outside to close
   useEffect(() => {
@@ -61,8 +74,8 @@ export default function SearchableCombobox({
 
   // Reset highlight index when filtered options change
   useEffect(() => {
-    setHighlightedIndex(filteredOptions.length > 0 ? 0 : -1);
-  }, [searchQuery, filteredOptions.length]);
+    setHighlightedIndex(filteredOptions.length > 0 || showCustomOption ? 0 : -1);
+  }, [searchQuery, filteredOptions.length, showCustomOption]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -77,6 +90,12 @@ export default function SearchableCombobox({
   function handleSelect(opt) {
     const val = getOptionValue(opt);
     onChange(val, opt);
+    setIsOpen(false);
+    setSearchQuery("");
+  }
+
+  function handleSelectCustom(customVal) {
+    onChange(customVal.trim(), null);
     setIsOpen(false);
     setSearchQuery("");
   }
@@ -99,16 +118,25 @@ export default function SearchableCombobox({
       return;
     }
 
+    const totalItems = filteredOptions.length + (showCustomOption ? 1 : 0);
+
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
+      setHighlightedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
-        handleSelect(filteredOptions[highlightedIndex]);
+      if (showCustomOption && highlightedIndex === 0) {
+        handleSelectCustom(searchQuery);
+      } else {
+        const optionIndex = showCustomOption ? highlightedIndex - 1 : highlightedIndex;
+        if (optionIndex >= 0 && optionIndex < filteredOptions.length) {
+          handleSelect(filteredOptions[optionIndex]);
+        } else if (allowCustom && searchQuery.trim()) {
+          handleSelectCustom(searchQuery);
+        }
       }
     } else if (e.key === "Escape" || e.key === "Tab") {
       setIsOpen(false);
@@ -146,7 +174,11 @@ export default function SearchableCombobox({
           isOpen ? "border-[var(--color-brand)] ring-1 ring-[var(--color-brand)]" : ""
         } ${disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
       >
-        <span className={`truncate flex-1 text-left ${value ? "text-white font-medium" : "text-[var(--color-text-faint)]"}`}>
+        <span
+          className={`truncate flex-1 text-left font-mono ${
+            value ? "text-white font-medium" : "text-[var(--color-text-faint)] font-sans"
+          }`}
+        >
           {value ? displayLabel : placeholder}
         </span>
 
@@ -203,17 +235,17 @@ export default function SearchableCombobox({
           </div>
 
           {/* Options List */}
-          <div ref={listboxRef} className="max-h-60 overflow-y-auto divide-y divide-[var(--color-border)]/30 p-1">
+          <div ref={listboxRef} className="max-h-64 overflow-y-auto divide-y divide-[var(--color-border)]/30 p-1">
             {loading && (
               <div className="py-6 px-4 text-center text-xs text-[var(--color-text-faint)] flex items-center justify-center gap-2">
                 <Loader2 size={14} className="animate-spin text-[var(--color-brand)]" />
-                <span>Loading services...</span>
+                <span>Loading options...</span>
               </div>
             )}
 
             {!loading && error && (
               <div className="py-4 px-4 text-center text-xs text-[var(--color-bad)]">
-                <p className="mb-2">Unable to load services</p>
+                <p className="mb-2">Unable to load options</p>
                 {onRetry && (
                   <button
                     type="button"
@@ -229,15 +261,35 @@ export default function SearchableCombobox({
               </div>
             )}
 
-            {!loading && !error && options.length === 0 && (
-              <div className="py-6 px-4 text-center text-xs text-[var(--color-text-faint)]">
-                No services registered yet.
+            {/* Custom Option Item */}
+            {!loading && !error && showCustomOption && (
+              <div
+                role="option"
+                aria-selected={false}
+                onClick={() => handleSelectCustom(searchQuery)}
+                onMouseEnter={() => setHighlightedIndex(0)}
+                className={`px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 cursor-pointer text-xs transition-colors ${
+                  highlightedIndex === 0 ? "bg-[var(--color-surface-2)] text-white" : "text-[var(--color-brand)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Plus size={14} className="text-[var(--color-brand)] shrink-0" />
+                  <span className="truncate">
+                    Use custom: <span className="font-semibold text-white font-mono">{searchQuery}</span>
+                  </span>
+                </div>
               </div>
             )}
 
-            {!loading && !error && options.length > 0 && filteredOptions.length === 0 && (
+            {!loading && !error && options.length === 0 && !showCustomOption && (
               <div className="py-6 px-4 text-center text-xs text-[var(--color-text-faint)]">
-                No services found matching "{searchQuery}"
+                No options available. Type to use a custom value.
+              </div>
+            )}
+
+            {!loading && !error && options.length > 0 && filteredOptions.length === 0 && !showCustomOption && (
+              <div className="py-6 px-4 text-center text-xs text-[var(--color-text-faint)]">
+                No options found matching "{searchQuery}"
               </div>
             )}
 
@@ -247,7 +299,8 @@ export default function SearchableCombobox({
                 const optVal = getOptionValue(opt);
                 const optLabel = getOptionLabel(opt);
                 const isSelected = optVal === value || optLabel === value;
-                const isHighlighted = idx === highlightedIndex;
+                const visualIndex = showCustomOption ? idx + 1 : idx;
+                const isHighlighted = visualIndex === highlightedIndex;
 
                 if (renderOption) {
                   return (
@@ -256,9 +309,13 @@ export default function SearchableCombobox({
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => handleSelect(opt)}
-                      onMouseEnter={() => setHighlightedIndex(idx)}
+                      onMouseEnter={() => setHighlightedIndex(visualIndex)}
                       className={`cursor-pointer transition-colors ${
-                        isHighlighted ? "bg-[var(--color-surface-2)]" : ""
+                        isSelected
+                          ? "bg-[var(--color-brand)]/15"
+                          : isHighlighted
+                          ? "bg-[var(--color-surface-2)]"
+                          : ""
                       }`}
                     >
                       {renderOption(opt, { isSelected, isHighlighted })}
@@ -272,7 +329,7 @@ export default function SearchableCombobox({
                     role="option"
                     aria-selected={isSelected}
                     onClick={() => handleSelect(opt)}
-                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    onMouseEnter={() => setHighlightedIndex(visualIndex)}
                     className={`px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 cursor-pointer text-xs transition-colors ${
                       isSelected
                         ? "bg-[var(--color-brand)]/15 text-white"
@@ -291,6 +348,11 @@ export default function SearchableCombobox({
                       {opt.environment && (
                         <span className="text-[10px] text-[var(--color-text-faint)] hidden sm:inline">
                           • {opt.environment}
+                        </span>
+                      )}
+                      {opt.classification && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          {opt.classification}
                         </span>
                       )}
                     </div>
