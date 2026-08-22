@@ -7,8 +7,6 @@ import {
   Server,
   X,
   Search,
-  RotateCcw,
-  Zap,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -27,12 +25,6 @@ const EMPTY_FORM = {
   meshZone: "",
   description: "",
 };
-
-const SERVICE_PRESETS = [
-  { name: "auth-service", region: "EU", environment: "production", description: "Identity & Token provider" },
-  { name: "checkout-api", region: "EU", environment: "production", description: "Customer Cart & Checkout engine" },
-  { name: "warehouse-svc", region: "US", environment: "production", description: "Fulfillment & inventory store" },
-];
 
 export default function Services() {
   const { user } = useAuth();
@@ -141,16 +133,6 @@ export default function Services() {
     } catch (err) {
       setError(err.message);
     }
-  }
-
-  function applyPreset(p) {
-    setForm({
-      name: p.name,
-      region: p.region,
-      environment: p.environment,
-      meshZone: "zone-primary",
-      description: p.description,
-    });
   }
 
   const setField = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
@@ -353,27 +335,6 @@ export default function Services() {
                 <X size={18} />
               </button>
             </div>
-
-            {/* Presets */}
-            {!editId && (
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
-                  <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {SERVICE_PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => applyPreset(p)}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white transition-colors"
-                    >
-                      {p.name} ({p.region})
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <Field label="Service Identifier *" placeholder="orders-api">
               <input

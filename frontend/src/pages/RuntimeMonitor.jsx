@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  Zap,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -27,36 +26,6 @@ const DEFAULT_FORM = {
   destinationRegion: "",
   dataClass: "PII",
 };
-
-const QUICK_SCENARIOS = [
-  {
-    label: "EU → EU (PII) • Expected ALLOW",
-    sourceRegion: "EU",
-    destinationRegion: "EU",
-    dataClass: "PII",
-    suggestedSource: "orders-api",
-    suggestedDestination: "payments-api",
-    tone: "good",
-  },
-  {
-    label: "EU → US (PII) • Expected DENY",
-    sourceRegion: "EU",
-    destinationRegion: "US",
-    dataClass: "PII",
-    suggestedSource: "orders-api",
-    suggestedDestination: "analytics-api",
-    tone: "bad",
-  },
-  {
-    label: "EU → US (PCI) • Expected DENY",
-    sourceRegion: "EU",
-    destinationRegion: "US",
-    dataClass: "PCI",
-    suggestedSource: "payments-api",
-    suggestedDestination: "analytics-api",
-    tone: "bad",
-  },
-];
 
 export default function RuntimeMonitor() {
   const [searchParams] = useSearchParams();
@@ -148,18 +117,6 @@ export default function RuntimeMonitor() {
     setForm((f) => ({ ...f, [field]: val }));
   };
 
-  function applyScenario(sc) {
-    setForm((prev) => ({
-      ...prev,
-      sourceRegion: sc.sourceRegion,
-      destinationRegion: sc.destinationRegion,
-      dataClass: sc.dataClass,
-      sourceService: prev.sourceService || sc.suggestedSource || "",
-      destinationService: prev.destinationService || sc.suggestedDestination || "",
-    }));
-    setFormError(null);
-  }
-
   async function handleCheck(e) {
     e.preventDefault();
     const { sourceService, destinationService, sourceRegion, destinationRegion, dataClass } = form;
@@ -218,34 +175,6 @@ export default function RuntimeMonitor() {
               >
                 <RotateCcw size={12} /> Reset
               </button>
-            </div>
-
-            {/* Quick Scenario Shortcuts */}
-            <div className="mb-4 space-y-1.5">
-              <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
-                <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
-              </label>
-              <div className="grid grid-cols-1 gap-1.5">
-                {QUICK_SCENARIOS.map((sc, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => applyScenario(sc)}
-                    className="w-full text-left px-3 py-1.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-xs text-[var(--color-text-dim)] hover:text-white transition-colors flex items-center justify-between"
-                  >
-                    <span>{sc.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                        sc.tone === "good"
-                          ? "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
-                          : "bg-[var(--color-bad)]/15 text-[var(--color-bad)] border border-[var(--color-bad)]/30"
-                      }`}
-                    >
-                      {sc.dataClass}
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Main Form */}

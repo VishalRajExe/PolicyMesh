@@ -6,8 +6,6 @@ import {
   Loader2,
   HelpCircle,
   RotateCcw,
-  Zap,
-  Tag,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -17,14 +15,6 @@ import { useFormDraft } from "../hooks/useFormDraft";
 
 const CONFIDENCE_COLOR = (c) =>
   c >= 0.85 ? "var(--color-good)" : c >= 0.6 ? "var(--color-warn)" : "var(--color-bad)";
-
-const QUICK_FIELD_PRESETS = [
-  { fieldName: "customer_email", sampleValue: "alex.smith@example.com", label: "Email Address (PII)" },
-  { fieldName: "credit_card_number", sampleValue: "4111-2222-3333-4444", label: "Credit Card (PCI)" },
-  { fieldName: "patient_prescription", sampleValue: "Amoxicillin 500mg daily", label: "Medical Rx (PHI)" },
-  { fieldName: "customer_ssn", sampleValue: "987-65-4321", label: "Social Security (PII)" },
-  { fieldName: "product_inventory_sku", sampleValue: "SKU-9921-EU", label: "Product SKU (Non-Sensitive)" },
-];
 
 export default function AiClassification() {
   const { user } = useAuth();
@@ -58,11 +48,6 @@ export default function AiClassification() {
 
   const canApprove = user?.role === "ADMIN" || user?.role === "COMPLIANCE_OFFICER";
   const isValidFieldName = /^[a-zA-Z0-9_.-]+$/.test(form.fieldName.trim());
-
-  function applyPreset(p) {
-    setForm({ fieldName: p.fieldName, sampleValue: p.sampleValue });
-    setFormError(null);
-  }
 
   async function handleClassify(e) {
     e.preventDefault();
@@ -151,26 +136,6 @@ export default function AiClassification() {
               </button>
             </div>
 
-            {/* Quick Sample Presets */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
-                <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
-              </label>
-              <div className="grid grid-cols-1 gap-1.5">
-                {QUICK_FIELD_PRESETS.map((p, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className="w-full text-left px-3 py-1.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-xs text-[var(--color-text-dim)] hover:text-white transition-colors flex items-center justify-between"
-                  >
-                    <span>{p.label}</span>
-                    <Tag size={12} className="text-[var(--color-text-faint)]" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Form */}
             <form onSubmit={handleClassify} className="space-y-4 pt-1">
               <div>
@@ -257,7 +222,7 @@ export default function AiClassification() {
                 <Sparkles size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
                 <p className="text-sm text-[var(--color-text-dim)]">No schema fields classified in this session.</p>
                 <p className="text-xs text-[var(--color-text-faint)] mt-1">
-                  Choose a preset or submit a custom field name on the left.
+                  Submit a field name and optional sample value on the left to classify.
                 </p>
               </div>
             )}

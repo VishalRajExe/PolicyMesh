@@ -8,7 +8,6 @@ import {
   Search,
   Filter,
   RotateCcw,
-  Zap,
   FileText,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
@@ -29,36 +28,6 @@ const EMPTY_FORM = {
   allowedRegions: "",
   deniedRegions: "",
 };
-
-const POLICY_PRESETS = [
-  {
-    label: "EU GDPR PII Protection",
-    policyCode: "EU-PII-002",
-    name: "EU PII Cross-Border Restriction",
-    jurisdiction: "EU",
-    dataClass: "PII",
-    allowedRegions: "EU, UK",
-    deniedRegions: "US, CN, IN",
-  },
-  {
-    label: "India DPDPA Protection",
-    policyCode: "IN-PII-002",
-    name: "India Digital Personal Data Act",
-    jurisdiction: "IN",
-    dataClass: "PII",
-    allowedRegions: "IN",
-    deniedRegions: "GLOBAL",
-  },
-  {
-    label: "Global PCI DSS Payment Security",
-    policyCode: "GL-PCI-001",
-    name: "Global Cardholder Data Protection",
-    jurisdiction: "GLOBAL",
-    dataClass: "PCI",
-    allowedRegions: "EU, US, IN",
-    deniedRegions: "CN",
-  },
-];
 
 const STATUS_STYLE = {
   ACTIVE: "bg-[#22c55e]/15 text-[#4ade80] border border-[#22c55e]/30",
@@ -166,17 +135,6 @@ export default function Policies() {
     }
   }
 
-  function applyPreset(p) {
-    setForm({
-      policyCode: p.policyCode,
-      name: p.name,
-      jurisdiction: p.jurisdiction,
-      dataClass: p.dataClass,
-      allowedRegions: p.allowedRegions,
-      deniedRegions: p.deniedRegions,
-    });
-  }
-
   const setField = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   // Filtered policies
@@ -278,25 +236,6 @@ export default function Policies() {
               >
                 <RotateCcw size={12} /> Reset Draft
               </button>
-            </div>
-
-            {/* Presets */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
-                <Zap size={12} className="text-[var(--color-brand)]" /> Quick Presets
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {POLICY_PRESETS.map((p, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white transition-colors"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">

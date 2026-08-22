@@ -6,7 +6,6 @@ import {
   ShieldAlert,
   Loader2,
   Hash,
-  Zap,
   RotateCcw,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
@@ -15,21 +14,6 @@ import { ciApi } from "../api";
 import { useFormDraft } from "../hooks/useFormDraft";
 
 const DEMO_BRANCHES = ["main", "develop", "feature/policy-v2", "fix/region-check"];
-
-const CI_PRESETS = [
-  {
-    label: "Valid EU Flow (PR #42)",
-    branch: "feature/eu-payments-v2",
-    commitHash: "7f8a9b0",
-    description: "Evaluates orders-api [EU] → payments-api [EU] (Compliant)",
-  },
-  {
-    label: "Cross-Border Violation (PR #43)",
-    branch: "feature/cross-border-analytics",
-    commitHash: "e3d4c5b",
-    description: "Evaluates orders-api [EU] → analytics-api [US] (Violation)",
-  },
-];
 
 export default function CiCheck() {
   const { values: form, setValues: setForm, clearDraft, resetForm } = useFormDraft(
@@ -58,11 +42,6 @@ export default function CiCheck() {
   }, [history]);
 
   const HASH_PATTERN = /^[a-zA-Z0-9_.-]+$/;
-
-  function applyPreset(p) {
-    setForm({ branch: p.branch, commitHash: p.commitHash });
-    setFormError(null);
-  }
 
   async function handleRun(e) {
     e.preventDefault();
@@ -117,26 +96,6 @@ export default function CiCheck() {
               >
                 <RotateCcw size={12} /> Reset
               </button>
-            </div>
-
-            {/* Quick Scenario Presets */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] text-[var(--color-text-faint)] font-medium uppercase tracking-wider flex items-center gap-1">
-                <Zap size={12} className="text-[var(--color-brand)]" /> CI Example Scenarios
-              </label>
-              <div className="grid grid-cols-1 gap-1.5">
-                {CI_PRESETS.map((p, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className="w-full text-left px-3 py-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface)] text-xs transition-colors"
-                  >
-                    <p className="font-semibold text-white">{p.label}</p>
-                    <p className="text-[11px] text-[var(--color-text-faint)] mt-0.5">{p.description}</p>
-                  </button>
-                ))}
-              </div>
             </div>
 
             <form onSubmit={handleRun} className="space-y-4 pt-1">
@@ -231,7 +190,7 @@ export default function CiCheck() {
             <div className="card px-5 py-16 text-center">
               <GitBranch size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
               <p className="text-[var(--color-text-faint)] text-sm">
-                Enter a branch and commit hash or select a preset scenario to evaluate compliance.
+                Select a branch and enter a commit hash to evaluate compliance.
               </p>
             </div>
           )}
