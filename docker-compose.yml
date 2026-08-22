@@ -1,26 +1,25 @@
 name: policymesh
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: policymesh-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: policymesh-mysql
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-policymesh}
-      POSTGRES_USER: ${POSTGRES_USER:-policymesh}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-password}
+      MYSQL_DATABASE: ${DB_NAME:-policymeshdb}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-admin}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_PORT:-3306}:3306"
     volumes:
-      - policymesh-postgres-data:/var/lib/postgresql/data
-      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - policymesh-mysql-data:/var/lib/mysql
+      - ./infrastructure/docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
-      retries: 12
+      retries: 20
       start_period: 10s
     networks: [policymesh-network]
-    restart: unless-stopped
 
   redis:
     image: redis:7
@@ -76,9 +75,12 @@ services:
     container_name: policymesh-backend
     environment:
       SERVER_PORT: ${BACKEND_PORT:-8080}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-policymesh}
-      DATABASE_USERNAME: ${POSTGRES_USER:-policymesh}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-password}
+      DATABASE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-policymeshdb}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-policymeshdb}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -95,7 +97,7 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -143,6 +145,6 @@ networks:
     name: policymesh-network
 
 volumes:
-  policymesh-postgres-data:
+  policymesh-mysql-data:
   policymesh-redis-data:
   policymesh-kafka-data:

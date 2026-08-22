@@ -1,2 +1,44 @@
-package com.policymesh.servicegraph; import jakarta.persistence.*; import java.time.Instant; import java.util.*;
-@Entity @Table(name="data_flow_edges",uniqueConstraints=@UniqueConstraint(columnNames={"sourceServiceId","destinationServiceId"})) public class DataFlowEdge {@Id @GeneratedValue(strategy=GenerationType.IDENTITY)private Long id;@Column(nullable=false)private Long sourceServiceId;@Column(nullable=false)private Long destinationServiceId;@ElementCollection @CollectionTable(name="data_flow_edge_classes",joinColumns=@JoinColumn(name="edge_id"))@Column(name="data_class")private Set<String> dataClasses=new TreeSet<>();@Column(nullable=false,updatable=false)private Instant createdAt=Instant.now();@Column(nullable=false)private Instant updatedAt=Instant.now();@PreUpdate void changed(){updatedAt=Instant.now();}public Long getId(){return id;}public Long getSourceServiceId(){return sourceServiceId;}public Long getDestinationServiceId(){return destinationServiceId;}public Set<String> getDataClasses(){return dataClasses;}public Instant getCreatedAt(){return createdAt;}public Instant getUpdatedAt(){return updatedAt;}public void setSourceServiceId(Long v){sourceServiceId=v;}public void setDestinationServiceId(Long v){destinationServiceId=v;}public void setDataClasses(Set<String>v){dataClasses=v;} }
+package com.policymesh.servicegraph;
+
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.*;
+
+@Entity
+@Table(name = "data_flow_edges", uniqueConstraints = @UniqueConstraint(columnNames = {"sourceServiceId", "destinationServiceId"}))
+public class DataFlowEdge {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(nullable = false)
+  private Long sourceServiceId;
+
+  @Column(nullable = false)
+  private Long destinationServiceId;
+
+  @ElementCollection(fetch = FetchType.EAGER)
+  @CollectionTable(name = "data_flow_edge_classes", joinColumns = @JoinColumn(name = "edge_id"))
+  @Column(name = "data_class")
+  private Set<String> dataClasses = new TreeSet<>();
+
+  @Column(nullable = false, updatable = false)
+  private Instant createdAt = Instant.now();
+
+  @Column(nullable = false)
+  private Instant updatedAt = Instant.now();
+
+  @PreUpdate
+  void changed() { updatedAt = Instant.now(); }
+
+  public Long getId() { return id; }
+  public Long getSourceServiceId() { return sourceServiceId; }
+  public Long getDestinationServiceId() { return destinationServiceId; }
+  public Set<String> getDataClasses() { return dataClasses; }
+  public Instant getCreatedAt() { return createdAt; }
+  public Instant getUpdatedAt() { return updatedAt; }
+
+  public void setSourceServiceId(Long v) { sourceServiceId = v; }
+  public void setDestinationServiceId(Long v) { destinationServiceId = v; }
+  public void setDataClasses(Set<String> v) { dataClasses = v; }
+}

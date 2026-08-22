@@ -1,25 +1,25 @@
 name: policymesh
 
 services:
-  postgres:
-    image: postgres:16
+  mysql:
+    image: mysql:8.4
+    container_name: policymesh-mysql
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-policymesh}
-      POSTGRES_USER: ${POSTGRES_USER:-policymesh}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env/.env}
+      MYSQL_DATABASE: ${DB_NAME:-policymeshdb}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-admin}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_PORT:-3306}:3306"
     volumes:
-      - policymesh-postgres-data:/var/lib/postgresql/data
-      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - policymesh-mysql-data:/var/lib/mysql
+      - ../docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
-      retries: 12
+      retries: 20
       start_period: 10s
     networks: [policymesh-network]
-    restart: unless-stopped
 
   redis:
     image: redis:7
@@ -86,25 +86,29 @@ services:
       context: ../../backend
     environment:
       SERVER_PORT: ${BACKEND_PORT:-8080}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-policymesh}
-      DATABASE_USERNAME: ${POSTGRES_USER:-policymesh}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env/.env}
+      DATABASE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-policymeshdb}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-policymeshdb}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in env/.env (min 32 chars)}
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-at-least-32-characters}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AI_SERVICE_MODE: ${AI_SERVICE_MODE:-local}
       AI_SERVICE_URL: http://ai-service:${AI_SERVICE_PORT:-8000}
       POLICYMESH_REDIS_ENABLED: ${POLICYMESH_REDIS_ENABLED:-true}
+      POLICYMESH_REDIS_TTL_SECONDS: ${REDIS_POLICY_TTL_SECONDS:-600}
       POLICYMESH_KAFKA_ENABLED: ${POLICYMESH_KAFKA_ENABLED:-false}
       POLICYMESH_DEMO_SEED: ${POLICYMESH_DEMO_SEED:-false}
       POLICYMESH_DEMO_SEED_ENDPOINT: ${POLICYMESH_DEMO_SEED_ENDPOINT:-true}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -151,6 +155,6 @@ networks:
     name: policymesh-network
 
 volumes:
-  policymesh-postgres-data:
+  policymesh-mysql-data:
   policymesh-redis-data:
   policymesh-kafka-data:

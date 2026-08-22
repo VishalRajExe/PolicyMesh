@@ -1,6 +1,8 @@
 # DATABASE_SCHEMA.md
 
-Source of truth: PostgreSQL. See [REDIS.md](./REDIS.md) for what is cached vs authoritative, and [POLICY_DSL.md](./POLICY_DSL.md) for policy field semantics.
+Authoritative Source of Truth: **MySQL 8.4**.
+Cache: **Redis 7** (see [REDIS.md](./REDIS.md) for what is cached vs authoritative).
+Policy Semantics: [POLICY_DSL.md](./POLICY_DSL.md).
 
 ## ER Diagram
 
@@ -16,194 +18,130 @@ erDiagram
     AI_CLASSIFICATION }o--|| USER : approved_by
 
     USER {
-        uuid id PK
+        bigint id PK
         string email
         string passwordHash
         string role
-        timestamp createdAt
+        datetime createdAt
     }
     POLICY {
-        uuid id PK
+        bigint id PK
         string policyCode
         string name
         string jurisdiction
         string dataClass
-        string[] allowedRegions
-        string[] deniedRegions
         string status
         int version
-        uuid createdBy FK
-        timestamp createdAt
+        datetime createdAt
+        datetime updatedAt
     }
     SERVICE_NODE {
-        uuid id PK
+        bigint id PK
         string name
         string region
         string meshZone
         string environment
+        string description
+        datetime createdAt
+        datetime updatedAt
     }
     DATA_FLOW_EDGE {
-        uuid id PK
-        uuid sourceService FK
-        uuid destinationService FK
-        string[] dataClasses
+        bigint id PK
+        bigint sourceServiceId
+        bigint destinationServiceId
+        datetime createdAt
+        datetime updatedAt
     }
     DECISION {
-        uuid id PK
-        uuid source FK
-        uuid destination FK
-        string[] regions
+        bigint id PK
+        string sourceService
+        string destinationService
+        string sourceRegion
+        string destinationRegion
         string dataClass
         string decision
         string reason
-        uuid policy FK
-        timestamp timestamp
+        string policyId
+        datetime createdAt
     }
     LINEAGE_RECORD {
-        uuid id PK
-        uuid decisionId FK
+        bigint id PK
+        bigint decisionId FK
         string previousHash
         string currentHash
         string signature
-        timestamp timestamp
+        datetime createdAt
     }
     CI_SCAN {
-        uuid id PK
-        uuid policy FK
-        string result
-        timestamp timestamp
+        bigint id PK
+        string commitHash
+        string branch
+        string status
+        int violationCount
+        datetime startedAt
+        datetime completedAt
+        text violationsJson
     }
     AI_CLASSIFICATION {
-        uuid id PK
+        bigint id PK
         string fieldName
-        string suggestedClass
-        float confidence
+        string sampleValue
+        string classification
+        double confidence
         string status
-        uuid approvedBy FK
+        string provider
+        string reviewedBy
+        datetime createdAt
     }
 ```
 
-## User
+## Tables Overview
 
-**Purpose:** Authentication and role-based access.
+### 1. `users`
+**Purpose:** Authentication and role-based access control.
+- `id` BIGINT AUTO_INCREMENT PK
+- `email` VARCHAR(255) UNIQUE NOT NULL
+- `password_hash` VARCHAR(255) NOT NULL (BCrypt hash)
+- `role` VARCHAR(50) NOT NULL (`ADMIN`, `SECURITY_ADMIN`, `AUDITOR`, `VIEWER`)
+- `created_at` DATETIME(6) NOT NULL
 
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| email | VARCHAR(255) | No | Unique |
-| passwordHash | VARCHAR(255) | No | BCrypt hash, never plaintext |
-| role | ENUM(ADMIN, COMPLIANCE_OFFICER, ENGINEER, VIEWER) | No | |
-| createdAt | TIMESTAMP | No | |
+### 2. `policies` & Region Tables
+**Purpose:** Declarative data-residency compliance rules.
+- `policies`: `id` BIGINT PK, `policy_code` VARCHAR(100) UNIQUE, `name` VARCHAR(255), `jurisdiction` VARCHAR(100), `data_class` VARCHAR(100), `status` VARCHAR(50), `version` INT, `created_at`, `updated_at`.
+- `policy_allowed_regions`: `policy_id` BIGINT FK, `region` VARCHAR(100).
+- `policy_denied_regions`: `policy_id` BIGINT FK, `region` VARCHAR(100).
 
-Indexes: unique index on `email`.
+### 3. `service_nodes`
+**Purpose:** Nodes in the service mesh graph topology.
+- `id` BIGINT AUTO_INCREMENT PK
+- `name` VARCHAR(255) UNIQUE NOT NULL
+- `region` VARCHAR(100) NOT NULL (`EU`, `US`, `IN`, `APAC`, `GLOBAL`)
+- `mesh_zone` VARCHAR(100)
+- `environment` VARCHAR(50) NOT NULL
+- `description` VARCHAR(1000)
 
-## Policy
+### 4. `data_flow_edges` & `data_flow_edge_classes`
+**Purpose:** Directed communications between services with tagged data classes.
+- `data_flow_edges`: `id` BIGINT PK, `source_service_id` BIGINT, `destination_service_id` BIGINT.
+- `data_flow_edge_classes`: `edge_id` BIGINT FK, `data_class` VARCHAR(100).
 
-**Purpose:** Declarative data-residency rule (see [POLICY_DSL.md](./POLICY_DSL.md)).
+### 5. `decisions`
+**Purpose:** Real-time enforcement evaluation audit log.
+- `id` BIGINT AUTO_INCREMENT PK
+- `source_service`, `destination_service`, `source_region`, `destination_region`, `data_class`
+- `decision` VARCHAR(20) (`ALLOW`, `DENY`, `REROUTE`)
+- `policy_id` VARCHAR(100), `reason` VARCHAR(1000), `created_at` DATETIME(6)
 
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| policyCode | VARCHAR(64) | No | Unique, e.g. `EU-PII-001` |
-| name | VARCHAR(255) | No | |
-| jurisdiction | VARCHAR(64) | No | e.g. `EU` |
-| dataClass | VARCHAR(64) | No | e.g. `PII` |
-| allowedRegions | TEXT[] (array) | No | e.g. `{EU}` |
-| deniedRegions | TEXT[] (array) | No | e.g. `{US,CN}` |
-| status | ENUM(DRAFT, ACTIVE, INACTIVE) | No | |
-| version | INTEGER | No | Incremented on every update |
-| createdBy | UUID (FK → User.id) | No | |
-| createdAt | TIMESTAMP | No | |
+### 6. `lineage_records`
+**Purpose:** Cryptographically chained, tamper-evident audit ledger.
+- `id` BIGINT AUTO_INCREMENT PK
+- `decision_id` BIGINT UNIQUE NOT NULL
+- `previous_hash` VARCHAR(128)
+- `current_hash` VARCHAR(128) NOT NULL (SHA-256)
+- `signature` VARCHAR(512)
 
-Indexes: unique index on `policyCode`; index on `(dataClass, jurisdiction)` for fast lookup.
+### 7. `ci_scans`
+**Purpose:** History of standalone CI compliance evaluation runs.
 
-Foreign keys: `createdBy` → `User.id`.
-
-## ServiceNode
-
-**Purpose:** Represents a service in the infrastructure graph.
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| name | VARCHAR(255) | No | Unique, e.g. `orders-api` |
-| region | VARCHAR(64) | No | e.g. `EU`, `US`, `CN` |
-| meshZone | VARCHAR(64) | Yes | Optional grouping |
-| environment | VARCHAR(64) | No | e.g. `production`, `staging` |
-
-Indexes: unique index on `name`; index on `region`.
-
-## DataFlowEdge
-
-**Purpose:** Represents a data flow between two services.
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| sourceService | UUID (FK → ServiceNode.id) | No | |
-| destinationService | UUID (FK → ServiceNode.id) | No | |
-| dataClasses | TEXT[] (array) | No | e.g. `{PII}` |
-
-Indexes: composite index on `(sourceService, destinationService)`; duplicate edges between the same pair with overlapping `dataClasses` are rejected at the application layer (see [GRAPH_ENGINE.md](./GRAPH_ENGINE.md)).
-
-## Decision
-
-**Purpose:** The outcome of evaluating a data flow against policy (CI or runtime).
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| source | UUID (FK → ServiceNode.id) | No | |
-| destination | UUID (FK → ServiceNode.id) | No | |
-| regions | TEXT[] (array) | No | `[sourceRegion, destinationRegion]` |
-| dataClass | VARCHAR(64) | No | |
-| decision | ENUM(ALLOW, DENY, REROUTE) | No | |
-| reason | TEXT | No | Human-readable explanation |
-| policy | UUID (FK → Policy.id) | No | Policy version that produced this decision |
-| timestamp | TIMESTAMP | No | |
-
-Indexes: index on `timestamp`; index on `policy`.
-
-## LineageRecord
-
-**Purpose:** Hash-chained, tamper-evident record of a Decision (see [LINEAGE_LEDGER.md](./LINEAGE_LEDGER.md)).
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| decisionId | UUID (FK → Decision.id) | No | Unique (1:1 with Decision) |
-| previousHash | VARCHAR(64) | Yes | Null only for the first record in the chain |
-| currentHash | VARCHAR(64) | No | SHA-256 hex digest |
-| signature | VARCHAR(512) | Yes | Reserved for future digital signatures — not implemented in MVP |
-| timestamp | TIMESTAMP | No | |
-
-Indexes: unique index on `decisionId`; index on `currentHash`.
-
-## CIScan
-
-**Purpose:** Record of a single CI check invocation.
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| policy | UUID (FK → Policy.id) | Yes | Nullable if scan covered multiple policies |
-| result | ENUM(PASS, FAIL) | No | |
-| timestamp | TIMESTAMP | No | |
-
-## AIClassification
-
-**Purpose:** AI-suggested classification pending human approval (see [AI_CLASSIFICATION.md](./AI_CLASSIFICATION.md)).
-
-| Column | Type | Nullable | Notes |
-|---|---|---|---|
-| id | UUID (PK) | No | |
-| fieldName | VARCHAR(255) | No | e.g. `email` |
-| suggestedClass | VARCHAR(64) | No | e.g. `PII` |
-| confidence | FLOAT | No | 0.0–1.0 |
-| status | ENUM(PENDING, APPROVED, REJECTED) | No | |
-| approvedBy | UUID (FK → User.id) | Yes | Null until approved/rejected |
-
-## Enum/Array Notes
-
-- All region and data-class lists (`allowedRegions`, `deniedRegions`, `dataClasses`, `regions`) are stored as PostgreSQL `TEXT[]` arrays, not free-text CSV.
-- `decision` and `status` fields use PostgreSQL enum types (or `VARCHAR` with a `CHECK` constraint, implementation's choice) to keep values closed and consistent.
+### 8. `ai_classifications`
+**Purpose:** AI-assisted data field discovery and sensitivity tagging.
