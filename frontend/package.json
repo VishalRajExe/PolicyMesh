@@ -1,0 +1,14 @@
+{
+  "name": "policymesh-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PolicyMesh React frontend — data-residency compliance dashboard",
+  "scripts": {
+    "dev": "echo 'Frontend not yet implemented. See docs/FRONTEND_CONTRACT.md for the API contract.' && exit 0",
+    "build": "echo 'Frontend build not yet implemented.' && exit 0",
+    "test": "echo 'No frontend tests yet.' && exit 0",
+    "lint": "echo 'No frontend lint yet.' && exit 0"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
