@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# seed-demo-data — register a demo admin, seed the documented demo dataset and verify
+# the canonical outcomes (EU->EU ALLOW, EU->US DENY, lineage valid).
+#
+# Usage: ./scripts/seed-demo-data [BASE_URL]   (default http://localhost:8080)
+#
+set -euo pipefail
+
+BASE="${1:-http://localhost:8080}"
+EMAIL="demo-admin@policymesh.local"
+PASSWORD="demo-admin-password"
+
+json() { grep -o "\"$1\" *: *\"\?[^\",}]*" | head -1 | sed "s/\"$1\" *: *\"\?//"; }
+
+echo "== PolicyMesh demo seed (against $BASE) =="
+
+echo "1. Registering demo ADMIN (ignored if it already exists)..."
+curl -sf -X POST "$BASE/api/v1/auth/register" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"role\":\"ADMIN\"}" \
+  && echo " registered." || echo " (already registered, continuing)"
+
+echo "2. Logging in..."
+LOGIN=$(curl -sf -X POST "$BASE/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+TOKEN=$(echo "$LOGIN" | json token)
+[ -n "$TOKEN" ] || { echo "Login failed: $LOGIN"; exit 1; }
+AUTH="Authorization: Bearer $TOKEN"
+
+echo "3. Seeding demo data (idempotent)..."
+curl -sf -X POST "$BASE/api/v1/dev/seed" -H "$AUTH" && echo
+
+echo "4. Verifying canonical outcomes:"
+echo "   orders-api (EU) -> payments-api (EU), PII:"
+curl -sf -X POST "$BASE/api/v1/enforce/check" -H "$AUTH" -H 'Content-Type: application/json' \
+  -d '{"sourceService":"orders-api","destinationService":"payments-api","dataClassTags":["PII"]}' \
+  | grep -o '"decision":"[A-Z]*"'
+
+echo "   orders-api (EU) -> analytics-api (US), PII:"
+curl -sf -X POST "$BASE/api/v1/enforce/check" -H "$AUTH" -H 'Content-Type: application/json' \
+  -d '{"sourceService":"orders-api","destinationService":"analytics-api","dataClassTags":["PII"]}' \
+  | grep -o '"decision":"[A-Z]*"'
+
+echo "5. Lineage verification:"
+curl -sf "$BASE/api/v1/lineage/verify" -H "$AUTH" \
+  | grep -o '"valid":[a-z]*'
+
+echo "6. Dashboard summary:"
+curl -sf "$BASE/api/v1/dashboard/summary" -H "$AUTH" && echo
+
+echo "Done. Token for further experiments: $TOKEN"

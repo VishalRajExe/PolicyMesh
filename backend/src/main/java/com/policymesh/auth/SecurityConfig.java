@@ -1,0 +1,90 @@
+package com.policymesh.auth;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * RBAC matrix from docs/AUTHENTICATION.md (authoritative):
+ * - policies write: ADMIN, COMPLIANCE_OFFICER; delete: ADMIN only
+ * - services/edges write: ADMIN, ENGINEER; delete: ADMIN only
+ * - enforce check: ADMIN, ENGINEER
+ * - CI check: ADMIN, COMPLIANCE_OFFICER, ENGINEER
+ * - AI classify: ADMIN, COMPLIANCE_OFFICER, ENGINEER; approve/reject: ADMIN, COMPLIANCE_OFFICER
+ * - graph validate, lineage, dashboard, all GETs: any authenticated role (VIEWER included)
+ */
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+  @Bean
+  PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+
+  @Bean
+  CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}") String origins) {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setExposedHeaders(List.of("Location"));
+    config.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+  }
+
+  @Bean
+  SecurityFilterChain security(HttpSecurity http, JwtAuthenticationFilter filter) throws Exception {
+    return http
+        .csrf(c -> c.disable())
+        .cors(c -> {}) // picks up the corsConfigurationSource bean by name
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(e -> e
+            .authenticationEntryPoint((req, res, ex) -> problem(res, HttpStatus.UNAUTHORIZED, "Authentication required: provide a valid bearer token", req))
+            .accessDeniedHandler((req, res, ex) -> problem(res, HttpStatus.FORBIDDEN, "Access denied: your role is not permitted to perform this action", req)))
+        .authorizeHttpRequests(a -> a
+            .requestMatchers("/api/v1/auth/**", "/actuator/health").permitAll()
+            .requestMatchers("POST", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers("PUT", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers("DELETE", "/api/v1/policies/**").hasRole("ADMIN")
+            .requestMatchers("POST", "/api/v1/services").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("PUT", "/api/v1/services/**").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("DELETE", "/api/v1/services/**").hasRole("ADMIN")
+            .requestMatchers("POST", "/api/v1/edges").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("PUT", "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("DELETE", "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/enforce/check").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/ci/check").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/ai/classify").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/ai/classify/*/approve", "/api/v1/ai/classify/*/reject").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers("POST", "/api/v1/compiler/compile").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/dev/seed").hasRole("ADMIN")
+            .anyRequest().authenticated())
+        .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
+        .build();
+  }
+
+  private static void problem(jakarta.servlet.http.HttpServletResponse res, HttpStatus status, String detail,
+                              jakarta.servlet.http.HttpServletRequest req) throws java.io.IOException {
+    res.setStatus(status.value());
+    res.setContentType("application/problem+json");
+    res.getWriter().write("""
+        {"type":"https://policymesh/errors/%s","title":"%s","status":%d,"detail":"%s","instance":"%s"}"""
+        .formatted(status == HttpStatus.UNAUTHORIZED ? "unauthorized" : "forbidden",
+            status.getReasonPhrase(), status.value(), detail, req.getRequestURI()));
+  }
+}

@@ -1,0 +1,1 @@
+package com.policymesh.servicegraph; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface ServiceNodeRepository extends JpaRepository<ServiceNode,Long>{Optional<ServiceNode> findByNameIgnoreCase(String name);}

@@ -1,24 +1,101 @@
 package com.policymesh.compiler;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import com.policymesh.common.ApiException;
+import com.policymesh.policy.PolicyStatus;
+import com.policymesh.policy.PolicyVocabulary;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
-@Component
-@RequiredArgsConstructor
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * Raw YAML -> parser -> validation -> CompiledPolicy.
+ * Malformed YAML is a 400; a parsable policy that violates the DSL is a 422.
+ */
+@Service
 public class PolicyCompiler {
 
-    private final PolicyParser policyParser;
-    private final PolicyValidator policyValidator;
+  public CompiledPolicy compile(String content) {
+    Map<?, ?> policy = parse(content);
+    CompiledPolicy compiled = new CompiledPolicy(
+        required(policy, "id"),
+        required(policy, "name"),
+        PolicyVocabulary.canonicalRegion(required(policy, "jurisdiction")),
+        PolicyVocabulary.canonicalDataClass(required(policy, "dataClass")),
+        regionSet(policy.get("allowedRegions"), "allowedRegions"),
+        regionSet(policy.get("deniedRegions"), "deniedRegions"),
+        status(policy));
+    validate(compiled);
+    return compiled;
+  }
 
-    public CompiledPolicy compile(String yamlContent) {
-        CompiledPolicy compiledPolicy = policyParser.parse(yamlContent);
-        policyValidator.validate(compiledPolicy);
-        return compiledPolicy;
+  private Map<?, ?> parse(String content) {
+    Object parsed;
+    try {
+      parsed = new Yaml(new SafeConstructor(new LoaderOptions())).load(content);
+    } catch (Exception e) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "Malformed policy YAML: " + e.getMessage());
     }
+    if (!(parsed instanceof Map<?, ?> root) || !(root.get("policy") instanceof Map<?, ?> policy)) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "YAML must contain a top-level 'policy' object");
+    }
+    return policy;
+  }
 
-    public String decompile(CompiledPolicy policy) {
-        // In a full implementation, this would convert CompiledPolicy back to YAML
-        // For now, we'll return a placeholder
-        return policyParser.toYaml(policy);
+  private String required(Map<?, ?> policy, String key) {
+    Object value = policy.get(key);
+    if (value == null || value.toString().isBlank()) {
+      throw ApiException.unprocessable("Policy field '" + key + "' is required");
     }
+    return value.toString().trim();
+  }
+
+  private Set<String> regionSet(Object value, String field) {
+    if (value == null) return new TreeSet<>();
+    if (!(value instanceof Collection<?> collection)) {
+      throw ApiException.unprocessable("Policy field '" + field + "' must be a list of regions");
+    }
+    TreeSet<String> regions = new TreeSet<>();
+    for (Object item : collection) {
+      if (item == null || item.toString().isBlank()) {
+        throw ApiException.unprocessable("Policy field '" + field + "' contains a blank region");
+      }
+      regions.add(PolicyVocabulary.canonicalRegion(item.toString()));
+    }
+    return regions;
+  }
+
+  private PolicyStatus status(Map<?, ?> policy) {
+    Object value = policy.get("status");
+    if (value == null) return PolicyStatus.ACTIVE;
+    try {
+      return PolicyStatus.valueOf(value.toString().trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw ApiException.unprocessable("Policy status must be one of DRAFT, ACTIVE, INACTIVE");
+    }
+  }
+
+  private void validate(CompiledPolicy p) {
+    if (!p.policyCode().matches("[A-Z0-9][A-Z0-9_-]*")) {
+      throw ApiException.unprocessable("Policy id must match ^[A-Z0-9][A-Z0-9_-]*$ (got '" + p.policyCode() + "')");
+    }
+    if (!PolicyVocabulary.isKnownDataClass(p.dataClass())) {
+      throw ApiException.unprocessable("Unknown dataClass '" + p.dataClass() + "'; known classes: " + PolicyVocabulary.DATA_CLASSES);
+    }
+    if (p.allowedRegions().isEmpty()) {
+      throw ApiException.unprocessable("allowedRegions must contain at least one region");
+    }
+    for (String region : p.allowedRegions()) {
+      if (p.deniedRegions().contains(region)) {
+        throw ApiException.unprocessable("allowedRegions and deniedRegions must not overlap (region " + region + ")");
+      }
+    }
+  }
 }

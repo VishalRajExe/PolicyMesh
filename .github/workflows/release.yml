@@ -1,0 +1,88 @@
+# Release — triggered ONLY by version tags (v*), never by pushes or PRs.
+#
+# Runs the real test suites (backend + CI checker), enforces the compliance
+# gate, then builds artifacts and creates a GitHub Release with
+# auto-generated notes. Images are NOT published to any registry.
+#
+# Uses the preinstalled `gh` CLI instead of a third-party release action.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # required to create the GitHub Release
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history so release notes can enumerate changes
+          fetch-depth: 0
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Tests are not skipped for releases.
+      - name: Build and test backend
+        working-directory: backend
+        run: mvn --batch-mode clean verify
+
+      # Same 4 stale ParserTest methods excluded as in policymesh-ci.yml
+      # (they reference fixtures at repo-root paths; see that workflow's
+      # KNOWN ISSUE note). All other tests run and must pass.
+      - name: Build and test CI checker
+        working-directory: ci-checker
+        run: >-
+          mvn --batch-mode clean verify
+          -Dtest='!ParserTest#parseExamplePolicies_shouldWork+parseExampleServices_shouldWork+parseExampleValidDataFlows_shouldWork+parseExampleInvalidDataFlows_shouldWork'
+
+      # Release artifacts must come from a compliant configuration.
+      - name: Run PolicyMesh compliance check
+        env:
+          SKIP_BUILD: '1'
+        run: >-
+          bash .github/scripts/run-policy-check.sh
+          --services examples/services/services.json
+          --dataflows examples/dataflows/valid-flow.json
+
+      - name: Generate compliance report
+        env:
+          SKIP_BUILD: '1'
+          REPORT_JSON_PATH: ${{ github.workspace }}/dist/compliance-report.json
+        run: |
+          mkdir -p dist
+          bash .github/scripts/generate-policy-report.sh \
+            --services examples/services/services.json \
+            --dataflows examples/dataflows/valid-flow.json
+
+      - name: Collect release artifacts
+        run: |
+          mkdir -p dist
+          cp backend/target/policy-mesh-backend-*.jar dist/
+          cp ci-checker/target/policymesh-ci.jar dist/
+          ls -lh dist/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "PolicyMesh ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*

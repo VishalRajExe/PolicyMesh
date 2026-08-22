@@ -1,0 +1,1 @@
+package com.policymesh.policy; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface PolicyRepository extends JpaRepository<Policy,Long>{Optional<Policy> findByPolicyCodeIgnoreCase(String code); List<Policy> findByDataClassIgnoreCaseAndStatus(String dataClass,PolicyStatus status);}

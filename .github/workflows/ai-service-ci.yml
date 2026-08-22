@@ -1,0 +1,71 @@
+# AI Service CI — pytest for the FastAPI classification service
+# Runs only when AI service sources (or this workflow) change.
+#
+# Python version 3.11 matches ai-service/Dockerfile (python:3.11-slim).
+# Tests use the mock provider by default (see ai-service/app/config/settings.py)
+# — no API keys or secrets are required.
+#
+# Job display name: "AI Service CI / AI service tests"
+
+name: AI Service CI
+
+on:
+  pull_request:
+    paths:
+      - ai-service/**
+      - .github/workflows/ai-service-ci.yml
+  push:
+    branches: [main, develop]
+    paths:
+      - ai-service/**
+      - .github/workflows/ai-service-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-service-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ai-service-test:
+    name: AI service tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip
+          python -m pip install -r requirements.txt
+
+      # pytest.ini: asyncio_mode = auto, testpaths = tests, pythonpath = .
+      - name: Run AI service tests
+        run: python -m pytest --junitxml=pytest-report.xml
+
+      # Optional lint — style findings never block the pipeline.
+      - name: Lint (optional, non-blocking)
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check --quiet ruff
+          python -m ruff check app tests
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-service-pytest-report
+          path: ai-service/pytest-report.xml
+          retention-days: 7
+          if-no-files-found: ignore

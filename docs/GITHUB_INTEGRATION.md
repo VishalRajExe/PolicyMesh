@@ -1,6 +1,10 @@
 # GITHUB_INTEGRATION.md
 
-See [CI_INTEGRATION.md](./CI_INTEGRATION.md) for the full CI flow this integration triggers.
+How the PolicyMesh repository integrates with GitHub. The authoritative
+reference for the `.github/` directory is [`.github/README.md`](../.github/README.md);
+this page summarizes the integration and points to it.
+
+See also [CI_INTEGRATION.md](./CI_INTEGRATION.md) for the compliance flow itself.
 
 ## Flow
 
@@ -8,32 +12,65 @@ See [CI_INTEGRATION.md](./CI_INTEGRATION.md) for the full CI flow this integrati
 flowchart LR
     Repo[GitHub Repository] --> PR[Pull Request]
     PR --> GA[GitHub Actions]
-    GA --> PM[PolicyMesh CI Checker]
-    PM --> Result[Compliance Result]
+    GA --> CHK[PolicyMesh CI Checker<br/>offline mode]
+    CHK --> Result[Compliance Result<br/>PASS / FAIL]
 ```
 
-## What Gets Committed into `.github/workflows/`
+The workflows build the standalone CI checker (`ci-checker/`) from source on
+every run, evaluate it against the policy files (`policies/{EU,GLOBAL,INDIA,US}`)
+and the repository's valid data-flow configuration
+(`examples/dataflows/valid-flow.json`), and turn the checker's exit code into
+a GitHub check.
 
-A single workflow file, `policymesh-ci.yml` (full example in [CI_INTEGRATION.md](./CI_INTEGRATION.md)), triggered on `pull_request` events targeting the protected branch. It calls `POST /ci/check` and fails the job on a non-PASS result.
+## What is committed in `.github/workflows/`
 
-## What PolicyMesh Reads from the Repository
+| File | Purpose |
+|---|---|
+| `policymesh-ci.yml` | Main gate: policy lint, checker tests, `PolicyMesh / Compliance`, final status |
+| `backend-ci.yml` | `mvn test` + package for `backend/` (Java 21) |
+| `frontend-ci.yml` | Dormant — activates when `frontend/` with a lockfile exists |
+| `ai-service-ci.yml` | `pytest` for `ai-service/` (Python 3.11, mock provider) |
+| `docker-build.yml` | Build-only Dockerfile validation |
+| `release.yml` | `v*` tag releases: tests + compliance + artifacts |
 
-Nothing directly — in the MVP, PolicyMesh does not clone or parse repository source code. It evaluates the **currently registered** service/data-flow graph in PostgreSQL (registered via the API/UI by engineers), not a graph auto-derived from source. This is a deliberate MVP simplification; auto-discovery from IaC/source is future work (see [ROADMAP.md](./ROADMAP.md)).
+## What PolicyMesh reads from the repository
 
-## PR Checks
+In offline mode (the default in CI): the policy YAML under `policies/`, the
+service inventory `examples/services/services.json`, and the data-flow
+configurations under `examples/dataflows/`. The graph is file-based, not
+database-derived; runtime registrations live in PostgreSQL via the backend API.
 
-The `policymesh-ci` job appears as a GitHub status check on the pull request, showing PASS (green) or FAIL (red) with a link to the run logs.
+## PR checks
 
-## Merge Blocking
+Each workflow job appears as a status check, e.g.:
 
-Add `policymesh-ci` as a **required status check** under the repository's branch protection settings so a FAIL result prevents merging.
+- ✅ / ❌ `PolicyMesh / Compliance` — the compliance gate
+- `PolicyMesh / Policy validation`, `PolicyMesh / CI checker tests`, `PolicyMesh / Final status`
+- `Backend CI / Backend tests`, `AI Service CI / AI service tests`
 
-## Local CI Testing
+Job summaries contain the Markdown compliance report; every run uploads a
+`compliance-report.json` artifact.
 
-Run the same check manually before pushing:
+## Merge blocking
+
+Repository administrators configure (once):
+
+```text
+Settings → Branches → Branch protection → Require status checks
+```
+
+and require `PolicyMesh / Compliance` (plus the backend/AI test checks). The
+workflows never modify repository settings themselves.
+
+## Local CI testing
+
+Run the identical gate locally before pushing:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/ci/check -H "Authorization: Bearer $TOKEN"
+bash .github/scripts/run-policy-check.sh \
+  --services examples/services/services.json \
+  --dataflows examples/dataflows/valid-flow.json
 ```
 
+Or `scripts/scripts/run-ci-check.sh --scenario valid|blocked|mixed`.
 See [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md).

@@ -1,4 +1,6 @@
-- [Policy Engine Implementation](src/main/java/com/policymesh/policy/engine/Decision.java) — Core policy decisions (ALLOW/DENY/REROUTE)
-- [Policy Engine Interface](src/main/java/com/policymesh/policy/engine/PolicyEngine.java) — Defines policy evaluation contract
-- [Policy Engine Implementation](src/main/java/com/policymesh/policy/engine/PolicyEngineImpl.java) — Implements policy evaluation logic using data class and region restrictions
-- [Policy Repository Update](src/main/java/com/policymesh/policy/repository/PolicyRepository.java) — Added findByDataClass method for efficient policy lookup
+- [Policy Rule Evaluator](src/main/java/com/policymesh/policy/PolicyRuleEvaluator.java) — the single authoritative decision logic (deny-by-default, jurisdiction matching, deny-wins) shared by the engine, graph analyzer and CLI
+- [Policy Engine](src/main/java/com/policymesh/policy/PolicyEngineImpl.java) — DB-backed evaluation with Redis-optional compiled-policy cache
+- [Policy Compiler](src/main/java/com/policymesh/compiler/PolicyCompiler.java) — YAML DSL -> validation -> CompiledPolicy (400 malformed, 422 semantic)
+- [Lineage Service](src/main/java/com/policymesh/lineage/LineageService.java) — synchronized SHA-256 hash chain append + tamper detection
+- [Compliance CLI](src/main/java/com/policymesh/ci/ComplianceCli.java) — database-free `check` gate used by GitHub Actions (exit 0/1/2)
+- [Security Config](src/main/java/com/policymesh/auth/SecurityConfig.java) — endpoint-level RBAC matrix from docs/AUTHENTICATION.md

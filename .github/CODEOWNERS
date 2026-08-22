@@ -1,0 +1,32 @@
+# PolicyMesh CODEOWNERS
+# =====================================================================
+# IMPORTANT: the teams below are PLACEHOLDERS. Repository administrators
+# must replace them with real GitHub team/user names (Settings > 
+# Collaborators and teams, or the org's Teams page) before enabling
+# "Require review from Code Owners" in branch protection.
+#
+# Syntax: <path pattern> <owner1> <owner2> ...
+
+# Enforceable policy files — every policy change needs policy review
+/policies/ @policy-team
+
+# CI checker — the compliance gate implementation
+/ci-checker/ @backend-team @devops-team
+
+# Backend policy engine (changes can alter compliance semantics)
+/backend/src/main/java/com/policymesh/policy/     @backend-team @policy-team
+/backend/src/main/java/com/policymesh/compiler/   @backend-team
+/backend/src/main/java/com/policymesh/graph/      @backend-team
+/backend/src/main/java/com/policymesh/enforcement/ @backend-team
+
+# Compliance gate fixtures used by CI
+/examples/ @policy-team @devops-team
+
+# Infrastructure
+/infrastructure/ @devops-team
+
+# GitHub workflows and automation
+/.github/ @devops-team
+
+# AI service
+/ai-service/ @backend-team

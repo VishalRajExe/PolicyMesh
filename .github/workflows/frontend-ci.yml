@@ -1,0 +1,84 @@
+# Frontend CI — Node.js build + tests for the PolicyMesh frontend
+#
+# STATUS: DORMANT — the repository currently contains no frontend/
+# directory (no package.json / package-lock.json anywhere in the tree;
+# infrastructure/docker/frontend/ holds a placeholder README only).
+#
+# This workflow is deliberately kept in place so that CI works the moment a
+# frontend with a package-lock.json lands in frontend/:
+#   - the path filter means it does not even trigger until frontend/** exists
+#   - the job-level guard skips (rather than fails) if there is no lockfile
+#
+# When the frontend is added, consider making scripts mandatory by removing
+# the --if-present flags below, and add "Frontend CI / Frontend tests" to the
+# required status checks.
+
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - frontend/**
+      - .github/workflows/frontend-ci.yml
+  push:
+    branches: [main, develop]
+    paths:
+      - frontend/**
+      - .github/workflows/frontend-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-test:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # hashFiles() is only available in step contexts, so the guard lives on
+      # each step below (a job-level if: cannot use it).
+
+      # npm ci requires a package-lock.json — skip cleanly while no frontend
+      # exists instead of failing or pretending to test anything.
+      - name: Setup Node.js
+        if: hashFiles('frontend/package-lock.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci — reproducible installs from the lockfile; never npm install.
+      - name: Install dependencies
+        if: hashFiles('frontend/package-lock.json') != ''
+        run: npm ci
+
+      - name: Lint
+        if: hashFiles('frontend/package-lock.json') != ''
+        run: npm run lint --if-present
+
+      - name: Test
+        if: hashFiles('frontend/package-lock.json') != ''
+        run: npm test --if-present
+
+      - name: Build
+        if: hashFiles('frontend/package-lock.json') != ''
+        run: npm run build --if-present
+
+      # working-directory: . — the frontend/ dir may not exist yet, and the
+      # job-level default would make even this notice step fail.
+      - name: Report dormant state
+        if: hashFiles('frontend/package-lock.json') == ''
+        working-directory: .
+        run: |
+          echo "No frontend/package-lock.json found — frontend CI is dormant."
+          echo "It becomes active automatically once a frontend with a lockfile is added."

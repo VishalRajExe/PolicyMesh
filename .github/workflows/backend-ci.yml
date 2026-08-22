@@ -1,0 +1,99 @@
+# Backend CI — Maven build + tests + PolicyMesh compliance gate for the Spring Boot backend
+# Runs only when backend sources (or this workflow) change.
+#
+# Job display name: "Backend CI / Backend tests"
+# Recommended required status check for branch protection.
+
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - backend/**
+      - policies/**
+      - examples/**
+      - .github/workflows/backend-ci.yml
+  push:
+    branches: [main, develop]
+    paths:
+      - backend/**
+      - policies/**
+      - examples/**
+      - .github/workflows/backend-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+
+      # Tests are never skipped in CI.
+      - name: Run backend tests
+        working-directory: backend
+        run: mvn --batch-mode clean test
+
+      # Tests already ran above; package without re-running them.
+      - name: Package backend JAR
+        working-directory: backend
+        run: mvn --batch-mode package -DskipTests
+
+      # PolicyMesh Compliance Check: the packaged backend JAR re-checks the repository's
+      # real, VALID data-flow configuration (examples/dataflows/valid-flow.json) against
+      # the enforceable policies in policies/{EU,GLOBAL,INDIA,US} using the exact same
+      # compiler and rule evaluator as the running service.
+      #   exit 0 = PASS, exit 1 = violations found (fails this job), exit 2 = input error.
+      - name: PolicyMesh compliance check (must PASS)
+        working-directory: backend
+        run: >-
+          java -jar target/policy-mesh-backend-1.0.0-SNAPSHOT.jar check
+          --policies ../policies/EU --policies ../policies/GLOBAL
+          --policies ../policies/INDIA --policies ../policies/US
+          --services ../examples/services/services.json
+          --dataflows ../examples/dataflows/valid-flow.json
+          --report compliance-report.json
+
+      # Negative control: the same gate must FAIL (exit 1) on the intentionally
+      # violating fixture — proves the gate can actually block.
+      - name: Compliance gate detects violations (blocked fixture must FAIL)
+        working-directory: backend
+        run: |
+          set +e
+          java -jar target/policy-mesh-backend-1.0.0-SNAPSHOT.jar check \
+            --policies ../policies/EU --policies ../policies/GLOBAL \
+            --policies ../policies/INDIA --policies ../policies/US \
+            --services ../examples/services/services.json \
+            --dataflows ../examples/dataflows/blocked-flow.json
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "Expected exit code 1 on the blocked fixture but got $code"
+            exit 1
+          fi
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: backend-surefire-reports, path: backend/target/surefire-reports/**, retention-days: 7, if-no-files-found: ignore }
+
+      - name: Upload backend JAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with: { name: backend-jar, path: backend/target/policy-mesh-backend-*.jar, retention-days: 7, if-no-files-found: error }
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: backend-compliance-report, path: backend/compliance-report.json, retention-days: 14, if-no-files-found: ignore }

@@ -1,0 +1,76 @@
+# Docker Build — validates that the application containers actually build
+# BUILD ONLY: images are never pushed; no registry credentials are used.
+#
+#   backend/Dockerfile     — needs the Spring Boot JAR built first (it COPYs
+#                            backend/target/policy-mesh-backend-*.jar)
+#   ai-service/Dockerfile  — fully self-contained (installs requirements.txt)
+#
+# Note: ci-checker/Dockerfile is intentionally NOT built here. It expects a
+# build context that contains pom.xml, src/, policies/ and examples/ in one
+# directory — a packaging layout that does not exist in this repository
+# (policies/ and examples/ live at the repo root, pom.xml lives in
+# ci-checker/). See .github/README.md > Troubleshooting.
+
+name: Docker Build
+
+on:
+  pull_request:
+    paths:
+      - backend/Dockerfile
+      - backend/pom.xml
+      - backend/src/**
+      - ai-service/Dockerfile
+      - ai-service/requirements.txt
+      - ai-service/app/**
+      - .github/workflows/docker-build.yml
+  push:
+    branches: [main]
+    paths:
+      - backend/Dockerfile
+      - backend/pom.xml
+      - backend/src/**
+      - ai-service/Dockerfile
+      - ai-service/requirements.txt
+      - ai-service/app/**
+      - .github/workflows/docker-build.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-image:
+    name: Backend image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Tests run in backend-ci.yml; here we only need the artifact the
+      # Dockerfile copies in.
+      - name: Build backend JAR
+        working-directory: backend
+        run: mvn --batch-mode package -DskipTests
+
+      - name: Build backend Docker image
+        run: docker build -t policymesh-backend:ci backend
+
+  ai-service-image:
+    name: AI service image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build AI service Docker image
+        run: docker build -t policymesh-ai-service:ci ai-service
