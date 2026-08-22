@@ -19,11 +19,12 @@ public final class EnforcementDtos {
   public record Request(String sourceService, String destinationService,
                         String sourceRegion, String destinationRegion,
                         Set<String> dataClassTags,
+                        Set<String> dataClasses,
                         String source, String destination, String dataClass) {
 
     public static Request of(String sourceService, String destinationService,
                              String sourceRegion, String destinationRegion, Set<String> dataClassTags) {
-      return new Request(sourceService, destinationService, sourceRegion, destinationRegion, dataClassTags, null, null, null);
+      return new Request(sourceService, destinationService, sourceRegion, destinationRegion, dataClassTags, null, null, null, null);
     }
 
     public String effectiveSource() { return firstNonBlank(sourceService, source); }
@@ -33,6 +34,7 @@ public final class EnforcementDtos {
 
     public Set<String> effectiveTags() {
       if (dataClassTags != null && !dataClassTags.isEmpty()) return dataClassTags;
+      if (dataClasses != null && !dataClasses.isEmpty()) return dataClasses;
       if (dataClass != null && !dataClass.isBlank()) return Set.of(dataClass);
       return Set.of();
     }

@@ -1,0 +1,67 @@
+name: PolicyMesh CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build-test-compliance:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: policymesh
+          POSTGRES_USER: policymesh
+          POSTGRES_PASSWORD: policymesh
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U policymesh"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build backend
+        run: mvn -B -DskipTests package
+
+      - name: Run backend tests
+        run: mvn -B test
+
+      - name: Run PolicyMesh compliance check
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/policymesh
+          DB_USERNAME: policymesh
+          DB_PASSWORD: policymesh
+          REDIS_ENABLED: "false"
+          KAFKA_ENABLED: "false"
+          JWT_SECRET: ci-only-secret-not-for-production-use-please-min-32-bytes
+        run: |
+          mvn -B spring-boot:run -Dspring-boot.run.arguments=check &
+          PID=$!
+          wait $PID
+        continue-on-error: false
+
+      - name: Fail workflow on compliance violations
+        if: failure()
+        run: |
+          echo "PolicyMesh compliance check failed. See logs above for violation details."
+          exit 1

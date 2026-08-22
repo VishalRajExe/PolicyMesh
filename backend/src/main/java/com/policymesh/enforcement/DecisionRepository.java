@@ -9,4 +9,5 @@ public interface DecisionRepository extends JpaRepository<DecisionRecord, Long> 
   long countByDecision(String decision);
   long countByCreatedAtAfter(Instant since);
   List<DecisionRecord> findTop100ByOrderByCreatedAtDesc();
+  List<DecisionRecord> findAllByOrderByCreatedAtDesc(org.springframework.data.domain.Pageable pageable);
 }

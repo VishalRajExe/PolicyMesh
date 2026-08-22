@@ -18,11 +18,14 @@ public class PolicyService {
   private final PolicyRepository repo;
   private final EventPublisher events;
   private final PolicyCache cache;
+  private final com.policymesh.compiler.PolicyCompiler compiler;
 
-  public PolicyService(PolicyRepository repo, EventPublisher events, PolicyCache cache) {
+  public PolicyService(PolicyRepository repo, EventPublisher events, PolicyCache cache,
+                       com.policymesh.compiler.PolicyCompiler compiler) {
     this.repo = repo;
     this.events = events;
     this.cache = cache;
+    this.compiler = compiler;
   }
 
   public List<PolicyDtos.Response> all() {
@@ -40,6 +43,24 @@ public class PolicyService {
     }
     Policy p = new Policy();
     apply(p, n, r.status() != null ? r.status() : PolicyStatus.DRAFT);
+    p = repo.save(p);
+    changed(p);
+    return PolicyDtos.from(p);
+  }
+
+  public PolicyDtos.Response createFromYaml(String yaml) {
+    var compiled = compiler.compile(yaml);
+    if (repo.findByPolicyCodeIgnoreCase(compiled.policyCode()).isPresent()) {
+      throw ApiException.conflict("Policy code already exists");
+    }
+    Policy p = new Policy();
+    p.setPolicyCode(compiled.policyCode());
+    p.setName(compiled.name());
+    p.setJurisdiction(compiled.jurisdiction());
+    p.setDataClass(compiled.dataClass());
+    p.setAllowedRegions(compiled.allowedRegions());
+    p.setDeniedRegions(compiled.deniedRegions());
+    p.setStatus(compiled.status() != null ? compiled.status() : PolicyStatus.ACTIVE);
     p = repo.save(p);
     changed(p);
     return PolicyDtos.from(p);

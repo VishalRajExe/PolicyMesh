@@ -291,6 +291,47 @@ class ApiEndpointsTest {
         .andExpect(jsonPath("$.length()").value(3));
   }
 
+  @Test
+  @Order(9)
+  void policiesYamlEndpointCreatesPolicy() throws Exception {
+    String token = admin();
+    String yamlBody = """
+        policy:
+          id: APAC-PII-001
+          name: APAC PII Policy
+          jurisdiction: APAC
+          dataClass: PII
+          allowedRegions: [APAC, SG]
+          deniedRegions: [US, CN]
+        """;
+    mvc.perform(post("/api/v1/policies/yaml").header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"yaml\":\"" + yamlBody.replace("\n", "\\n") + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.policyCode").value("APAC-PII-001"))
+        .andExpect(jsonPath("$.jurisdiction").value("APAC"))
+        .andExpect(jsonPath("$.status").value("ACTIVE"));
+  }
+
+  @Test
+  @Order(10)
+  void auditRecentEndpointReturnsRecentDecisionsWithLimit() throws Exception {
+    String token = admin();
+    mvc.perform(get("/api/v1/audit/recent?limit=5").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").isNotEmpty());
+  }
+
+  @Test
+  @Order(11)
+  void authRegisterWithOptionalNameAndUnknownFieldsSucceeds() throws Exception {
+    mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"Alice Officer\",\"email\":\"alice@example.com\",\"password\":\"another-strong-password\",\"role\":\"COMPLIANCE_OFFICER\",\"extraField\":\"ignored\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.email").value("alice@example.com"))
+        .andExpect(jsonPath("$.role").value("COMPLIANCE_OFFICER"));
+  }
+
   private long serviceIdByName(String name, String token) throws Exception {
     MvcResult result = mvc.perform(get("/api/v1/services").header("Authorization", "Bearer " + token))
         .andExpect(status().isOk()).andReturn();

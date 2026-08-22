@@ -17,6 +17,8 @@ public final class PolicyDtos {
                         Set<String> deniedRegions,
                         PolicyStatus status) {}
 
+  public record YamlRequest(@NotBlank String yaml) {}
+
   public record Response(Long id, String policyCode, String name, String jurisdiction, String dataClass,
                          Set<String> allowedRegions, Set<String> deniedRegions, PolicyStatus status,
                          int version, Instant createdAt, Instant updatedAt) {}

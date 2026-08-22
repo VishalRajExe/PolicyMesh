@@ -14,8 +14,11 @@ public class AuditController {
 
   public AuditController(DecisionRepository decisions) { this.decisions = decisions; }
 
-  @GetMapping("/decisions")
-  public java.util.List<DecisionDtos.Response> recentDecisions() {
-    return DecisionDtos.from(decisions.findTop100ByOrderByCreatedAtDesc());
+  @GetMapping(value = {"/decisions", "/recent"})
+  public java.util.List<DecisionDtos.Response> recentDecisions(
+      @org.springframework.web.bind.annotation.RequestParam(defaultValue = "100") int limit) {
+    int safeLimit = Math.max(1, Math.min(limit, 500));
+    return DecisionDtos.from(decisions.findAllByOrderByCreatedAtDesc(
+        org.springframework.data.domain.PageRequest.of(0, safeLimit)));
   }
 }

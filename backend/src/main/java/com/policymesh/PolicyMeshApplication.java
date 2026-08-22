@@ -23,7 +23,27 @@ public class PolicyMeshApplication {
       }
       System.exit(runDatabaseCheck(rest));
     }
+    if (args.length > 0 && "seed".equalsIgnoreCase(args[0])) {
+      System.exit(runSeed(Arrays.copyOfRange(args, 1, args.length)));
+    }
     SpringApplication.run(PolicyMeshApplication.class, args);
+  }
+
+  private static int runSeed(String[] args) {
+    ConfigurableApplicationContext ctx = new SpringApplicationBuilder(PolicyMeshApplication.class)
+        .web(WebApplicationType.NONE)
+        .bannerMode(Banner.Mode.OFF)
+        .run(args);
+    try {
+      var seeded = ctx.getBean(DemoDataSeeder.class).seedIfEmpty();
+      System.out.println("PolicyMesh demo data seeded: " + seeded);
+      return 0;
+    } catch (Exception e) {
+      System.err.println("Error seeding demo data: " + e.getMessage());
+      return 1;
+    } finally {
+      ctx.close();
+    }
   }
 
   /**

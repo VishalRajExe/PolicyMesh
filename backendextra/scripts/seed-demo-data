@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Loads the PolicyMesh demo dataset (policies, services, data-flow edges)
+# into the currently configured database by starting the app briefly with
+# the `seed` argument.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "Seeding PolicyMesh demo data..."
+mvn -q spring-boot:run -Dspring-boot.run.arguments=seed

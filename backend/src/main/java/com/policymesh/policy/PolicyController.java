@@ -31,6 +31,21 @@ public class PolicyController {
   @ResponseStatus(HttpStatus.CREATED)
   public PolicyDtos.Response create(@Valid @RequestBody PolicyDtos.Request r) { return service.create(r); }
 
+  @PostMapping(value = "/yaml", consumes = {"application/json", "text/plain", "application/x-yaml", "*/*"})
+  @ResponseStatus(HttpStatus.CREATED)
+  public PolicyDtos.Response createFromYaml(@RequestBody String body) {
+    String yaml = body;
+    if (body != null && body.trim().startsWith("{")) {
+      try {
+        var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+        if (node.has("yaml") && node.get("yaml").isTextual()) {
+          yaml = node.get("yaml").asText();
+        }
+      } catch (Exception ignored) {}
+    }
+    return service.createFromYaml(yaml);
+  }
+
   @PutMapping("/{id}")
   public PolicyDtos.Response update(@PathVariable long id, @Valid @RequestBody PolicyDtos.Request r) {
     return service.update(id, r);
