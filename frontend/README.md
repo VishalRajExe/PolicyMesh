@@ -1,15 +1,44 @@
-# PolicyMesh Frontend
+# PolicyMesh — Frontend
 
-> **Status: Planned** — The frontend is not yet implemented in this phase of the hackathon.
+React + Vite + Tailwind CSS dashboard for the PolicyMesh backend.
 
-The backend API is fully operational. See [`docs/FRONTEND_CONTRACT.md`](../docs/FRONTEND_CONTRACT.md) for the complete API contract the frontend will consume, and [`docs/API_SPEC.md`](../docs/API_SPEC.md) for all available endpoints.
+## Quick start
 
-## Planned Tech Stack
+```bash
+npm install
+cp .env.example .env       # point VITE_API_BASE_URL at your backend
+npm run dev                # http://localhost:5173
+```
 
-- React + TypeScript
-- React Flow (service/data-flow graph visualization)
-- Recharts (dashboard metrics charts)
+## Build
 
-## Quick API Reference
+```bash
+npm run build
+npm run preview
+```
 
-While the frontend is being built, all functionality is accessible directly through the REST API. See the [quick-start section in the root README](../README.md#quick-start) for example curl commands.
+## Stack
+
+- React 19 + Vite
+- Tailwind CSS v4 (dark theme, tokens in `src/index.css`)
+- React Router v6 for navigation
+- Recharts for the donut/line charts
+- lucide-react for icons
+- Axios for the API client (`src/api/`)
+
+## Structure
+
+```
+src/
+  api/           one file per backend module (policies, services, enforcement, ci, lineage, ...)
+  components/
+    layout/      Sidebar, Topbar, StatusBar, AppShell, ProtectedRoute
+    dashboard/   StatCard, DonutStat, FlowDecisionsChart, AlertsList, ActivityList, ...
+  context/       AuthContext (JWT + current user)
+  hooks/         useDashboardData (polls the backend, falls back to demo data offline)
+  pages/         Dashboard, Policies, Login, Register, PlaceholderPage
+```
+
+See **design.md** at the repo root for exactly how this connects to the
+Spring Boot backend, environment variables, and how to wire up the
+remaining placeholder pages.
