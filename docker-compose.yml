@@ -3,15 +3,16 @@ name: policymesh
 services:
   postgres:
     image: postgres:16
+    container_name: policymesh-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-policymesh}
       POSTGRES_USER: ${POSTGRES_USER:-policymesh}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-password}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - policymesh-postgres-data:/var/lib/postgresql/data
-      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -40,6 +41,7 @@ services:
 
   kafka:
     image: apache/kafka:3.8.0
+    container_name: policymesh-kafka
     hostname: kafka
     environment:
       KAFKA_NODE_ID: 1
@@ -68,36 +70,25 @@ services:
     networks: [policymesh-network]
     restart: unless-stopped
 
-  kafka-init:
-    image: apache/kafka:3.8.0
-    depends_on:
-      kafka:
-        condition: service_healthy
-    volumes:
-      - ../docker/kafka/topics.sh:/scripts/topics.sh:ro
-    entrypoint: ["/bin/bash", "/scripts/topics.sh"]
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    networks: [policymesh-network]
-    restart: "no"
-
   backend:
     build:
-      context: ../../backend
+      context: ./backend
+    container_name: policymesh-backend
     environment:
       SERVER_PORT: ${BACKEND_PORT:-8080}
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-policymesh}
       DATABASE_USERNAME: ${POSTGRES_USER:-policymesh}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env/.env}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-password}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in env/.env (min 32 chars)}
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-at-least-32-characters}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AI_SERVICE_MODE: ${AI_SERVICE_MODE:-local}
       AI_SERVICE_URL: http://ai-service:${AI_SERVICE_PORT:-8000}
       POLICYMESH_REDIS_ENABLED: ${POLICYMESH_REDIS_ENABLED:-true}
+      POLICYMESH_REDIS_TTL_SECONDS: ${REDIS_POLICY_TTL_SECONDS:-600}
       POLICYMESH_KAFKA_ENABLED: ${POLICYMESH_KAFKA_ENABLED:-false}
       POLICYMESH_DEMO_SEED: ${POLICYMESH_DEMO_SEED:-false}
       POLICYMESH_DEMO_SEED_ENDPOINT: ${POLICYMESH_DEMO_SEED_ENDPOINT:-true}
@@ -119,7 +110,8 @@ services:
 
   ai-service:
     build:
-      context: ../../ai-service
+      context: ./ai-service
+    container_name: policymesh-ai-service
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_PORT: 8000

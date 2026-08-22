@@ -19,7 +19,9 @@ services:
       retries: 10
   redis:
     image: redis:7-alpine
+    container_name: policymesh-redis
     ports: ["6379:6379"]
+    volumes: [redis-data:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -46,3 +48,4 @@ services:
       retries: 10
 volumes:
   postgres-data:
+  redis-data:
