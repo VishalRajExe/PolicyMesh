@@ -1,15 +1,27 @@
 package com.policymesh.ci;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.policymesh.graph.GraphModels;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class CiDtos {
   private CiDtos() {}
 
-  public record Request(@NotBlank String commitHash, @NotBlank String branch) {}
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record Request(
+      @NotBlank @Size(min = 1, max = 64)
+      @Pattern(regexp = "^[a-zA-Z0-9_.-]+$", message = "commitHash must be alphanumeric with dots or hyphens")
+      String commitHash,
+
+      @NotBlank @Size(min = 1, max = 255)
+      @Pattern(regexp = "^[a-zA-Z0-9/_.-]+$", message = "branch contains invalid characters")
+      String branch) {}
 
   /** result is PASS or FAIL; a FAIL is HTTP 200 — compliance failures are business results, not server errors. */
   public record Response(Long id, String commitHash, String branch, String result, int violationCount,

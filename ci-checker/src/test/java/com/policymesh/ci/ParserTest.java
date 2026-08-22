@@ -326,33 +326,41 @@ class ParserTest {
                 () -> dataFlowParser.parseFile(Path.of("/nonexistent/dataflows.json")));
     }
 
+    private Path resolveExamplePath(String relative) {
+        Path p = Path.of(relative);
+        if (java.nio.file.Files.exists(p)) return p;
+        Path parent = Path.of("..", relative);
+        if (java.nio.file.Files.exists(parent)) return parent;
+        return p;
+    }
+
     // --- Integration: Parse Example Files ---
 
     @Test
     void parseExamplePolicies_shouldWork() throws PolicyParseException {
         List<Policy> policies = policyParser.parseDirectoryRecursive(
-                Path.of("policies/examples"));
+                resolveExamplePath("policies/EU"));
         assertTrue(policies.size() >= 2, "Should find at least 2 example policies");
     }
 
     @Test
     void parseExampleServices_shouldWork() throws PolicyParseException {
         List<ServiceNode> services = serviceParser.parseFile(
-                Path.of("examples/services.json"));
+                resolveExamplePath("examples/services.json"));
         assertEquals(3, services.size());
     }
 
     @Test
     void parseExampleValidDataFlows_shouldWork() throws PolicyParseException {
         List<DataFlowEdge> edges = dataFlowParser.parseFile(
-                Path.of("examples/dataflows-valid.json"));
+                resolveExamplePath("examples/dataflows-valid.json"));
         assertEquals(1, edges.size());
     }
 
     @Test
     void parseExampleInvalidDataFlows_shouldWork() throws PolicyParseException {
         List<DataFlowEdge> edges = dataFlowParser.parseFile(
-                Path.of("examples/dataflows-invalid.json"));
+                resolveExamplePath("examples/dataflows-invalid.json"));
         assertEquals(2, edges.size());
     }
 }

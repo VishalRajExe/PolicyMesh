@@ -1,0 +1,47 @@
+# Secrets and Environment Variables
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Build outputs & dependencies
+target/
+**/target/
+node_modules/
+**/node_modules/
+dist/
+build/
+*.jar
+*.war
+*.class
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & temporary files
+*.log
+logs/
+**/logs/
+*.tmp
+*.temp
+.freebuff/
+
+# IDE & OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

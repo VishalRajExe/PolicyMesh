@@ -37,11 +37,13 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}") String origins) {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+    List<String> originList = Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+    config.setAllowedOrigins(originList);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("*"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
     config.setExposedHeaders(List.of("Location"));
-    config.setAllowCredentials(true);
+    // Never allow credentials with wildcard origin
+    config.setAllowCredentials(!originList.contains("*"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
     return source;
@@ -52,6 +54,10 @@ public class SecurityConfig {
     return http
         .csrf(c -> c.disable())
         .cors(c -> {}) // picks up the corsConfigurationSource bean by name
+        .headers(h -> h
+            .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+            .frameOptions(f -> f.deny())
+            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'")))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(e -> e
             .authenticationEntryPoint((req, res, ex) -> problem(res, HttpStatus.UNAUTHORIZED, "Authentication required: provide a valid bearer token", req))

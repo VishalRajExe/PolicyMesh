@@ -23,6 +23,12 @@ import java.util.TreeSet;
 public class PolicyCompiler {
 
   public CompiledPolicy compile(String content) {
+    if (content == null || content.isBlank()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "Policy YAML content is required");
+    }
+    if (content.length() > 1_048_576) {
+      throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "oversized-policy", "Policy YAML exceeds maximum allowed size of 1MB");
+    }
     Map<?, ?> policy = parse(content);
     CompiledPolicy compiled = new CompiledPolicy(
         required(policy, "id"),
@@ -39,7 +45,9 @@ public class PolicyCompiler {
   private Map<?, ?> parse(String content) {
     Object parsed;
     try {
-      parsed = new Yaml(new SafeConstructor(new LoaderOptions())).load(content);
+      LoaderOptions loaderOptions = new LoaderOptions();
+      loaderOptions.setCodePointLimit(1_048_576);
+      parsed = new Yaml(new SafeConstructor(loaderOptions)).load(content);
     } catch (Exception e) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "Malformed policy YAML: " + e.getMessage());
     }

@@ -16,6 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.datasource.username=sa", "spring.datasource.password=",
     "spring.jpa.hibernate.ddl-auto=create-drop",
+    "management.health.redis.enabled=false",
+    "management.health.kafka.enabled=false",
     "policymesh.kafka.enabled=false", "policymesh.redis.enabled=false"})
 @AutoConfigureMockMvc
 class PolicyApiSecurityTest {
@@ -101,6 +103,58 @@ class PolicyApiSecurityTest {
     mvc.perform(post("/api/v1/ci/check").header("Authorization", "Bearer " + engineer)
             .contentType(MediaType.APPLICATION_JSON).content("{\"commitHash\":\"abc\",\"branch\":\"main\"}"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void securityHeadersArePresentOnResponses() throws Exception {
+    mvc.perform(get("/actuator/health"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("X-Frame-Options", "DENY"))
+        .andExpect(header().exists("Content-Security-Policy"));
+  }
+
+  @Test
+  void inputValidationRejectsSqlInjectionAndXssPayloads() throws Exception {
+    String token = registerAndLogin("admin-sec@example.com", "ADMIN");
+
+    // SQL Injection attempt in service name
+    mvc.perform(post("/api/v1/services").header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"orders'; DROP TABLE users;--\",\"region\":\"EU\",\"environment\":\"production\"}"))
+        .andExpect(status().isUnprocessableEntity());
+
+    // XSS attempt in policyCode
+    mvc.perform(post("/api/v1/policies").header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"policyCode\":\"<script>alert(1)</script>\",\"name\":\"XSS Policy\",\"jurisdiction\":\"EU\",\"dataClass\":\"PII\",\"allowedRegions\":[\"EU\"]}"))
+        .andExpect(status().isUnprocessableEntity());
+
+    // Path traversal attempt in service name
+    mvc.perform(post("/api/v1/services").header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"../../etc/passwd\",\"region\":\"EU\",\"environment\":\"production\"}"))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void bruteForceLoginTriggersRateLimit() throws Exception {
+    String victim = "victim@example.com";
+    mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+        .content("{\"email\":\"" + victim + "\",\"password\":\"a-strong-password\",\"role\":\"ENGINEER\"}"));
+
+    // Attempt 10 bad logins
+    for (int i = 0; i < 10; i++) {
+      mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+              .content("{\"email\":\"" + victim + "\",\"password\":\"wrong-pass-" + i + "\"}"))
+          .andExpect(status().isUnauthorized());
+    }
+
+    // 11th attempt must be rejected with 429 TOO_MANY_REQUESTS
+    mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"" + victim + "\",\"password\":\"a-strong-password\"}"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
   }
 
   private String registerAndLogin(String email, String role) throws Exception {
