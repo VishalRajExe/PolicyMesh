@@ -1,0 +1,7 @@
+services:
+  ai-service:
+    environment:
+      APP_ENV: demo
+      AI_PROVIDER: mock
+      AI_MAX_RETRIES: 0
+

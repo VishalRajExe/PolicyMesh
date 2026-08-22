@@ -1,0 +1,36 @@
+{
+  "entity": "Payment",
+  "description": "Payment transaction record used by Acme Commerce",
+  "fields": [
+    {
+      "name": "paymentId",
+      "type": "string",
+      "sampleValue": "pay-x9y8z7w6",
+      "description": "Unique payment identifier"
+    },
+    {
+      "name": "orderId",
+      "type": "string",
+      "sampleValue": "ord-m3n4o5p6",
+      "description": "Associated order identifier"
+    },
+    {
+      "name": "cardNumber",
+      "type": "string",
+      "sampleValue": "4111-XXXX-XXXX-1111",
+      "description": "Masked payment card number"
+    },
+    {
+      "name": "expiryDate",
+      "type": "string",
+      "sampleValue": "12/28",
+      "description": "Card expiry date"
+    },
+    {
+      "name": "paymentStatus",
+      "type": "enum",
+      "sampleValue": "COMPLETED",
+      "description": "Current payment status"
+    }
+  ]
+}

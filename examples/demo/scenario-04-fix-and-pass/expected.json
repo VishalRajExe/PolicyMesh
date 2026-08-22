@@ -1,0 +1,28 @@
+{
+  "before": {
+    "status": "FAILED",
+    "totalFlows": 1,
+    "passedFlows": 0,
+    "failedFlows": 1,
+    "violations": [
+      {
+        "sourceService": "orders-api",
+        "sourceRegion": "EU",
+        "destinationService": "analytics-api",
+        "destinationRegion": "US",
+        "dataClass": "PII",
+        "policyId": "EU-PII-001",
+        "policyName": "EU PII Protection",
+        "reason": "EU PII cannot be transferred from EU to US",
+        "severity": "ERROR"
+      }
+    ]
+  },
+  "after": {
+    "status": "PASSED",
+    "totalFlows": 1,
+    "passedFlows": 1,
+    "failedFlows": 0,
+    "violations": []
+  }
+}

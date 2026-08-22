@@ -1,0 +1,47 @@
+{
+  "pullRequest": 103,
+  "title": "Add payments and analytics flows",
+  "branch": "feature/mixed-flows",
+  "commitHash": "ghi9012",
+  "author": "dev-acme",
+  "changedFiles": [
+    "dataflows/orders-to-payments.json",
+    "dataflows/orders-to-analytics.json"
+  ],
+  "dataFlows": {
+    "name": "Mixed Compliance Flows",
+    "dataFlows": [
+      {
+        "source": "orders-api",
+        "destination": "payments-api",
+        "dataClasses": ["PII"]
+      },
+      {
+        "source": "orders-api",
+        "destination": "analytics-api",
+        "dataClasses": ["PII"]
+      }
+    ]
+  },
+  "expectedStatus": "FAILED",
+  "totalFlows": 2,
+  "passedFlows": 1,
+  "failedFlows": 1,
+  "expectedResult": {
+    "status": "FAILED",
+    "totalFlows": 2,
+    "passedFlows": 1,
+    "failedFlows": 1,
+    "violations": [
+      {
+        "sourceService": "orders-api",
+        "sourceRegion": "EU",
+        "destinationService": "analytics-api",
+        "destinationRegion": "US",
+        "dataClass": "PII",
+        "policyId": "EU-PII-001",
+        "severity": "ERROR"
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "Runtime DENY: EU PII to US",
+  "description": "Runtime enforcement request for orders-api EU → analytics-api US with PII",
+  "request": {
+    "sourceService": "orders-api",
+    "destinationService": "analytics-api",
+    "sourceRegion": "EU",
+    "destinationRegion": "US",
+    "dataClass": "PII"
+  },
+  "expectedResponse": {
+    "decision": "DENY",
+    "reason": "Data transfer from orders-api to analytics-api is denied due to policy restrictions."
+  },
+  "triggeredPolicies": ["EU-PII-001"],
+  "lineageRecordCreated": true,
+  "note": "The lineageHash field is dynamic and excluded from this expected result. The backend creates a lineage record with hash chain for audit."
+}

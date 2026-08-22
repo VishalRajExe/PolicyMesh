@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: policymesh
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ai-service }
+  template:
+    metadata:
+      labels: { app: ai-service }
+    spec:
+      containers:
+        - name: ai-service
+          image: REPLACE_WITH_AI_SERVICE_IMAGE
+          ports: [{ containerPort: 8000, name: http }]
+          envFrom:
+            - configMapRef: { name: policymesh-config }
+            - secretRef: { name: policymesh-secrets }
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true

@@ -1,0 +1,10 @@
+testCase:
+  id: TC-EU-001
+  name: EU PII to EU
+  policy: EU-PII-001
+
+  sourceRegion: EU
+  destinationRegion: EU
+  dataClass: PII
+
+  expectedDecision: ALLOW

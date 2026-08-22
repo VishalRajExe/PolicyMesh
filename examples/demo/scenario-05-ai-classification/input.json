@@ -1,0 +1,52 @@
+{
+  "fields": [
+    {
+      "name": "customerId",
+      "sampleValue": "cust-a1b2c3d4"
+    },
+    {
+      "name": "name",
+      "sampleValue": "Jane Doe"
+    },
+    {
+      "name": "email",
+      "sampleValue": "jane.doe@example.invalid"
+    },
+    {
+      "name": "phone",
+      "sampleValue": "+1-555-0100"
+    },
+    {
+      "name": "address",
+      "sampleValue": "123 Fake Street, Springfield, US"
+    },
+    {
+      "name": "createdAt",
+      "sampleValue": "2025-01-15T10:30:00Z"
+    },
+    {
+      "name": "paymentId",
+      "sampleValue": "pay-x9y8z7w6"
+    },
+    {
+      "name": "orderId",
+      "sampleValue": "ord-m3n4o5p6"
+    },
+    {
+      "name": "cardNumber",
+      "sampleValue": "4111-XXXX-XXXX-1111"
+    },
+    {
+      "name": "expiryDate",
+      "sampleValue": "12/28"
+    },
+    {
+      "name": "paymentStatus",
+      "sampleValue": "COMPLETED"
+    }
+  ],
+  "context": {
+    "domain": "e-commerce",
+    "service": "orders-api"
+  }
+}

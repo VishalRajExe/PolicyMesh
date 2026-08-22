@@ -1,0 +1,10 @@
+testCase:
+  id: TC-EU-006
+  name: EU PII to CN
+  policy: EU-PII-001
+
+  sourceRegion: EU
+  destinationRegion: CN
+  dataClass: PII
+
+  expectedDecision: DENY

@@ -1,0 +1,42 @@
+{
+  "entity": "Customer",
+  "description": "Customer profile record used by Acme Commerce",
+  "fields": [
+    {
+      "name": "customerId",
+      "type": "string",
+      "sampleValue": "cust-a1b2c3d4",
+      "description": "Unique customer identifier"
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "sampleValue": "Jane Doe",
+      "description": "Full name of the customer"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "sampleValue": "jane.doe@example.invalid",
+      "description": "Contact email address"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "sampleValue": "+1-555-0100",
+      "description": "Contact phone number"
+    },
+    {
+      "name": "address",
+      "type": "string",
+      "sampleValue": "123 Fake Street, Springfield, US",
+      "description": "Mailing address"
+    },
+    {
+      "name": "createdAt",
+      "type": "datetime",
+      "sampleValue": "2025-01-15T10:30:00Z",
+      "description": "Account creation timestamp"
+    }
+  ]
+}

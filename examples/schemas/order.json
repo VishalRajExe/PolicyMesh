@@ -1,0 +1,48 @@
+{
+  "entity": "Order",
+  "description": "Order record used by Acme Commerce",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "string",
+      "sampleValue": "ord-q1r2s3t4",
+      "description": "Unique order identifier"
+    },
+    {
+      "name": "customerId",
+      "type": "string",
+      "sampleValue": "cust-a1b2c3d4",
+      "description": "Customer who placed the order"
+    },
+    {
+      "name": "productId",
+      "type": "string",
+      "sampleValue": "prod-u5v6w7x8",
+      "description": "Product identifier"
+    },
+    {
+      "name": "quantity",
+      "type": "integer",
+      "sampleValue": 2,
+      "description": "Number of items ordered"
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "sampleValue": 49.99,
+      "description": "Total price in USD"
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "sampleValue": "CONFIRMED",
+      "description": "Current order status"
+    },
+    {
+      "name": "createdAt",
+      "type": "datetime",
+      "sampleValue": "2025-03-10T09:15:00Z",
+      "description": "Order creation timestamp"
+    }
+  ]
+}

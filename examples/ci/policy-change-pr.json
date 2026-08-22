@@ -1,0 +1,21 @@
+{
+  "pullRequest": 104,
+  "title": "Expand EU-PII-001 allowed regions",
+  "branch": "policy/eu-pii-expand",
+  "commitHash": "jkl3456",
+  "author": "security-team",
+  "changedFiles": [
+    "policies/EU/eu-pii.yaml"
+  ],
+  "description": "Demonstrates a policy version change. The policy EU-PII-001 is updated from version 1 to version 2, expanding allowedRegions from [EU] to [EU, US].",
+  "policyChange": {
+    "policyId": "EU-PII-001",
+    "fromVersion": 1,
+    "toVersion": 2,
+    "fromAllowedRegions": ["EU"],
+    "toAllowedRegions": ["EU", "US"],
+    "deniedRegions": ["CN"]
+  },
+  "expectedBehavior": "Policy changes require security team review. The CI checker should flag this as a policy modification and require approval before merging. Whether the change is valid or invalid depends on the organization's risk tolerance.",
+  "note": "This example documents a policy change scenario. The CI checker should detect the policy file change and flag it for review."
+}

@@ -1,0 +1,10 @@
+{
+  "name": "US Analytics Pipeline",
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "analytics-api",
+      "dataClasses": ["PII"]
+    }
+  ]
+}

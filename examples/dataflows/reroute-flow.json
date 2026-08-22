@@ -1,0 +1,23 @@
+{
+  "name": "EU PII Rerouted from US to EU",
+  "description": "Demonstrates the intended REROUTE behavior. FUTURE_FEATURE — not executable in the current MVP.",
+  "status": "FUTURE_FEATURE",
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "analytics-api",
+      "dataClasses": ["PII"],
+      "metadata": {
+        "note": "In the future, the runtime engine would detect a policy violation and reroute to analytics-api in the EU instead of blocking.",
+        "blockedDestination": {
+          "service": "analytics-api",
+          "region": "US"
+        },
+        "reroutedDestination": {
+          "service": "analytics-api",
+          "region": "EU"
+        }
+      }
+    }
+  ]
+}

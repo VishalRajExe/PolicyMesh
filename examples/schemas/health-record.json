@@ -1,0 +1,36 @@
+{
+  "entity": "HealthRecord",
+  "description": "Medical record for demonstration purposes only — not real health data",
+  "fields": [
+    {
+      "name": "patientId",
+      "type": "string",
+      "sampleValue": "pat-f1g2h3i4",
+      "description": "Unique patient identifier"
+    },
+    {
+      "name": "diagnosis",
+      "type": "string",
+      "sampleValue": "Routine check-up",
+      "description": "Medical diagnosis code or description"
+    },
+    {
+      "name": "medicalRecordNumber",
+      "type": "string",
+      "sampleValue": "mrn-j5k6l7m8",
+      "description": "Internal medical record number"
+    },
+    {
+      "name": "prescription",
+      "type": "string",
+      "sampleValue": "No prescription",
+      "description": "Prescribed medication details"
+    },
+    {
+      "name": "appointmentDate",
+      "type": "datetime",
+      "sampleValue": "2025-06-20T14:00:00Z",
+      "description": "Scheduled appointment date"
+    }
+  ]
+}

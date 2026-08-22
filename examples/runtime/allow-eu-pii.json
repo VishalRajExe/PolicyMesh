@@ -1,0 +1,8 @@
+{
+  "sourceService": "orders-api",
+  "destinationService": "payments-api",
+  "sourceRegion": "EU",
+  "destinationRegion": "EU",
+  "dataClass": "PII",
+  "tags": ["customer-data"]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "EU PII to US Analytics",
+  "description": "orders-api sends PII to analytics-api in the US. Should be DENIED by EU-PII-001.",
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "analytics-api",
+      "dataClasses": ["PII"]
+    }
+  ]
+}

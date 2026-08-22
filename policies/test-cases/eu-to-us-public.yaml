@@ -1,0 +1,14 @@
+testCase:
+  id: TC-EU-003
+  name: EU NON_SENSITIVE to US
+  policy: null
+
+  sourceRegion: EU
+  destinationRegion: US
+  dataClass: NON_SENSITIVE
+
+  expectedDecision: DENY
+
+  expectedBehavior: >
+    No active policy covers NON_SENSITIVE data class.
+    System default of DENY is applied for conservative behavior.

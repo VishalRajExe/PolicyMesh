@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: policymesh
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          image: REPLACE_WITH_BACKEND_IMAGE
+          ports: [{ containerPort: 8080, name: http }]
+          envFrom:
+            - configMapRef: { name: policymesh-config }
+            - secretRef: { name: policymesh-secrets }
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/policymesh
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom: { secretKeyRef: { name: policymesh-secrets, key: DB_USERNAME } }
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom: { secretKeyRef: { name: policymesh-secrets, key: DB_PASSWORD } }
+            - name: SPRING_REDIS_HOST
+              valueFrom: { configMapKeyRef: { name: policymesh-config, key: REDIS_HOST } }
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom: { configMapKeyRef: { name: policymesh-config, key: KAFKA_BOOTSTRAP_SERVERS } }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true

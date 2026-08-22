@@ -1,0 +1,12 @@
+{
+  "scenario": "Valid EU-to-EU flow",
+  "description": "orders-api EU → payments-api EU with PII and PCI data classes",
+  "decision": "ALLOW",
+  "ciStatus": "PASSED",
+  "totalFlows": 1,
+  "passedFlows": 1,
+  "failedFlows": 0,
+  "policiesEvaluated": ["EU-PII-001", "EU-PCI-001"],
+  "violations": [],
+  "reason": "All data classes (PII, PCI) are allowed to flow from EU to EU under EU-PII-001 and EU-PCI-001."
+}

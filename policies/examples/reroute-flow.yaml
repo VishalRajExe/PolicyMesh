@@ -1,0 +1,45 @@
+# Reroute Flow Example
+# --------------------
+# Demonstrates the REROUTE decision model:
+#
+#   EU Orders API
+#       ↓
+#   US Analytics API
+#       ↓
+#   DENY / REROUTE
+#       ↓
+#   EU Analytics API (compliant destination)
+#
+# Status: FUTURE
+# The REROUTE logic is not yet implemented in the runtime engine.
+# This example documents the intended behavior for when it is.
+
+scenario:
+  id: EX-REROUTE-001
+  name: EU PII rerouted from US to EU
+
+  status: FUTURE
+
+  source:
+    service: orders-api
+    region: EU
+
+  destination:
+    service: analytics-api
+    region: US
+
+  reroutedTo:
+    service: analytics-api
+    region: EU
+
+  dataClasses:
+    - PII
+
+  expectedDecision: REROUTE
+
+  expectedPolicy:
+    - EU-PII-001
+
+  expectedReason: >
+    EU PII cannot be sent to US. The runtime engine reroutes
+    to the EU region where an equivalent analytics-api is deployed.

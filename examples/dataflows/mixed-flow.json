@@ -1,0 +1,21 @@
+{
+  "name": "Mixed Compliance Check",
+  "description": "Contains both allowed and blocked flows. CI checker should report: total 3, passed 2, failed 1.",
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "payments-api",
+      "dataClasses": ["PII"]
+    },
+    {
+      "source": "orders-api",
+      "destination": "analytics-api",
+      "dataClasses": ["PII"]
+    },
+    {
+      "source": "orders-api",
+      "destination": "customer-db",
+      "dataClasses": ["PII"]
+    }
+  ]
+}

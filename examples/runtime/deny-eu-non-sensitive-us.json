@@ -1,0 +1,9 @@
+{
+  "sourceService": "orders-api",
+  "destinationService": "analytics-api",
+  "sourceRegion": "EU",
+  "destinationRegion": "US",
+  "dataClass": "NON_SENSITIVE",
+  "tags": [],
+  "_documentation": "No active policy covers the NON_SENSITIVE data class. The system uses a conservative default of DENY for unclassified data. This demonstrates that PolicyMesh blocks data unless a policy explicitly allows it."
+}

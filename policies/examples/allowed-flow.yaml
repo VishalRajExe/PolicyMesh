@@ -1,0 +1,23 @@
+scenario:
+  id: EX-ALLOW-001
+  name: EU PII stays in EU
+
+  source:
+    service: orders-api
+    region: EU
+
+  destination:
+    service: payments-api
+    region: EU
+
+  dataClasses:
+    - PII
+
+  expectedDecision: ALLOW
+
+  expectedPolicy:
+    - EU-PII-001
+
+  expectedReason: >
+    EU-origin PII is allowed to flow to an EU destination.
+    Policy EU-PII-001 lists EU in allowedRegions.

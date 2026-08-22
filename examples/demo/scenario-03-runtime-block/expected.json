@@ -1,0 +1,6 @@
+{
+  "decision": "DENY",
+  "reason": "Data transfer from orders-api to analytics-api is denied due to policy restrictions.",
+  "lineageRecordCreated": true,
+  "note": "The lineageHash field is dynamic and will be present in the actual response. The backend creates a tamper-evident lineage record in the hash chain."
+}

@@ -1,0 +1,8 @@
+{
+  "sourceService": "orders-api",
+  "destinationService": "analytics-api",
+  "sourceRegion": "EU",
+  "destinationRegion": "US",
+  "dataClass": "PII",
+  "tags": ["customer-data"]
+}

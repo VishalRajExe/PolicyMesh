@@ -1,0 +1,11 @@
+{
+  "name": "EU Internal Processing",
+  "description": "orders-api sends PII and PCI to payments-api, both in the EU. Should be ALLOWED.",
+  "dataFlows": [
+    {
+      "source": "orders-api",
+      "destination": "payments-api",
+      "dataClasses": ["PII", "PCI"]
+    }
+  ]
+}

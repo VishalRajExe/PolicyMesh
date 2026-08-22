@@ -1,0 +1,29 @@
+{
+  "pullRequest": 101,
+  "title": "Add EU payments integration",
+  "branch": "feature/eu-payments",
+  "commitHash": "abc1234",
+  "author": "dev-acme",
+  "changedFiles": [
+    "services/orders-api.json",
+    "dataflows/orders-to-payments.json"
+  ],
+  "dataFlows": {
+    "name": "EU Payments Integration",
+    "dataFlows": [
+      {
+        "source": "orders-api",
+        "destination": "payments-api",
+        "dataClasses": ["PII", "PCI"]
+      }
+    ]
+  },
+  "expectedStatus": "PASSED",
+  "expectedResult": {
+    "status": "PASSED",
+    "totalFlows": 1,
+    "passedFlows": 1,
+    "failedFlows": 0,
+    "violations": []
+  }
+}

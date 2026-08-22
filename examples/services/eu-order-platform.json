@@ -1,0 +1,28 @@
+{
+  "services": [
+    {
+      "id": "web-app",
+      "name": "Web Application",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "orders-api",
+      "name": "Orders API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "payments-api",
+      "name": "Payments API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "customer-db",
+      "name": "Customer Database",
+      "region": "EU",
+      "environment": "production"
+    }
+  ]
+}

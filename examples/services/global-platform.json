@@ -1,0 +1,40 @@
+{
+  "services": [
+    {
+      "id": "web-app",
+      "name": "Web Application",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "orders-api",
+      "name": "Orders API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "payments-api",
+      "name": "Payments API",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "analytics-api",
+      "name": "Analytics API",
+      "region": "US",
+      "environment": "production"
+    },
+    {
+      "id": "customer-db",
+      "name": "Customer Database",
+      "region": "EU",
+      "environment": "production"
+    },
+    {
+      "id": "india-orders-api",
+      "name": "India Orders API",
+      "region": "IN",
+      "environment": "production"
+    }
+  ]
+}

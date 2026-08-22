@@ -1,0 +1,28 @@
+policy:
+  id: US-PHI-001
+  name: US Health Data Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: US
+  dataClass: PHI
+
+  description: >
+    Demonstration policy for US-origin protected health
+    information. Enforces that PHI originating in the US
+    remains within approved regions. This is a technical
+    demonstration policy and is not legal advice.
+
+  allowedRegions:
+    - US
+
+  deniedRegions:
+    - EU
+    - CN
+    - IN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

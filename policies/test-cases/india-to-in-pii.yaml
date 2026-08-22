@@ -1,0 +1,10 @@
+testCase:
+  id: TC-IN-002
+  name: India PII to India
+  policy: IN-PII-001
+
+  sourceRegion: IN
+  destinationRegion: IN
+  dataClass: PII
+
+  expectedDecision: ALLOW

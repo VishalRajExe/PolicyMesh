@@ -1,0 +1,60 @@
+{
+  "before": {
+    "description": "Failing configuration: analytics-api is in US",
+    "services": {
+      "services": [
+        {
+          "id": "orders-api",
+          "name": "Orders API",
+          "region": "EU",
+          "environment": "production"
+        },
+        {
+          "id": "analytics-api",
+          "name": "Analytics API",
+          "region": "US",
+          "environment": "production"
+        }
+      ]
+    },
+    "dataFlows": {
+      "name": "Analytics Pipeline",
+      "dataFlows": [
+        {
+          "source": "orders-api",
+          "destination": "analytics-api",
+          "dataClasses": ["PII"]
+        }
+      ]
+    }
+  },
+  "after": {
+    "description": "Fixed configuration: analytics-api moved to EU",
+    "services": {
+      "services": [
+        {
+          "id": "orders-api",
+          "name": "Orders API",
+          "region": "EU",
+          "environment": "production"
+        },
+        {
+          "id": "analytics-api",
+          "name": "Analytics API",
+          "region": "EU",
+          "environment": "production"
+        }
+      ]
+    },
+    "dataFlows": {
+      "name": "Analytics Pipeline",
+      "dataFlows": [
+        {
+          "source": "orders-api",
+          "destination": "analytics-api",
+          "dataClasses": ["PII"]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "requiresHumanApproval": true,
+  "classifications": [
+    {
+      "field": "customerId",
+      "classification": "NON_SENSITIVE",
+      "confidence": 0.94,
+      "reason": "Operational identifier for internal tracking."
+    },
+    {
+      "field": "name",
+      "classification": "PII",
+      "confidence": 0.97,
+      "reason": "The field appears to identify or contact an individual."
+    },
+    {
+      "field": "email",
+      "classification": "PII",
+      "confidence": 0.97,
+      "reason": "The field appears to identify or contact an individual."
+    },
+    {
+      "field": "phone",
+      "classification": "PII",
+      "confidence": 0.97,
+      "reason": "The field appears to identify or contact an individual."
+    },
+    {
+      "field": "address",
+      "classification": "PII",
+      "confidence": 0.97,
+      "reason": "The field appears to identify or contact an individual."
+    },
+    {
+      "field": "createdAt",
+      "classification": "NON_SENSITIVE",
+      "confidence": 0.94,
+      "reason": "Operational timestamp."
+    },
+    {
+      "field": "paymentId",
+      "classification": "NON_SENSITIVE",
+      "confidence": 0.94,
+      "reason": "Operational identifier."
+    },
+    {
+      "field": "orderId",
+      "classification": "NON_SENSITIVE",
+      "confidence": 0.94,
+      "reason": "Operational identifier."
+    },
+    {
+      "field": "cardNumber",
+      "classification": "PCI",
+      "confidence": 0.99,
+      "reason": "The field appears to contain payment-card information."
+    },
+    {
+      "field": "expiryDate",
+      "classification": "PCI",
+      "confidence": 0.99,
+      "reason": "The field appears to contain payment-card information."
+    },
+    {
+      "field": "paymentStatus",
+      "classification": "NON_SENSITIVE",
+      "confidence": 0.94,
+      "reason": "Operational status value."
+    }
+  ]
+}

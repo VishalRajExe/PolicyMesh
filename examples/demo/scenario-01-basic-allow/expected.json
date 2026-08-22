@@ -1,0 +1,7 @@
+{
+  "decision": "ALLOW",
+  "policyId": "EU-PII-001",
+  "reason": "Data transfer from orders-api to payments-api is allowed based on current policies.",
+  "lineageRecordCreated": true,
+  "note": "The lineageHash field is dynamic and will be present in the actual response."
+}

@@ -1,0 +1,25 @@
+scenario:
+  id: EX-UNKNOWN-001
+  name: Unknown data class flow
+
+  source:
+    service: web-app
+    region: EU
+
+  destination:
+    service: analytics-api
+    region: US
+
+  dataClasses:
+    - UNKNOWN
+
+  expectedDecision: DENY
+
+  expectedPolicy: []
+
+  expectedReason: >
+    No active policy exists for data class UNKNOWN.
+    Per PolicyMesh precedence rules, when no applicable
+    policy is found, the system uses the configured default.
+    For the hackathon MVP the default is DENY, enforcing
+    conservative behavior for unclassified data.

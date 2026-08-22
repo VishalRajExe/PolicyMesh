@@ -1,0 +1,41 @@
+{
+  "pullRequest": 102,
+  "title": "Add cross-border analytics pipeline",
+  "branch": "feature/us-analytics",
+  "commitHash": "def5678",
+  "author": "dev-acme",
+  "changedFiles": [
+    "services/orders-api.json",
+    "services/analytics-api.json",
+    "dataflows/orders-to-analytics.json"
+  ],
+  "dataFlows": {
+    "name": "US Analytics Pipeline",
+    "dataFlows": [
+      {
+        "source": "orders-api",
+        "destination": "analytics-api",
+        "dataClasses": ["PII"]
+      }
+    ]
+  },
+  "expectedStatus": "FAILED",
+  "expectedViolationCount": 1,
+  "expectedViolations": [
+    {
+      "sourceService": "orders-api",
+      "sourceRegion": "EU",
+      "destinationService": "analytics-api",
+      "destinationRegion": "US",
+      "dataClass": "PII",
+      "policyId": "EU-PII-001",
+      "severity": "ERROR"
+    }
+  ],
+  "expectedResult": {
+    "status": "FAILED",
+    "totalFlows": 1,
+    "passedFlows": 0,
+    "failedFlows": 1
+  }
+}

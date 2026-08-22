@@ -1,0 +1,24 @@
+{
+  "scenario": "Blocked EU-to-US PII flow",
+  "description": "orders-api EU → analytics-api US with PII data class",
+  "decision": "DENY",
+  "ciStatus": "FAILED",
+  "totalFlows": 1,
+  "passedFlows": 0,
+  "failedFlows": 1,
+  "policiesEvaluated": ["EU-PII-001", "GLOBAL-SENSITIVE-001"],
+  "violations": [
+    {
+      "sourceService": "orders-api",
+      "sourceRegion": "EU",
+      "destinationService": "analytics-api",
+      "destinationRegion": "US",
+      "dataClass": "PII",
+      "policyId": "EU-PII-001",
+      "policyName": "EU PII Protection",
+      "reason": "EU PII cannot be transferred from EU to US",
+      "severity": "ERROR"
+    }
+  ],
+  "reason": "EU PII is denied from flowing to US by policy EU-PII-001, which lists US in deniedRegions."
+}

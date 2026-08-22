@@ -1,0 +1,18 @@
+{
+  "scenario": "Runtime ALLOW: EU PII to EU",
+  "description": "Runtime enforcement request for orders-api EU → payments-api EU with PII",
+  "request": {
+    "sourceService": "orders-api",
+    "destinationService": "payments-api",
+    "sourceRegion": "EU",
+    "destinationRegion": "EU",
+    "dataClass": "PII"
+  },
+  "expectedResponse": {
+    "decision": "ALLOW",
+    "reason": "Data transfer from orders-api to payments-api is allowed based on current policies."
+  },
+  "triggeredPolicies": ["EU-PII-001"],
+  "lineageRecordCreated": true,
+  "note": "The lineageHash field is dynamic and excluded from this expected result. The backend creates a lineage record with hash chain for audit."
+}
