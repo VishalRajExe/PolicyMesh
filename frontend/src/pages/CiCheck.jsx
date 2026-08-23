@@ -252,67 +252,72 @@ export default function CiCheck() {
         {/* Right Column: CI Result / Report */}
         <div className="xl:col-span-3 space-y-4">
           {result ? (
-            <div className="card p-5 space-y-4 animate-in fade-in zoom-in-95">
-              {/* Scan Status Header */}
-              <div
-                className={`p-4 rounded-xl border flex items-center justify-between ${
-                  result.passed
-                    ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
-                    : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
-                }`}
-              >
-                <div className="flex items-center gap-3">
+            (() => {
+              const isPassed = result.passed === true || result.result === "PASS" || result.status === "PASS" || (result.violationCount === 0 && (!result.violations || result.violations.length === 0));
+              return (
+                <div className="card p-5 space-y-4 animate-in fade-in zoom-in-95">
+                  {/* Scan Status Header */}
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
-                      result.passed ? "icon-box-green" : "icon-box-red"
+                    className={`p-4 rounded-xl border flex items-center justify-between ${
+                      isPassed
+                        ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
+                        : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
                     }`}
                   >
-                    {result.passed ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[var(--color-text)]">
-                      {result.passed ? "CI Compliance Gate: PASSED" : "CI Compliance Gate: BLOCKED"}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
-                      Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
-                      <strong className="text-[var(--color-text)]">{result.commitHash?.slice(0, 7)}</strong>
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={result.passed ? "good" : "bad"} dot size="md">
-                  {result.passed ? "MERGE ALLOWED" : "MERGE BLOCKED"}
-                </Badge>
-              </div>
-
-              {/* Violations List */}
-              {result.violations && result.violations.length > 0 ? (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-xs text-[var(--color-text)]">
-                    Detected Policy Violations ({result.violations.length})
-                  </h4>
-                  <div className="divide-y divide-[var(--color-border)]/50 border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface-2)]/30">
-                    {result.violations.map((v, idx) => (
-                      <div key={idx} className="p-3 text-xs flex items-start gap-2.5">
-                        <AlertTriangle size={14} className="text-[var(--color-bad)] shrink-0 mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-[var(--color-text)]">
-                            {v.sourceService} → {v.destinationService}
-                          </p>
-                          <p className="text-[11px] text-[var(--color-bad)] mt-0.5 font-mono">
-                            {v.reason || `Blocked by policy ${v.policyCode || ""}`}
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
+                          isPassed ? "icon-box-green" : "icon-box-red"
+                        }`}
+                      >
+                        {isPassed ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
                       </div>
-                    ))}
+                      <div>
+                        <h3 className="font-bold text-sm text-[var(--color-text)]">
+                          {isPassed ? "CI Compliance Gate: PASSED" : "CI Compliance Gate: BLOCKED"}
+                        </h3>
+                        <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
+                          Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
+                          <strong className="text-[var(--color-text)]">{result.commitHash?.slice(0, 7)}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={isPassed ? "good" : "bad"} dot size="md">
+                      {isPassed ? "MERGE ALLOWED" : "MERGE BLOCKED"}
+                    </Badge>
                   </div>
+
+                  {/* Violations List */}
+                  {result.violations && result.violations.length > 0 ? (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-xs text-[var(--color-text)]">
+                        Detected Policy Violations ({result.violations.length})
+                      </h4>
+                      <div className="divide-y divide-[var(--color-border)]/50 border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface-2)]/30">
+                        {result.violations.map((v, idx) => (
+                          <div key={idx} className="p-3 text-xs flex items-start gap-2.5">
+                            <AlertTriangle size={14} className="text-[var(--color-bad)] shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-[var(--color-text)]">
+                                {v.sourceService} → {v.destinationService}
+                              </p>
+                              <p className="text-[11px] text-[var(--color-bad)] mt-0.5 font-mono">
+                                {v.reason || `Blocked by policy ${v.policyCode || ""}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-[var(--color-surface-2)]/60 text-center text-xs text-[var(--color-text-dim)]">
+                      <CheckCircle2 size={16} className="text-[var(--color-good)] mx-auto mb-1" />
+                      All proposed service flows comply with active zero-trust residency rules.
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-[var(--color-surface-2)]/60 text-center text-xs text-[var(--color-text-dim)]">
-                  <CheckCircle2 size={16} className="text-[var(--color-good)] mx-auto mb-1" />
-                  All proposed service flows comply with active zero-trust residency rules.
-                </div>
-              )}
-            </div>
+              );
+            })()
           ) : (
             <div className="card p-8 text-center">
               <GitBranch size={24} className="text-[var(--color-text-faint)] mx-auto mb-2" />
@@ -328,21 +333,24 @@ export default function CiCheck() {
             <div className="card p-5">
               <h4 className="font-bold text-xs text-[var(--color-text)] mb-3">Recent Pipeline Scans</h4>
               <div className="divide-y divide-[var(--color-border)]/50">
-                {history.map((h, idx) => (
-                  <div
-                    key={h.id || idx}
-                    className="py-2.5 flex items-center justify-between gap-3 text-xs font-mono"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
-                      <span className="text-[var(--color-text-faint)]">@</span>
-                      <span className="text-[var(--color-text-dim)]">{h.commitHash?.slice(0, 7)}</span>
+                {history.map((h, idx) => {
+                  const hPassed = h.passed === true || h.result === "PASS" || h.status === "PASS" || (h.violationCount === 0 && (!h.violations || h.violations.length === 0));
+                  return (
+                    <div
+                      key={h.id || idx}
+                      className="py-2.5 flex items-center justify-between gap-3 text-xs font-mono"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
+                        <span className="text-[var(--color-text-faint)]">@</span>
+                        <span className="text-[var(--color-text-dim)]">{h.commitHash?.slice(0, 7)}</span>
+                      </div>
+                      <Badge variant={hPassed ? "good" : "bad"} size="sm">
+                        {hPassed ? "PASS" : "FAIL"}
+                      </Badge>
                     </div>
-                    <Badge variant={h.passed ? "good" : "bad"} size="sm">
-                      {h.passed ? "PASS" : "FAIL"}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

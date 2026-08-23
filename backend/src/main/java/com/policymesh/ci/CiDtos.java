@@ -1,6 +1,7 @@
 package com.policymesh.ci;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.policymesh.graph.GraphModels;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -29,7 +30,8 @@ public final class CiDtos {
   public record Response(Long id, String commitHash, String branch, String result, int violationCount,
                          Instant startedAt, Instant completedAt, List<GraphModels.Violation> violations,
                          String humanReadable) {
-    public boolean passed() { return "PASS".equals(result); }
+    @JsonProperty("passed")
+    public boolean passed() { return "PASS".equalsIgnoreCase(result); }
   }
 
   static Response from(CIScan s, List<GraphModels.Violation> violations) {
