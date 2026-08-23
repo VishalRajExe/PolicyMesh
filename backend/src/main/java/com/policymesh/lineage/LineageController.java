@@ -21,7 +21,7 @@ public class LineageController {
     return this.service.all(decision, service);
   }
 
-  @GetMapping("/verify")
+  @org.springframework.web.bind.annotation.RequestMapping(value = "/verify", method = {org.springframework.web.bind.annotation.RequestMethod.GET, org.springframework.web.bind.annotation.RequestMethod.POST})
   public LineageDtos.Verification verify() { return service.verify(); }
 
   @GetMapping("/{id}")
