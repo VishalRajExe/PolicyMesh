@@ -224,20 +224,20 @@ export default function DataFlows() {
           </div>
         )}
 
-        {/* Clean Controls & Action Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          {/* Left: Filters & Search */}
-          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px] max-w-3xl">
-            <div className="relative flex-1 min-w-[180px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+        {/* Clean Controls & Action Toolbar in a single horizontal line */}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          {/* Left: Filters & Search in one line */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-1 max-w-sm min-w-[200px]">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
               <input
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search flows..."
-                className="field-input pl-8 text-xs h-8"
+                placeholder="Search flows by source or destination service..."
+                className="field-input pl-9 text-xs"
               />
             </div>
 
@@ -247,7 +247,7 @@ export default function DataFlows() {
                 setDataClassFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1 text-xs w-32 h-8"
+              className="field-input py-1.5 text-xs w-36 shrink-0"
             >
               <option value="ALL">All Sensitivity</option>
               {DATA_CLASSES.map((dc) => (
@@ -263,7 +263,7 @@ export default function DataFlows() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1 text-xs w-32 h-8"
+              className="field-input py-1.5 text-xs w-36 shrink-0"
             >
               <option value="ALL">All Statuses</option>
               <option value="COMPLIANT">Compliant Only</option>
@@ -273,15 +273,15 @@ export default function DataFlows() {
             {/* Compact Status Pill */}
             {validationResult && (
               <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border h-8 font-mono ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shrink-0 font-mono whitespace-nowrap ${
                   violationCount === 0
                     ? "bg-[var(--color-good)]/10 text-[var(--color-good)] border-[var(--color-good)]/30"
                     : "bg-[var(--color-bad)]/10 text-[var(--color-bad)] border-[var(--color-bad)]/30"
                 }`}
                 title={
                   violationCount === 0
-                    ? "All flows compliant with active policies"
-                    : violations.map((v) => `${v.sourceService} → ${v.destinationService}: ${v.reason}`).join("\n")
+                    ? "All registered data flow edges satisfy jurisdictional policies."
+                    : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join("\n")
                 }
               >
                 {violationCount === 0 ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
@@ -290,24 +290,24 @@ export default function DataFlows() {
             )}
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2">
+          {/* Right: Actions in one line */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => runValidation(true)}
               disabled={validating}
-              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-brand)] bg-[var(--color-surface-2)] text-white hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors h-8 disabled:opacity-50"
-              title="Re-evaluate all service nodes & flows against active policies"
+              className="btn-ghost flex items-center gap-1.5 text-xs text-[var(--color-text-dim)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-surface-2)]"
+              title="Perform a fresh compliance evaluation of all current services and data flow edges"
             >
-              <RefreshCw size={13} className={validating ? "animate-spin text-[var(--color-brand)]" : "text-[var(--color-text-faint)]"} />
+              <RefreshCw size={13} className={validating ? "animate-spin text-[var(--color-brand)]" : ""} />
               <span>{validating ? "Re-evaluating…" : "Re-evaluate Graph"}</span>
             </button>
 
             {canWrite && (
               <button
                 onClick={() => setShowForm(true)}
-                className="btn-primary flex items-center gap-1.5 text-xs px-3 h-8"
+                className="btn-primary flex items-center gap-1.5 text-xs"
               >
-                <Plus size={14} />
+                <Plus size={15} />
                 Add Flow Edge
               </button>
             )}
