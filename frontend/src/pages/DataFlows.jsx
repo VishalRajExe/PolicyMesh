@@ -11,6 +11,7 @@ import {
   Search,
   CheckCircle2,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -37,7 +38,7 @@ export default function DataFlows() {
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
-  const [evaluationFeedback, setEvaluationFeedback] = useState(null);
+  const [toast, setToast] = useState(null);
 
   // URL query state
   const [search, setSearch] = useQueryState("search", "");
@@ -72,7 +73,7 @@ export default function DataFlows() {
     }
   }, []);
 
-  const runValidation = useCallback(async () => {
+  const runValidation = useCallback(async (isManual = false) => {
     setValidating(true);
     setError(null);
     try {
@@ -86,26 +87,26 @@ export default function DataFlows() {
       setServices(svcs || []);
       setEdges(edg || []);
 
-      const vCount = result.violationCount != null ? result.violationCount : (result.violations || []).length;
-      const total = result.totalFlows != null ? result.totalFlows : (edg || []).length;
-      const compliant = result.compliantFlows != null ? result.compliantFlows : Math.max(0, total - vCount);
+      if (isManual) {
+        const vCount = result.violationCount != null ? result.violationCount : (result.violations || []).length;
+        const total = result.totalFlows != null ? result.totalFlows : (edg || []).length;
+        const compliant = result.compliantFlows != null ? result.compliantFlows : Math.max(0, total - vCount);
 
-      setEvaluationFeedback({
-        type: vCount === 0 ? "success" : "warning",
-        total,
-        compliant,
-        violations: vCount,
-        message: `Graph re-evaluated: ${total} flows checked, ${compliant} compliant, ${vCount} violation${vCount !== 1 ? "s" : ""}.`,
-      });
+        setToast({
+          type: vCount === 0 ? "success" : "warning",
+          text: `Graph evaluated: ${total} flows, ${compliant} compliant, ${vCount} violation${vCount !== 1 ? "s" : ""}.`,
+        });
+        setTimeout(() => setToast(null), 3500);
+      }
     } catch (err) {
-      setError(err.message || "Unable to re-evaluate the current graph. Please try again.");
+      setError(err.message || "Unable to re-evaluate graph.");
     } finally {
       setValidating(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData().then(() => runValidation());
+    loadData().then(() => runValidation(false));
   }, [loadData, runValidation]);
 
   function toggleDataClass(dc) {
@@ -141,7 +142,7 @@ export default function DataFlows() {
       });
       setShowForm(false);
       clearDraft();
-      await runValidation();
+      await runValidation(false);
     } catch (err) {
       setFormError(err.message || "Failed to create data flow edge");
     } finally {
@@ -152,7 +153,7 @@ export default function DataFlows() {
   async function handleDelete(id) {
     try {
       await edgesApi.remove(id);
-      await runValidation();
+      await runValidation(false);
     } catch (err) {
       setError(err.message);
     }
@@ -189,6 +190,7 @@ export default function DataFlows() {
   });
 
   const paginatedEdges = filteredEdges.slice((page - 1) * pageSize, page * pageSize);
+  const violationCount = violations.length;
 
   return (
     <div>
@@ -197,82 +199,45 @@ export default function DataFlows() {
         subtitle="Manage and analyze cross-service data pipelines and residency compliance boundaries."
       />
 
-      <div className="px-6 lg:px-8 mt-4 space-y-4 pb-12">
-        {/* Re-evaluation result toast / banner */}
-        {evaluationFeedback && (
+      <div className="px-6 lg:px-8 mt-4 space-y-3 pb-12">
+        {/* Floating Toast Notification (bottom-right) */}
+        {toast && (
           <div
-            className={`rounded-xl px-4 py-2.5 border flex items-center justify-between text-xs transition-all ${
-              evaluationFeedback.type === "success"
-                ? "bg-[var(--color-good)]/10 border-[var(--color-good)]/30 text-[var(--color-good)]"
-                : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-xl border text-xs backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200 ${
+              toast.type === "success"
+                ? "bg-[var(--color-surface)] border-[var(--color-good)]/40 text-[var(--color-good)]"
+                : "bg-[var(--color-surface)] border-amber-500/40 text-amber-300"
             }`}
           >
-            <div className="flex items-center gap-2">
-              {evaluationFeedback.type === "success" ? (
-                <CheckCircle2 size={15} className="shrink-0" />
-              ) : (
-                <AlertTriangle size={15} className="shrink-0" />
-              )}
-              <span>{evaluationFeedback.message}</span>
-            </div>
+            {toast.type === "success" ? (
+              <CheckCircle2 size={15} className="shrink-0" />
+            ) : (
+              <AlertTriangle size={15} className="shrink-0" />
+            )}
+            <span className="font-medium text-white">{toast.text}</span>
             <button
-              onClick={() => setEvaluationFeedback(null)}
-              className="text-[var(--color-text-faint)] hover:text-white p-1"
+              onClick={() => setToast(null)}
+              className="text-[var(--color-text-faint)] hover:text-white p-0.5 ml-1"
             >
               <X size={13} />
             </button>
           </div>
         )}
 
-        {/* Validation summary banner */}
-        {validationResult && (
-          <div
-            className={`rounded-2xl p-4 border flex items-center justify-between transition-colors ${
-              violations.length === 0
-                ? "bg-[var(--color-good)]/10 border-[var(--color-good)]/30 text-[var(--color-good)]"
-                : "bg-[var(--color-bad)]/10 border-[var(--color-bad)]/30 text-[var(--color-bad)]"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {violations.length === 0 ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
-              <div>
-                <p className="font-semibold text-sm">
-                  {violations.length === 0
-                    ? "All Data Flows Compliant"
-                    : `${violations.length} Active Cross-Border Policy Violation${violations.length !== 1 ? "s" : ""}`}
-                </p>
-                <p className="text-xs opacity-80 mt-0.5">
-                  {violations.length === 0
-                    ? "All registered data flow edges satisfy jurisdictional policies."
-                    : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join(" | ")}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={runValidation}
-              disabled={validating}
-              className="btn-ghost flex items-center gap-1.5 text-xs text-inherit border-inherit/40 hover:bg-white/10"
-              title="Perform a fresh compliance evaluation of all current services and data flow edges"
-            >
-              <RefreshCw size={13} className={validating ? "animate-spin" : ""} />
-              {validating ? "Re-evaluating…" : "Re-evaluate Graph"}
-            </button>
-          </div>
-        )}
-
-        {/* Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+        {/* Clean Controls & Action Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          {/* Left: Filters & Search */}
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px] max-w-3xl">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
               <input
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search flows by source or destination service..."
-                className="field-input pl-9 text-xs"
+                placeholder="Search flows..."
+                className="field-input pl-8 text-xs h-8"
               />
             </div>
 
@@ -282,7 +247,7 @@ export default function DataFlows() {
                 setDataClassFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-36"
+              className="field-input py-1 text-xs w-32 h-8"
             >
               <option value="ALL">All Sensitivity</option>
               {DATA_CLASSES.map((dc) => (
@@ -298,26 +263,61 @@ export default function DataFlows() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-36"
+              className="field-input py-1 text-xs w-32 h-8"
             >
               <option value="ALL">All Statuses</option>
               <option value="COMPLIANT">Compliant Only</option>
               <option value="VIOLATION">Violations Only</option>
             </select>
+
+            {/* Compact Status Pill */}
+            {validationResult && (
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border h-8 font-mono ${
+                  violationCount === 0
+                    ? "bg-[var(--color-good)]/10 text-[var(--color-good)] border-[var(--color-good)]/30"
+                    : "bg-[var(--color-bad)]/10 text-[var(--color-bad)] border-[var(--color-bad)]/30"
+                }`}
+                title={
+                  violationCount === 0
+                    ? "All flows compliant with active policies"
+                    : violations.map((v) => `${v.sourceService} → ${v.destinationService}: ${v.reason}`).join("\n")
+                }
+              >
+                {violationCount === 0 ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
+                <span>{violationCount === 0 ? "Compliant" : `${violationCount} Violation${violationCount !== 1 ? "s" : ""}`}</span>
+              </div>
+            )}
           </div>
 
-          {canWrite && (
-            <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1.5 text-xs">
-              <Plus size={15} />
-              Add Flow Edge
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => runValidation(true)}
+              disabled={validating}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-brand)] bg-[var(--color-surface-2)] text-white hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors h-8 disabled:opacity-50"
+              title="Re-evaluate all service nodes & flows against active policies"
+            >
+              <RefreshCw size={13} className={validating ? "animate-spin text-[var(--color-brand)]" : "text-[var(--color-text-faint)]"} />
+              <span>{validating ? "Re-evaluating…" : "Re-evaluate Graph"}</span>
             </button>
-          )}
+
+            {canWrite && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="btn-primary flex items-center gap-1.5 text-xs px-3 h-8"
+              >
+                <Plus size={14} />
+                Add Flow Edge
+              </button>
+            )}
+          </div>
         </div>
 
         {error && (
-          <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
+          <div className="rounded-lg bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-3 py-2 text-xs text-[var(--color-bad)] flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={runValidation} className="underline ml-4 text-xs">
+            <button onClick={() => runValidation(false)} className="underline ml-4">
               Retry
             </button>
           </div>
@@ -327,27 +327,27 @@ export default function DataFlows() {
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[var(--color-text-faint)] border-b border-[var(--color-border)]">
-                <th className="px-5 py-3 font-medium">Source Service</th>
-                <th className="px-5 py-3 font-medium">Destination Service</th>
-                <th className="px-5 py-3 font-medium">Data Classification</th>
-                <th className="px-5 py-3 font-medium">Compliance Status</th>
-                {canWrite && <th className="px-5 py-3 text-right">Actions</th>}
+              <tr className="text-left text-[var(--color-text-faint)] border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+                <th className="px-5 py-3 font-medium text-xs">Source Service</th>
+                <th className="px-5 py-3 font-medium text-xs">Destination Service</th>
+                <th className="px-5 py-3 font-medium text-xs">Data Classification</th>
+                <th className="px-5 py-3 font-medium text-xs">Compliance Status</th>
+                {canWrite && <th className="px-5 py-3 text-right text-xs">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-[var(--color-text-faint)]">
-                    <Loader2 size={18} className="animate-spin inline mr-2" /> Loading data flow edges…
+                  <td colSpan={5} className="px-5 py-10 text-center text-[var(--color-text-faint)] text-xs">
+                    <Loader2 size={16} className="animate-spin inline mr-2 text-[var(--color-brand)]" /> Loading data flow edges…
                   </td>
                 </tr>
               )}
               {!loading && filteredEdges.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-5 py-12 text-center">
-                    <GitBranch size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
-                    <p className="text-[var(--color-text-faint)] text-sm">No data flows match the current filters.</p>
+                    <GitBranch size={28} className="mx-auto mb-2 text-[var(--color-text-faint)] opacity-60" />
+                    <p className="text-[var(--color-text-faint)] text-xs">No data flows match the current filters.</p>
                   </td>
                 </tr>
               )}
@@ -389,7 +389,7 @@ export default function DataFlows() {
                           {(edge.dataClasses || []).map((dc) => (
                             <span
                               key={dc}
-                              className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
                             >
                               {dc}
                             </span>
