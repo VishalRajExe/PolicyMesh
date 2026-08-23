@@ -49,6 +49,39 @@ public class CiService {
   }
 
   @Transactional(readOnly = true)
+  public List<String> listBranches() {
+    java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+    set.add("main");
+    set.add("develop");
+    set.add("staging");
+
+    // Discover git branches if available
+    try {
+      Process process = new ProcessBuilder("git", "branch", "-a", "--format=%(refname:short)").start();
+      try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          String b = line.trim().replace("origin/", "");
+          if (!b.isEmpty() && !b.startsWith("HEAD")) {
+            set.add(b);
+          }
+        }
+      }
+    } catch (Exception ignored) {}
+
+    // Add previously scanned branches
+    try {
+      scans.findTop20ByOrderByStartedAtDesc().forEach(s -> {
+        if (s.getBranch() != null && !s.getBranch().isBlank()) {
+          set.add(s.getBranch());
+        }
+      });
+    } catch (Exception ignored) {}
+
+    return new java.util.ArrayList<>(set);
+  }
+
+  @Transactional(readOnly = true)
   public CiDtos.Response one(long id) {
     CIScan scan = scans.findById(id).orElseThrow(() -> ApiException.notFound("CI scan not found"));
     return CiDtos.from(scan, fromJson(scan.getViolationsJson()));

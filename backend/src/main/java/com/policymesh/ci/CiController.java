@@ -21,6 +21,11 @@ public class CiController {
     return service.run(r.branch(), r.commitHash());
   }
 
+  @GetMapping("/branches")
+  public java.util.List<String> branches() {
+    return service.listBranches();
+  }
+
   @GetMapping("/scans/{id}")
   public CiDtos.Response one(@PathVariable long id) { return service.one(id); }
 }
