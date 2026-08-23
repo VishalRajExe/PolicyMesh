@@ -16,11 +16,13 @@ public final class CiDtos {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record Request(
       @NotBlank @Size(min = 1, max = 64)
-      @Pattern(regexp = "^[a-zA-Z0-9_.-]+$", message = "commitHash must be alphanumeric with dots or hyphens")
+      @Pattern(regexp = "^(HEAD(~[0-9]+)?|HEAD\\^?|[0-9a-fA-F]{7,40})$",
+               message = "commitHash must be a valid 7-40 character hexadecimal SHA-1 hash or 'HEAD'")
       String commitHash,
 
       @NotBlank @Size(min = 1, max = 255)
-      @Pattern(regexp = "^[a-zA-Z0-9/_.-]+$", message = "branch contains invalid characters")
+      @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$",
+               message = "branch contains invalid characters or does not start with an alphanumeric character")
       String branch) {}
 
   /** result is PASS or FAIL; a FAIL is HTTP 200 — compliance failures are business results, not server errors. */

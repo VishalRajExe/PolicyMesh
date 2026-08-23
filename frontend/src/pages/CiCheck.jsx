@@ -30,7 +30,8 @@ const FALLBACK_BRANCHES = [
   "fix/gdpr-residency-gate",
 ];
 
-const HASH_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+const HASH_PATTERN = /^(HEAD(~[0-9]+)?|HEAD\^?|[0-9a-fA-F]{7,40})$/;
+const BRANCH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/;
 
 export default function CiCheck() {
   const { values: form, setValues: setForm, resetForm } = useFormDraft(
@@ -82,6 +83,7 @@ export default function CiCheck() {
   const isHashEmpty = !form.commitHash || !form.commitHash.trim();
   const isHashInvalid = !isHashEmpty && !HASH_PATTERN.test(form.commitHash.trim());
   const isBranchEmpty = !form.branch || !form.branch.trim();
+  const isBranchInvalid = !isBranchEmpty && !BRANCH_PATTERN.test(form.branch.trim());
 
   async function handleRun(e) {
     e.preventDefault();
@@ -93,13 +95,18 @@ export default function CiCheck() {
       return;
     }
 
+    if (!BRANCH_PATTERN.test(branch)) {
+      setFormError("Invalid Branch Name. Must start with an alphanumeric character and contain only letters, numbers, hyphens, slashes, or underscores.");
+      return;
+    }
+
     if (!hash) {
-      setFormError("Commit SHA-1 Hash is required. Enter a commit hash or click 'HEAD' / 'Latest'.");
+      setFormError("Commit SHA-1 Hash is required. Enter a 7-40 character hexadecimal hash or click 'HEAD'.");
       return;
     }
 
     if (!HASH_PATTERN.test(hash)) {
-      setFormError("Commit hash contains invalid characters. Use alphanumeric characters (e.g. 7f8a9b0 or HEAD).");
+      setFormError("Invalid Commit SHA-1 Hash. Must be a 7 to 40 character hexadecimal hash (0-9, a-f, A-F) or 'HEAD'.");
       return;
     }
 
@@ -194,6 +201,11 @@ export default function CiCheck() {
                     <AlertTriangle size={11} /> Please select or enter a Git branch name.
                   </p>
                 )}
+                {isBranchInvalid && (
+                  <p className="text-[11px] text-[var(--color-bad)] mt-1 flex items-center gap-1">
+                    <AlertTriangle size={11} /> Branch name must start with an alphanumeric character and contain no spaces.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -235,7 +247,7 @@ export default function CiCheck() {
 
                 {isHashInvalid && (
                   <p className="text-[11px] text-[var(--color-bad)] mt-1 flex items-center gap-1">
-                    <AlertTriangle size={11} /> Commit hash must be alphanumeric with no spaces (e.g. 7f8a9b0).
+                    <AlertTriangle size={11} /> Invalid SHA-1 format. Enter a 7–40 character hex hash (0-9, a-f) or "HEAD".
                   </p>
                 )}
               </div>
@@ -252,7 +264,7 @@ export default function CiCheck() {
 
               <button
                 type="submit"
-                disabled={submitting || isHashInvalid || isBranchEmpty || isHashEmpty}
+                disabled={submitting || isHashInvalid || isBranchEmpty || isHashEmpty || isBranchInvalid}
                 className="btn-primary w-full justify-center text-xs"
               >
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
