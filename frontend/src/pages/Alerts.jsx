@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { Bell, ShieldAlert, ShieldCheck, RefreshCw, Loader2, Search } from "lucide-react";
+import { Bell, ShieldAlert, ShieldCheck, RefreshCw, Loader2, Search, AlertTriangle } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import EmptyState from "../components/ui/EmptyState";
 import { auditApi } from "../api";
-import { useQueryState } from "../hooks/useQueryState";
 
 function relativeTime(ts) {
+  if (!ts) return "recently";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
@@ -20,20 +23,20 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // URL query state
-  const [filter, setFilter] = useQueryState("filter", "ALL");
-  const [search, setSearch] = useQueryState("search", "");
-  const [page, setPage] = useQueryState("page", 1);
-  const [pageSize, setPageSize] = useQueryState("size", 10);
+  // Filters
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
       const data = await auditApi.recent(100);
-      setDecisions(data);
+      setDecisions(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to load alerts");
     } finally {
       setLoading(false);
     }
@@ -48,8 +51,8 @@ export default function Alerts() {
     const q = search.trim().toLowerCase();
     const matchSearch =
       !q ||
-      d.sourceService.toLowerCase().includes(q) ||
-      d.destinationService.toLowerCase().includes(q) ||
+      (d.sourceService || "").toLowerCase().includes(q) ||
+      (d.destinationService || "").toLowerCase().includes(q) ||
       (d.reason && d.reason.toLowerCase().includes(q)) ||
       (d.policyId && d.policyId.toLowerCase().includes(q));
     return matchFilter && matchSearch;
@@ -58,150 +61,160 @@ export default function Alerts() {
   const denyCount = decisions.filter((d) => d.decision === "DENY").length;
   const paginatedDecisions = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const topActions = (
+    <Button
+      variant="secondary"
+      size="md"
+      icon={loading ? Loader2 : RefreshCw}
+      onClick={load}
+      disabled={loading}
+    >
+      {loading ? "Refreshing..." : "Refresh Alerts"}
+    </Button>
+  );
+
   return (
     <div>
-      <Topbar title="Alerts" subtitle="Policy enforcement events that need your attention." />
+      <Topbar
+        title="Security & Compliance Alerts"
+        subtitle="Real-time notifications and telemetry for blocked cross-border transfers and policy exceptions."
+        actions={topActions}
+      />
 
-      <div className="px-6 lg:px-8 mt-4 flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex items-center gap-3 flex-1 max-w-xl">
-          {denyCount > 0 && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 text-[var(--color-bad)] shrink-0">
-              <ShieldAlert size={14} />
-              {denyCount} blocked flow{denyCount !== 1 ? "s" : ""}
-            </span>
-          )}
+      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+        {/* Controls & Search */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 max-w-xl">
+            {denyCount > 0 && (
+              <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400 shrink-0">
+                <ShieldAlert size={14} />
+                {denyCount} blocked flow{denyCount !== 1 ? "s" : ""}
+              </span>
+            )}
 
-          <div className="relative flex-1 min-w-[180px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search alert events..."
-              className="field-input pl-9 text-xs"
-            />
-          </div>
-
-          <button
-            onClick={load}
-            disabled={loading}
-            className="flex items-center gap-1.5 text-xs text-[var(--color-text-dim)] hover:text-white border border-[var(--color-border)] rounded-xl px-3 py-2 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {["ALL", "DENY", "ALLOW"].map((f) => (
-            <button
-              key={f}
-              onClick={() => {
-                setFilter(f);
-                setPage(1);
-              }}
-              className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-                filter === f
-                  ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white font-medium"
-                  : "border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-white bg-[var(--color-surface)]"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-6 lg:px-8 mt-4 pb-12 space-y-4">
-        {error && (
-          <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
-            {error}
-            <button onClick={load} className="underline ml-4 text-xs">
-              Retry
-            </button>
-          </div>
-        )}
-
-        {loading && (
-          <div className="card px-5 py-12 text-center text-[var(--color-text-faint)]">
-            <Loader2 size={18} className="animate-spin inline mr-2" /> Loading events…
-          </div>
-        )}
-
-        {!loading && filtered.length === 0 && (
-          <div className="card px-5 py-14 text-center">
-            <Bell size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
-            <p className="text-[var(--color-text-faint)] text-sm">
-              {decisions.length === 0 ? "No enforcement events recorded yet." : `No ${filter} events in recent history.`}
-            </p>
-          </div>
-        )}
-
-        {!loading && filtered.length > 0 && (
-          <div className="space-y-3">
-            {paginatedDecisions.map((d) => (
-              <div
-                key={d.id}
-                className={`card px-5 py-4 flex items-start gap-4 border-l-4 hover:bg-[var(--color-surface-2)] transition-colors ${
-                  d.decision === "DENY" ? "border-l-[var(--color-bad)]" : "border-l-[var(--color-good)]"
-                }`}
-              >
-                <div className="shrink-0 mt-0.5">
-                  {d.decision === "DENY" ? (
-                    <ShieldAlert size={18} className="text-[var(--color-bad)]" />
-                  ) : (
-                    <ShieldCheck size={18} className="text-[var(--color-good)]" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded ${
-                        d.decision === "DENY"
-                          ? "bg-[var(--color-bad)]/15 text-[var(--color-bad)] border border-[var(--color-bad)]/30"
-                          : "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
-                      }`}
-                    >
-                      {d.decision}
-                    </span>
-                    <span className="font-semibold text-white text-sm font-mono">
-                      {d.sourceService} → {d.destinationService}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--color-text-dim)] mt-1">{d.reason}</p>
-                  <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-[var(--color-text-faint)]">
-                    {d.sourceRegion && (
-                      <span>
-                        [{d.sourceRegion}] → [{d.destinationRegion}]
-                      </span>
-                    )}
-                    <span className="font-semibold text-amber-400">{d.dataClass}</span>
-                    {d.policyId && <span>• Policy: {d.policyId}</span>}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-xs text-[var(--color-text-faint)] font-mono">{relativeTime(d.createdAt)}</p>
-                  <p className="text-xs text-[var(--color-text-faint)] mt-0.5">#{d.id}</p>
-                </div>
-              </div>
-            ))}
-
-            <div className="card overflow-hidden">
-              <Pagination
-                currentPage={page}
-                totalItems={filtered.length}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(sz) => {
-                  setPageSize(sz);
+            <div className="relative flex-1 min-w-[180px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
                   setPage(1);
                 }}
+                placeholder="Search alerts by service or reason..."
+                className="field-input pl-8 text-xs"
               />
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5 bg-[var(--color-surface-2)] p-1 rounded-xl border border-[var(--color-border)]">
+            {[
+              { id: "ALL", label: "All Events" },
+              { id: "DENY", label: "Blocked" },
+              { id: "ALLOW", label: "Allowed" },
+            ].map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setFilter(id);
+                  setPage(1);
+                }}
+                className={`px-3 py-1 text-xs rounded-lg font-medium transition-all ${
+                  filter === id
+                    ? "bg-[var(--color-surface)] text-[var(--color-text)] font-semibold shadow-xs"
+                    : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Alerts Stream Card */}
+        <div className="card overflow-hidden">
+          {loading ? (
+            <div className="p-8 text-center text-xs text-[var(--color-text-faint)] flex items-center justify-center gap-2">
+              <Loader2 size={16} className="animate-spin text-[var(--color-brand)]" />
+              <span>Loading real-time alerts...</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Bell}
+              title="No alerts found"
+              description="No runtime policy violations match your current filters."
+            />
+          ) : (
+            <div className="divide-y divide-[var(--color-border)]">
+              {paginatedDecisions.map((d, idx) => {
+                const isDeny = d.decision === "DENY";
+
+                return (
+                  <div
+                    key={d.id || idx}
+                    className={`p-4 flex items-start justify-between gap-4 transition-colors ${
+                      isDeny
+                        ? "bg-rose-500/5 hover:bg-rose-500/10"
+                        : "hover:bg-[var(--color-surface-2)]/50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                          isDeny
+                            ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
+                            : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                        }`}
+                      >
+                        {isDeny ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-bold text-[var(--color-text)] font-mono">
+                            {d.sourceService} → {d.destinationService}
+                          </span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            {d.dataClass || "PII"}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-[var(--color-text-dim)] mt-1 font-mono text-[11px] leading-relaxed">
+                          {d.reason || (isDeny ? "Blocked by policy gate" : "Authorized transfer")}
+                        </p>
+
+                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--color-text-faint)]">
+                          <span>Policy: <strong className="text-[var(--color-text-dim)]">{d.policyId || "DEFAULT_GATE"}</strong></span>
+                          <span>•</span>
+                          <span>{d.createdAt ? new Date(d.createdAt).toLocaleString() : "recently"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <Badge variant={isDeny ? "bad" : "good"} size="sm" dot>
+                        {d.decision}
+                      </Badge>
+                      <span className="text-[11px] text-[var(--color-text-faint)] font-medium">
+                        {relativeTime(d.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <Pagination
+            currentPage={page}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setPage(1);
+            }}
+          />
+        </div>
       </div>
     </div>
   );

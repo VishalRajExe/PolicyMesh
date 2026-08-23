@@ -108,10 +108,10 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-slate-900/40 dark:bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
     >
       <div
-        className="card w-full max-w-xl shadow-2xl border-[var(--color-border)] overflow-hidden animate-in zoom-in-95 duration-100"
+        className="card w-full max-w-xl shadow-2xl border-[var(--color-border)] overflow-hidden animate-in zoom-in-95 duration-100 bg-[var(--color-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input */}
@@ -122,17 +122,17 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search policies, services, data flows, routes..."
-            className="bg-transparent outline-none text-white placeholder:text-[var(--color-text-faint)] flex-1 text-sm"
+            className="bg-transparent outline-none text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] flex-1 text-sm"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="text-[var(--color-text-faint)] hover:text-white p-1"
+              className="text-[var(--color-text-faint)] hover:text-[var(--color-text)] p-1"
             >
               <X size={14} />
             </button>
           )}
-          <kbd className="text-[10px] text-[var(--color-text-faint)] border border-[var(--color-border)] rounded px-1.5 py-0.5">
+          <kbd className="text-[10px] text-[var(--color-text-faint)] border border-[var(--color-border)] rounded px-1.5 py-0.5 bg-[var(--color-surface-2)]">
             ESC
           </kbd>
         </div>
@@ -152,9 +152,9 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-[var(--color-surface-2)] transition-colors group"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <FileText size={15} className="text-purple-400 shrink-0" />
+                    <FileText size={15} className="text-purple-500 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">
+                      <p className="text-xs font-semibold text-[var(--color-text)] truncate">
                         {p.policyCode} {p.name ? `— ${p.name}` : ""}
                       </p>
                       <p className="text-[11px] text-[var(--color-text-faint)]">
@@ -162,7 +162,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                       </p>
                     </div>
                   </div>
-                  <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-white shrink-0" />
+                  <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-[var(--color-text)] shrink-0" />
                 </button>
               ))}
             </div>
@@ -181,15 +181,15 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-[var(--color-surface-2)] transition-colors group"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Boxes size={15} className="text-blue-400 shrink-0" />
+                    <Boxes size={15} className="text-blue-500 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{s.name || `Service #${s.id}`}</p>
+                      <p className="text-xs font-semibold text-[var(--color-text)] truncate">{s.name || `Service #${s.id}`}</p>
                       <p className="text-[11px] text-[var(--color-text-faint)]">
                         Region: {s.region || "?"} • Env: {s.environment || "production"}
                       </p>
                     </div>
                   </div>
-                  <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-white shrink-0" />
+                  <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-[var(--color-text)] shrink-0" />
                 </button>
               ))}
             </div>
@@ -211,9 +211,9 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                   >
                     <div className="flex items-center gap-2.5">
                       <Icon size={15} className="text-[var(--color-brand)] shrink-0" />
-                      <span className="text-xs text-white font-medium">{r.label}</span>
+                      <span className="text-xs text-[var(--color-text)] font-medium">{r.label}</span>
                     </div>
-                    <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-white shrink-0" />
+                    <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-[var(--color-text)] shrink-0" />
                   </button>
                 );
               })}

@@ -9,10 +9,16 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Activity,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
 import SearchableCombobox from "../components/ui/SearchableCombobox";
+import EmptyState from "../components/ui/EmptyState";
 import { enforcementApi, servicesApi, auditApi } from "../api";
 import { useFormDraft } from "../hooks/useFormDraft";
 
@@ -53,7 +59,7 @@ export default function RuntimeMonitor() {
     setServicesError(null);
     try {
       const data = await servicesApi.list();
-      setServices(data || []);
+      setServices(Array.isArray(data) ? data : []);
     } catch (err) {
       setServicesError(err.message || "Failed to load services");
     } finally {
@@ -65,7 +71,7 @@ export default function RuntimeMonitor() {
     setHistoryLoading(true);
     try {
       const items = await auditApi.recent(100);
-      setHistory(items || []);
+      setHistory(Array.isArray(items) ? items : []);
     } catch {
       // history is optional
     } finally {
@@ -180,33 +186,38 @@ export default function RuntimeMonitor() {
   return (
     <div>
       <Topbar
-        title="Runtime Monitor"
+        title="Runtime Policy Monitor"
         subtitle="Execute live zero-trust policy enforcement evaluations against compiled AST rules."
       />
 
-      <div className="px-6 lg:px-8 mt-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
-        {/* Left Column: Form & Result */}
+      <div className="px-6 lg:px-8 py-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
+        {/* Left Column: Form & Result Card */}
         <div className="xl:col-span-2 space-y-4">
           <div className="card p-5">
-            {/* Header with Reset */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="font-semibold text-white">Enforcement Check</h2>
-                <p className="text-xs text-[var(--color-text-faint)]">Evaluate transfer authorization in real time.</p>
+                <h3 className="font-bold text-sm text-[var(--color-text)]">Enforcement Simulator</h3>
+                <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                  Simulate live payload egress across zero-trust policy gates.
+                </p>
               </div>
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-xs text-[var(--color-text-faint)] hover:text-white flex items-center gap-1 transition-colors"
+                className="text-xs text-[var(--color-text-faint)] hover:text-[var(--color-text)] flex items-center gap-1 transition-colors"
                 title="Reset Form"
               >
                 <RotateCcw size={12} /> Reset
               </button>
             </div>
 
-            {/* Main Form */}
+            {/* Form */}
             <form onSubmit={handleCheck} className="space-y-4">
-              <FormField label="Source Service *">
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                  Source Service *
+                </label>
                 <SearchableCombobox
                   value={form.sourceService}
                   onChange={setSourceService}
@@ -219,9 +230,12 @@ export default function RuntimeMonitor() {
                   error={servicesError}
                   onRetry={loadServices}
                 />
-              </FormField>
+              </div>
 
-              <FormField label="Destination Service *">
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                  Destination Service *
+                </label>
                 <SearchableCombobox
                   value={form.destinationService}
                   onChange={setDestinationService}
@@ -234,10 +248,13 @@ export default function RuntimeMonitor() {
                   error={servicesError}
                   onRetry={loadServices}
                 />
-              </FormField>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <FormField label="Source Region">
+                <div>
+                  <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                    Source Region
+                  </label>
                   <select
                     value={form.sourceRegion}
                     onChange={(e) => setField("sourceRegion")(e.target.value)}
@@ -250,9 +267,12 @@ export default function RuntimeMonitor() {
                       </option>
                     ))}
                   </select>
-                </FormField>
+                </div>
 
-                <FormField label="Destination Region">
+                <div>
+                  <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                    Destination Region
+                  </label>
                   <select
                     value={form.destinationRegion}
                     onChange={(e) => setField("destinationRegion")(e.target.value)}
@@ -265,206 +285,213 @@ export default function RuntimeMonitor() {
                       </option>
                     ))}
                   </select>
-                </FormField>
+                </div>
               </div>
 
-              <FormField label="Data Sensitivity Class *">
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1.5">
+                  Data Sensitivity Class *
+                </label>
                 <div className="flex flex-wrap gap-2">
-                  {DATA_CLASSES.map((dc) => (
-                    <button
-                      key={dc}
-                      type="button"
-                      onClick={() => setField("dataClass")(dc)}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-                        form.dataClass === dc
-                          ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white"
-                          : "border-[var(--color-border)] text-[var(--color-text-dim)] hover:border-[var(--color-brand)] hover:text-white"
-                      }`}
-                    >
-                      {dc}
-                    </button>
-                  ))}
+                  {DATA_CLASSES.map((dc) => {
+                    const isSelected = form.dataClass === dc;
+                    return (
+                      <button
+                        key={dc}
+                        type="button"
+                        onClick={() => setField("dataClass")(dc)}
+                        className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                          isSelected
+                            ? "bg-[var(--color-brand-light)] text-[var(--color-brand-text)] border-[var(--color-brand)]/40 font-semibold"
+                            : "bg-[var(--color-surface-2)] text-[var(--color-text-dim)] border-[var(--color-border)] hover:text-[var(--color-text)]"
+                        }`}
+                      >
+                        {dc}
+                      </button>
+                    );
+                  })}
                 </div>
-              </FormField>
+              </div>
 
               {formError && (
-                <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
-                  {formError}
-                </p>
+                <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 rounded-lg p-2.5 flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  <span>{formError}</span>
+                </div>
               )}
 
-              <button type="submit" disabled={submitting} className="btn-primary w-full justify-center">
-                {submitting ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                className="w-full justify-center"
+                loading={submitting}
+                icon={Play}
+              >
                 {submitting ? "Evaluating AST Policies…" : "Run Enforcement Check"}
-              </button>
+              </Button>
             </form>
           </div>
 
-          {/* Result Card */}
+          {/* Evaluation Result Card */}
           {result && (
             <div
-              className={`card p-5 border-2 animate-in fade-in zoom-in-95 ${
+              className={`card p-5 border-l-4 animate-in fade-in zoom-in-95 ${
                 result.decision === "ALLOW"
-                  ? "border-[var(--color-good)]/40 bg-[var(--color-good)]/5"
-                  : "border-[var(--color-bad)]/40 bg-[var(--color-bad)]/5"
+                  ? "border-l-[var(--color-good)] bg-emerald-500/5"
+                  : "border-l-[var(--color-bad)] bg-rose-500/5"
               }`}
             >
-              <div className="flex items-center gap-3 mb-3">
-                {result.decision === "ALLOW" ? (
-                  <ShieldCheck size={28} className="text-[var(--color-good)]" />
-                ) : (
-                  <ShieldAlert size={28} className="text-[var(--color-bad)]" />
-                )}
-                <div>
-                  <p
-                    className={`text-xl font-bold ${
-                      result.decision === "ALLOW" ? "text-[var(--color-good)]" : "text-[var(--color-bad)]"
-                    }`}
-                  >
-                    {result.decision}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-faint)]">
-                    {result._form.sourceService} [{result._form.sourceRegion || "?"}] → {result._form.destinationService} [
-                    {result._form.destinationRegion || "?"}]
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <DetailRow label="Reason" value={result.reason} />
-                {result.policyId && <DetailRow label="Policy ID" value={result.policyId} />}
-                {result.decisionId && <DetailRow label="Decision ID" value={`#${result.decisionId}`} />}
-                {result.lineageId && <DetailRow label="Lineage Block" value={`#${result.lineageId}`} />}
-                {result.lineageHash && (
-                  <div className="pt-1">
-                    <p className="text-[var(--color-text-faint)] text-xs mb-0.5">SHA-256 Ledger Hash</p>
-                    <p className="font-mono text-[11px] text-[var(--color-text-dim)] break-all bg-[var(--color-surface)] p-2 rounded-lg border border-[var(--color-border)]">
-                      {result.lineageHash}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {result.decision === "ALLOW" ? (
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <ShieldCheck size={18} />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                      <ShieldAlert size={18} />
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-bold text-sm text-[var(--color-text)]">
+                      Decision: {result.decision}
+                    </h4>
+                    <p className="text-[11px] text-[var(--color-text-faint)]">
+                      Evaluated in {result.evaluationLatencyMs != null ? `${result.evaluationLatencyMs}ms` : "< 1ms"}
                     </p>
                   </div>
+                </div>
+                <Badge variant={result.decision === "ALLOW" ? "good" : "bad"} size="sm" dot>
+                  {result.decision}
+                </Badge>
+              </div>
+
+              <div className="space-y-1.5 text-xs text-[var(--color-text-dim)] font-mono text-[11px]">
+                <p>
+                  <strong className="text-[var(--color-text)]">Policy ID:</strong> {result.policyId || "DEFAULT_GATE"}
+                </p>
+                <p>
+                  <strong className="text-[var(--color-text)]">Reason:</strong>{" "}
+                  <span className={result.decision === "DENY" ? "text-[var(--color-bad)]" : "text-[var(--color-good)]"}>
+                    {result.reason || (result.decision === "ALLOW" ? "Complies with jurisdictional constraints" : "Blocked")}
+                  </span>
+                </p>
+                {result.auditLogId && (
+                  <p className="text-[10px] text-[var(--color-text-faint)] pt-1 truncate">
+                    Audit Log ID: {result.auditLogId}
+                  </p>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column: History table with Pagination */}
-        <div className="xl:col-span-3">
-          <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+        {/* Right Column: Historical Decision Audit Log */}
+        <div className="xl:col-span-3 card overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-white text-sm">Recent Decisions Audit Ledger</h2>
-                <p className="text-xs text-[var(--color-text-faint)]">Live write-ahead log of runtime checks.</p>
+                <h3 className="font-bold text-sm text-[var(--color-text)]">Live Decision Stream</h3>
+                <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                  Immutable audit records generated by the runtime policy engine.
+                </p>
               </div>
-              <button
-                onClick={loadHistory}
-                className="text-[var(--color-text-faint)] hover:text-white transition-colors"
-                title="Refresh history"
-              >
-                <Clock size={15} />
-              </button>
+              <span className="text-xs text-[var(--color-text-faint)] font-mono">
+                {history.length} events
+              </span>
             </div>
 
-            {historyLoading && (
-              <div className="px-5 py-12 text-center text-[var(--color-text-faint)]">
-                <Loader2 size={16} className="animate-spin inline mr-2" /> Loading recent decisions...
+            {historyLoading ? (
+              <div className="p-8 text-center text-xs text-[var(--color-text-faint)] flex items-center justify-center gap-2">
+                <Loader2 size={16} className="animate-spin text-[var(--color-brand)]" />
+                <span>Loading runtime telemetry...</span>
               </div>
-            )}
+            ) : history.length === 0 ? (
+              <EmptyState
+                icon={Activity}
+                title="No decisions logged yet"
+                description="Run an enforcement check to trigger your first runtime policy evaluation."
+              />
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {paginatedHistory.map((item, idx) => {
+                  const isAllow = item.decision === "ALLOW";
+                  const isExp = expanded === (item.id || idx);
 
-            {!historyLoading && history.length === 0 && (
-              <div className="px-5 py-12 text-center text-[var(--color-text-faint)] text-sm">
-                No runtime decisions recorded yet. Run a check on the left.
-              </div>
-            )}
-
-            {!historyLoading && history.length > 0 && (
-              <>
-                <div className="divide-y divide-[var(--color-border)]">
-                  {paginatedHistory.map((d) => (
-                    <div key={d.id} className="px-5 py-3 hover:bg-[var(--color-surface-2)] transition-colors">
+                  return (
+                    <div key={item.id || idx} className="p-4 hover:bg-[var(--color-surface-2)]/40 transition-colors">
                       <div
-                        className="flex items-center justify-between cursor-pointer"
-                        onClick={() => setExpanded(expanded === d.id ? null : d.id)}
+                        className="flex items-center justify-between gap-3 cursor-pointer select-none"
+                        onClick={() => setExpanded(isExp ? null : (item.id || idx))}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <DecisionBadge decision={d.decision} />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {isAllow ? (
+                            <ShieldCheck size={16} className="text-[var(--color-good)] shrink-0" />
+                          ) : (
+                            <ShieldAlert size={16} className="text-[var(--color-bad)] shrink-0" />
+                          )}
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                              {d.sourceService} → {d.destinationService}
-                            </p>
-                            <p className="text-xs text-[var(--color-text-faint)]">
-                              {d.dataClass} · {d.sourceRegion ?? "?"} → {d.destinationRegion ?? "?"}
-                            </p>
+                            <div className="flex items-center gap-2 text-xs font-mono">
+                              <span className="font-semibold text-[var(--color-text)] truncate">{item.sourceService}</span>
+                              <span className="text-[var(--color-text-faint)]">→</span>
+                              <span className="font-semibold text-[var(--color-text)] truncate">{item.destinationService}</span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                {item.dataClass || "PII"}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs text-[var(--color-text-faint)] hidden sm:block font-mono">
-                            {new Date(d.createdAt).toLocaleTimeString()}
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <Badge variant={isAllow ? "good" : "bad"} size="sm">
+                            {item.decision}
+                          </Badge>
+                          <span className="text-[11px] text-[var(--color-text-faint)] hidden sm:inline">
+                            {item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : "just now"}
                           </span>
-                          {expanded === d.id ? (
-                            <ChevronUp size={14} className="text-[var(--color-text-faint)]" />
-                          ) : (
-                            <ChevronDown size={14} className="text-[var(--color-text-faint)]" />
-                          )}
+                          {isExp ? <ChevronUp size={14} className="text-[var(--color-text-faint)]" /> : <ChevronDown size={14} className="text-[var(--color-text-faint)]" />}
                         </div>
                       </div>
-                      {expanded === d.id && (
-                        <div className="mt-3 bg-[var(--color-surface-2)] rounded-lg p-3 space-y-1.5 text-xs border border-[var(--color-border)]">
-                          <DetailRow label="Policy" value={d.policyId || "—"} />
-                          <DetailRow label="Reason" value={d.reason} />
-                          <DetailRow label="Timestamp" value={new Date(d.createdAt).toLocaleString()} />
+
+                      {/* Expanded Details */}
+                      {isExp && (
+                        <div className="mt-3 pt-3 border-t border-[var(--color-border)]/50 text-[11px] font-mono space-y-1 text-[var(--color-text-dim)] bg-[var(--color-surface-2)]/40 p-3 rounded-lg">
+                          <p>
+                            <span className="text-[var(--color-text-faint)]">Policy Code:</span> {item.policyId || "N/A"}
+                          </p>
+                          <p>
+                            <span className="text-[var(--color-text-faint)]">Reason:</span>{" "}
+                            <span className={isAllow ? "text-[var(--color-good)]" : "text-[var(--color-bad)]"}>
+                              {item.reason || "Evaluated by policy engine"}
+                            </span>
+                          </p>
+                          {item.auditHash && (
+                            <p className="truncate">
+                              <span className="text-[var(--color-text-faint)]">Audit Hash:</span> {item.auditHash}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-
-                <Pagination
-                  currentPage={page}
-                  totalItems={history.length}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                  onPageSizeChange={(sz) => {
-                    setPageSize(sz);
-                    setPage(1);
-                  }}
-                />
-              </>
+                  );
+                })}
+              </div>
             )}
           </div>
+
+          <Pagination
+            currentPage={page}
+            totalItems={history.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
-    </div>
-  );
-}
-
-function FormField({ label, children }) {
-  return (
-    <div>
-      <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function DecisionBadge({ decision }) {
-  return (
-    <span
-      className={`text-xs font-bold px-2.5 py-1 rounded shrink-0 ${
-        decision === "ALLOW"
-          ? "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
-          : "bg-[var(--color-bad)]/15 text-[var(--color-bad)] border border-[var(--color-bad)]/30"
-      }`}
-    >
-      {decision}
-    </span>
-  );
-}
-
-function DetailRow({ label, value }) {
-  return (
-    <div className="flex gap-2 text-xs">
-      <span className="text-[var(--color-text-faint)] shrink-0 w-24">{label}:</span>
-      <span className="text-[var(--color-text-dim)]">{value}</span>
     </div>
   );
 }

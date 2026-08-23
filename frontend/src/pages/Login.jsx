@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Shield, Sun, Moon, Monitor, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import Button from "../components/ui/Button";
 
 export default function Login() {
   const { login, loading, error } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,62 +18,86 @@ export default function Login() {
       await login(email, password);
       navigate("/");
     } catch {
-      // error is surfaced via auth context state
+      // error handled in auth context
     }
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[var(--color-bg)] px-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[var(--color-bg)] px-4 relative">
+      {/* Theme Toggle Top Right */}
+      <div className="absolute top-5 right-5">
+        <button
+          type="button"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="w-9 h-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] flex items-center justify-center transition-colors shadow-2xs"
+          title={`Theme: ${theme}`}
+        >
+          {theme === "dark" ? <Moon size={15} /> : <Sun size={15} />}
+        </button>
+      </div>
+
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <img
-            src="/logo.png"
-            alt="PolicyMesh"
-            className="w-16 h-16 object-contain mb-3 drop-shadow-xl animate-in fade-in zoom-in-90"
-          />
-          <h1 className="text-xl font-semibold text-white">PolicyMesh</h1>
-          <p className="text-sm text-[var(--color-text-faint)]">Govern. Enforce. Trust.</p>
+        {/* Brand Header */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center text-[var(--color-brand)] mb-3 shadow-sm">
+            <Shield size={24} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)]">PolicyMesh</h1>
+          <p className="text-xs text-[var(--color-text-dim)] mt-0.5">Govern. Enforce. Trust.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="card p-6 space-y-4 shadow-xl">
           <div>
-            <label className="block text-sm text-[var(--color-text-dim)] mb-1.5">Email</label>
+            <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+              Email Address
+            </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] px-3.5 py-2.5 text-sm text-white outline-none focus:border-[var(--color-brand)] transition-colors"
-              placeholder="you@company.com"
+              className="field-input text-xs"
+              placeholder="admin@policymesh.io"
             />
           </div>
+
           <div>
-            <label className="block text-sm text-[var(--color-text-dim)] mb-1.5">Password</label>
+            <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+              Password
+            </label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] px-3.5 py-2.5 text-sm text-white outline-none focus:border-[var(--color-brand)] transition-colors"
+              className="field-input text-xs"
               placeholder="••••••••"
             />
           </div>
 
-          {error && <p className="text-sm text-[var(--color-bad)]">{error}</p>}
+          {error && (
+            <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 rounded-lg p-2.5 flex items-center gap-2">
+              <AlertTriangle size={14} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-[var(--color-brand)] text-white font-medium py-2.5 hover:bg-[var(--color-brand-dim)] transition-colors disabled:opacity-60"
+            variant="primary"
+            size="md"
+            className="w-full justify-center"
+            loading={loading}
           >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
+            Sign In to Platform
+          </Button>
         </form>
 
-        <p className="text-center text-sm text-[var(--color-text-faint)] mt-6">
+        <p className="text-center text-xs text-[var(--color-text-dim)] mt-5">
           Don't have an account?{" "}
-          <Link to="/register" className="text-[var(--color-brand)] hover:underline">
-            Register
+          <Link to="/register" className="text-[var(--color-brand)] hover:underline font-semibold">
+            Register new workspace
           </Link>
         </p>
       </div>

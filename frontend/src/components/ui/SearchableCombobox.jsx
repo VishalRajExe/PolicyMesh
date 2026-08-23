@@ -176,7 +176,7 @@ export default function SearchableCombobox({
       >
         <span
           className={`truncate flex-1 text-left font-mono ${
-            value ? "text-white font-medium" : "text-[var(--color-text-faint)] font-sans"
+            value ? "text-[var(--color-text)] font-medium" : "text-[var(--color-text-faint)] font-sans"
           }`}
         >
           {value ? displayLabel : placeholder}
@@ -187,7 +187,7 @@ export default function SearchableCombobox({
             <button
               type="button"
               onClick={handleClear}
-              className="p-0.5 rounded hover:text-white hover:bg-[var(--color-surface-2)] transition-colors"
+              className="p-0.5 rounded hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors"
               title="Clear selection"
             >
               <X size={13} />
@@ -205,7 +205,7 @@ export default function SearchableCombobox({
         <div
           id={`${comboboxId}-listbox`}
           role="listbox"
-          className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl overflow-hidden animate-in fade-in duration-100 backdrop-blur-md"
+          className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xl overflow-hidden animate-in fade-in duration-100 backdrop-blur-md"
         >
           {/* Live Search Input */}
           <div className="p-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/60 flex items-center gap-2">
@@ -220,14 +220,14 @@ export default function SearchableCombobox({
               }}
               onKeyDown={handleKeyDown}
               placeholder={searchPlaceholder}
-              className="w-full bg-transparent outline-none text-xs text-white placeholder:text-[var(--color-text-faint)]"
+              className="w-full bg-transparent outline-none text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-faint)]"
               autoComplete="off"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="text-[var(--color-text-faint)] hover:text-white p-0.5"
+                className="text-[var(--color-text-faint)] hover:text-[var(--color-text)] p-0.5"
               >
                 <X size={12} />
               </button>
@@ -235,7 +235,7 @@ export default function SearchableCombobox({
           </div>
 
           {/* Options List */}
-          <div ref={listboxRef} className="max-h-64 overflow-y-auto divide-y divide-[var(--color-border)]/30 p-1">
+          <div ref={listboxRef} className="max-h-60 overflow-y-auto divide-y divide-[var(--color-border)]/40 p-1">
             {loading && (
               <div className="py-6 px-4 text-center text-xs text-[var(--color-text-faint)] flex items-center justify-center gap-2">
                 <Loader2 size={14} className="animate-spin text-[var(--color-brand)]" />
@@ -253,7 +253,7 @@ export default function SearchableCombobox({
                       e.stopPropagation();
                       onRetry();
                     }}
-                    className="inline-flex items-center gap-1 text-[11px] text-white bg-[var(--color-surface-2)] border border-[var(--color-border)] px-2.5 py-1 rounded-lg hover:border-white"
+                    className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text)] bg-[var(--color-surface-2)] border border-[var(--color-border)] px-2.5 py-1 rounded-lg hover:border-[var(--color-brand)]"
                   >
                     <RefreshCw size={11} /> Retry
                   </button>
@@ -269,13 +269,13 @@ export default function SearchableCombobox({
                 onClick={() => handleSelectCustom(searchQuery)}
                 onMouseEnter={() => setHighlightedIndex(0)}
                 className={`px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 cursor-pointer text-xs transition-colors ${
-                  highlightedIndex === 0 ? "bg-[var(--color-surface-2)] text-white" : "text-[var(--color-brand)]"
+                  highlightedIndex === 0 ? "bg-[var(--color-surface-2)] text-[var(--color-text)]" : "text-[var(--color-brand)]"
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Plus size={14} className="text-[var(--color-brand)] shrink-0" />
                   <span className="truncate">
-                    Use custom: <span className="font-semibold text-white font-mono">{searchQuery}</span>
+                    Use custom: <span className="font-semibold text-[var(--color-text)] font-mono">{searchQuery}</span>
                   </span>
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function SearchableCombobox({
                       onMouseEnter={() => setHighlightedIndex(visualIndex)}
                       className={`cursor-pointer transition-colors ${
                         isSelected
-                          ? "bg-[var(--color-brand)]/15"
+                          ? "bg-[var(--color-brand-light)]"
                           : isHighlighted
                           ? "bg-[var(--color-surface-2)]"
                           : ""
@@ -332,16 +332,16 @@ export default function SearchableCombobox({
                     onMouseEnter={() => setHighlightedIndex(visualIndex)}
                     className={`px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 cursor-pointer text-xs transition-colors ${
                       isSelected
-                        ? "bg-[var(--color-brand)]/15 text-white"
+                        ? "bg-[var(--color-brand-light)] text-[var(--color-brand-text)]"
                         : isHighlighted
-                        ? "bg-[var(--color-surface-2)] text-white"
-                        : "text-[var(--color-text-dim)] hover:text-white"
+                        ? "bg-[var(--color-surface-2)] text-[var(--color-text)]"
+                        : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
                     }`}
                   >
                     <div className="min-w-0 flex items-center gap-2">
-                      <span className="font-semibold font-mono text-white truncate">{optLabel}</span>
+                      <span className="font-medium font-mono text-[var(--color-text)] truncate">{optLabel}</span>
                       {opt.region && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                           {opt.region}
                         </span>
                       )}
@@ -351,7 +351,7 @@ export default function SearchableCombobox({
                         </span>
                       )}
                       {opt.classification && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                           {opt.classification}
                         </span>
                       )}

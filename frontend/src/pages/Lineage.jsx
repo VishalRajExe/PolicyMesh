@@ -10,11 +10,17 @@ import {
   CheckCircle,
   XCircle,
   Search,
+  Copy,
+  Check,
+  Lock,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSkeleton } from "../components/ui/LoadingSkeleton";
 import { lineageApi } from "../api";
-import { useQueryState } from "../hooks/useQueryState";
 
 export default function Lineage() {
   const [records, setRecords] = useState([]);
@@ -23,21 +29,22 @@ export default function Lineage() {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [copiedHash, setCopiedHash] = useState(null);
 
-  // URL query state
-  const [search, setSearch] = useQueryState("search", "");
-  const [filter, setFilter] = useQueryState("filter", "ALL");
-  const [page, setPage] = useQueryState("page", 1);
-  const [pageSize, setPageSize] = useQueryState("size", 10);
+  // Filters
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
       const data = await lineageApi.list();
-      setRecords(data);
+      setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to load cryptographic lineage");
     } finally {
       setLoading(false);
     }
@@ -60,13 +67,19 @@ export default function Lineage() {
     verify();
   }, []);
 
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    setCopiedHash(text);
+    setTimeout(() => setCopiedHash(null), 2000);
+  }
+
   const filtered = records.filter((r) => {
     const matchFilter = filter === "ALL" || r.decision === filter;
     const q = search.trim().toLowerCase();
     const matchSearch =
       !q ||
-      r.sourceService.toLowerCase().includes(q) ||
-      r.destinationService.toLowerCase().includes(q) ||
+      (r.sourceService || "").toLowerCase().includes(q) ||
+      (r.destinationService || "").toLowerCase().includes(q) ||
       (r.currentHash && r.currentHash.toLowerCase().includes(q)) ||
       (r.policyId && r.policyId.toLowerCase().includes(q));
     return matchFilter && matchSearch;
@@ -74,210 +87,190 @@ export default function Lineage() {
 
   const paginatedRecords = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const topActions = (
+    <Button
+      variant="secondary"
+      size="md"
+      icon={verifying ? Loader2 : RefreshCw}
+      onClick={verify}
+      disabled={verifying}
+    >
+      {verifying ? "Verifying..." : "Verify Hash Chain"}
+    </Button>
+  );
+
   return (
     <div>
       <Topbar
-        title="Lineage"
-        subtitle="Cryptographic SHA-256 hash-chain audit evidence for every enforcement decision."
+        title="Cryptographic Lineage"
+        subtitle="Immutable SHA-256 hash-chain audit ledger proving mathematical integrity of all enforcement decisions."
+        actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 mt-4 flex flex-wrap items-center gap-3 justify-between">
-        {/* Verification status & search */}
-        <div className="flex items-center gap-3 flex-1 max-w-2xl">
+      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+        {/* Verification Banner & Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by hash, service, or policy..."
+                className="field-input pl-8 text-xs"
+              />
+            </div>
+
+            {/* Filter */}
+            <select
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPage(1);
+              }}
+              className="field-input py-1.5 text-xs w-32"
+            >
+              <option value="ALL">All Decisions</option>
+              <option value="ALLOW">ALLOW</option>
+              <option value="DENY">DENY</option>
+            </select>
+          </div>
+
+          {/* Verification Status Pill */}
           {verification && (
             <div
-              className={`flex items-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-xl border shrink-0 ${
+              className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border shrink-0 ${
                 verification.valid
-                  ? "bg-[var(--color-good)]/10 border-[var(--color-good)]/30 text-[var(--color-good)]"
-                  : "bg-[var(--color-bad)]/10 border-[var(--color-bad)]/30 text-[var(--color-bad)]"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400"
               }`}
             >
               {verification.valid ? <CheckCircle size={14} /> : <XCircle size={14} />}
-              {verification.valid
-                ? `Chain valid (${verification.recordsChecked} blocks)`
-                : `Chain broken at #${verification.brokenAt}`}
+              <span>
+                {verification.valid
+                  ? `Hash Chain Valid (${verification.recordsChecked || records.length} blocks verified)`
+                  : `Hash Chain Broken at #${verification.brokenAt}`}
+              </span>
             </div>
           )}
+        </div>
 
-          <div className="relative flex-1 min-w-[180px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search hash or service..."
-              className="field-input pl-9 text-xs"
+        {/* Table Card */}
+        <div className="card overflow-hidden">
+          {loading ? (
+            <TableSkeleton rows={5} cols={6} />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Link2}
+              title="No cryptographic lineage records"
+              description="Lineage records are cryptographically generated automatically whenever runtime decisions are made."
             />
-          </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[var(--color-surface-2)] text-[var(--color-text-dim)] border-b border-[var(--color-border)] uppercase tracking-wider font-semibold text-[10px]">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold"># Sequence</th>
+                    <th className="px-5 py-3 font-semibold">Data Flow Direction</th>
+                    <th className="px-5 py-3 font-semibold">Decision</th>
+                    <th className="px-5 py-3 font-semibold">Policy Applied</th>
+                    <th className="px-5 py-3 font-semibold">Current Hash (SHA-256)</th>
+                    <th className="px-5 py-3 font-semibold">Timestamp</th>
+                    <th className="px-5 py-3 font-semibold text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {paginatedRecords.map((r, idx) => {
+                    const isAllow = r.decision === "ALLOW";
+                    const isExp = expanded === (r.id || idx);
 
-          <button
-            onClick={verify}
-            disabled={verifying}
-            className="flex items-center gap-1.5 text-xs text-[var(--color-text-dim)] hover:text-white border border-[var(--color-border)] rounded-xl px-3 py-2 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={verifying ? "animate-spin" : ""} />
-            Verify Chain
-          </button>
-        </div>
+                    return (
+                      <tr
+                        key={r.id || idx}
+                        className="hover:bg-[var(--color-surface-2)]/60 transition-colors"
+                      >
+                        <td className="px-5 py-3 font-mono font-bold text-xs text-[var(--color-text)]">
+                          #{r.sequenceNumber != null ? r.sequenceNumber : idx + 1}
+                        </td>
 
-        {/* Filter buttons */}
-        <div className="flex items-center gap-2">
-          {["ALL", "ALLOW", "DENY"].map((f) => (
-            <button
-              key={f}
-              onClick={() => {
-                setFilter(f);
-                setPage(1);
-              }}
-              className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-                filter === f
-                  ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white font-medium"
-                  : "border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-white bg-[var(--color-surface)]"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1.5 font-mono text-xs">
+                            <span className="font-semibold text-[var(--color-text)]">{r.sourceService}</span>
+                            <span className="text-[var(--color-text-faint)]">→</span>
+                            <span className="font-semibold text-[var(--color-text)]">{r.destinationService}</span>
+                            {r.dataClass && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 ml-1">
+                                {r.dataClass}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-      <div className="px-6 lg:px-8 mt-4 pb-12 space-y-4">
-        {error && (
-          <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
-            {error}
-            <button onClick={load} className="underline ml-4 text-xs">
-              Retry
-            </button>
-          </div>
-        )}
+                        <td className="px-5 py-3">
+                          <Badge variant={isAllow ? "good" : "bad"} size="sm" dot>
+                            {r.decision}
+                          </Badge>
+                        </td>
 
-        {loading && (
-          <div className="card px-5 py-12 text-center text-[var(--color-text-faint)]">
-            <Loader2 size={20} className="animate-spin inline mr-2" /> Loading lineage records…
-          </div>
-        )}
+                        <td className="px-5 py-3 font-mono text-xs text-[var(--color-text-dim)]">
+                          {r.policyId || "DEFAULT_GATE"}
+                        </td>
 
-        {!loading && filtered.length === 0 && (
-          <div className="card px-5 py-12 text-center">
-            <Link2 size={32} className="mx-auto mb-3 text-[var(--color-text-faint)]" />
-            <p className="text-[var(--color-text-faint)] text-sm">
-              {records.length === 0
-                ? "No lineage records yet. Run enforcement checks to create audit entries."
-                : `No ${filter} decisions match the filter.`}
-            </p>
-          </div>
-        )}
+                        <td className="px-5 py-3 font-mono text-[11px]">
+                          <div className="flex items-center gap-1.5 text-[var(--color-text-dim)]">
+                            <span className="truncate max-w-[140px]">{r.currentHash || "GENESIS"}</span>
+                            {r.currentHash && (
+                              <button
+                                onClick={() => copyToClipboard(r.currentHash)}
+                                className="text-[var(--color-text-faint)] hover:text-[var(--color-text)] p-0.5"
+                                title="Copy full SHA-256 hash"
+                              >
+                                {copiedHash === r.currentHash ? (
+                                  <Check size={12} className="text-[var(--color-good)]" />
+                                ) : (
+                                  <Copy size={12} />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </td>
 
-        {!loading && filtered.length > 0 && (
-          <div className="card overflow-hidden">
-            <div className="divide-y divide-[var(--color-border)]">
-              {paginatedRecords.map((r) => (
-                <div key={r.id} className="hover:bg-[var(--color-surface-2)] transition-colors">
-                  <div
-                    className="px-5 py-3.5 flex items-center gap-4 cursor-pointer"
-                    onClick={() => setExpanded(expanded === r.id ? null : r.id)}
-                  >
-                    {/* Decision badge */}
-                    <span
-                      className={`text-xs font-bold px-2.5 py-1 rounded shrink-0 ${
-                        r.decision === "ALLOW"
-                          ? "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
-                          : "bg-[var(--color-bad)]/15 text-[var(--color-bad)] border border-[var(--color-bad)]/30"
-                      }`}
-                    >
-                      {r.decision}
-                    </span>
+                        <td className="px-5 py-3 text-[11px] text-[var(--color-text-faint)] whitespace-nowrap">
+                          {r.timestamp ? new Date(r.timestamp).toLocaleString() : "just now"}
+                        </td>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white truncate font-mono">
-                          {r.sourceService} [{r.sourceRegion ?? "?"}]
-                        </span>
-                        <span className="text-[var(--color-text-faint)]">→</span>
-                        <span className="text-sm font-semibold text-white truncate font-mono">
-                          {r.destinationService} [{r.destinationRegion ?? "?"}]
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-[var(--color-text-faint)]">
-                        <span className="font-semibold text-amber-400">{r.dataClass}</span>
-                        {r.policyId && <span>• {r.policyId}</span>}
-                        <span>• Block #{r.id}</span>
-                        <span>• {new Date(r.createdAt).toLocaleString()}</span>
-                      </div>
-                    </div>
+                        <td className="px-5 py-3 text-right">
+                          <button
+                            onClick={() => setExpanded(isExp ? null : (r.id || idx))}
+                            className="p-1 rounded text-[var(--color-text-faint)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+                          >
+                            {isExp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-                    {/* Hash preview */}
-                    <div className="hidden lg:flex items-center gap-2 shrink-0">
-                      <span className="font-mono text-xs text-[var(--color-text-faint)]">
-                        {r.currentHash?.slice(0, 14)}…
-                      </span>
-                      {expanded === r.id ? (
-                        <ChevronUp size={14} className="text-[var(--color-text-faint)]" />
-                      ) : (
-                        <ChevronDown size={14} className="text-[var(--color-text-faint)]" />
-                      )}
-                    </div>
-                    <div className="lg:hidden">
-                      {expanded === r.id ? (
-                        <ChevronUp size={14} className="text-[var(--color-text-faint)]" />
-                      ) : (
-                        <ChevronDown size={14} className="text-[var(--color-text-faint)]" />
-                      )}
-                    </div>
-                  </div>
-
-                  {expanded === r.id && (
-                    <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[var(--color-surface-2)]/50 border-t border-[var(--color-border)] pt-3">
-                      <div className="space-y-2 text-xs">
-                        <HashRow label="Decision ID" value={`#${r.decisionId}`} />
-                        <HashRow label="Lineage Block" value={`#${r.id}`} />
-                        <HashRow label="Triggered Policy" value={r.policyId || "—"} />
-                        <HashRow label="Enforcement Reason" value={r.reason} />
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <p className="text-[var(--color-text-faint)] mb-1">Previous Block Hash</p>
-                          <p className="font-mono text-[var(--color-text-dim)] break-all bg-[var(--color-surface)] p-2 rounded-lg border border-[var(--color-border)] leading-relaxed">
-                            {r.previousHash || "GENESIS_BLOCK_00000000000000000000000000000000"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[var(--color-text-faint)] mb-1">Current SHA-256 Hash</p>
-                          <p className="font-mono text-white break-all bg-[var(--color-surface)] p-2 rounded-lg border border-[var(--color-border)] leading-relaxed">
-                            {r.currentHash}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+              <Pagination
+                currentPage={page}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setPage(1);
+                }}
+              />
             </div>
-
-            <Pagination
-              currentPage={page}
-              totalItems={filtered.length}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(sz) => {
-                setPageSize(sz);
-                setPage(1);
-              }}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
-
-function HashRow({ label, value }) {
-  return (
-    <div className="flex gap-2 text-xs">
-      <span className="text-[var(--color-text-faint)] shrink-0 w-28">{label}:</span>
-      <span className="text-[var(--color-text-dim)]">{value}</span>
     </div>
   );
 }

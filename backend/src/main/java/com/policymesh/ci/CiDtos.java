@@ -16,8 +16,8 @@ public final class CiDtos {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record Request(
       @NotBlank @Size(min = 1, max = 64)
-      @Pattern(regexp = "^(HEAD(~[0-9]+)?|HEAD\\^?|[0-9a-fA-F]{7,40})$",
-               message = "commitHash must be a valid 7-40 character hexadecimal SHA-1 hash or 'HEAD'")
+      @Pattern(regexp = "^(HEAD(~[0-9]+)?|HEAD\\^?|[0-9a-fA-F]{3,40})$",
+               message = "commitHash must be a valid hexadecimal SHA-1 hash (3-40 chars) or 'HEAD'")
       String commitHash,
 
       @NotBlank @Size(min = 1, max = 255)

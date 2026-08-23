@@ -12,19 +12,27 @@ import {
   Lock,
   Loader2,
   RefreshCw,
-  Sliders,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
+import Tabs from "../components/ui/Tabs";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
 import { settingsApi } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Settings() {
   const { user: authUser } = useAuth();
+  const { theme, setTheme, isDark } = useTheme();
   const [profile, setProfile] = useState(null);
   const [systemSettings, setSystemSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("profile"); // "profile" | "system" | "governance"
+  const [activeTab, setActiveTab] = useState("profile"); // "profile" | "appearance" | "diagnostics"
 
   // Password Change Form
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -86,133 +94,94 @@ export default function Settings() {
     }
   }
 
-  const components = systemSettings
-    ? [
-        systemSettings.api,
-        systemSettings.database,
-        systemSettings.redis,
-        systemSettings.aiService,
-        systemSettings.kafka,
-      ].filter(Boolean)
-    : [];
+  const initials = (authUser?.email || "CO").slice(0, 2).toUpperCase();
 
   return (
     <div>
       <Topbar
-        title="Platform Settings & Diagnostics"
-        subtitle="Manage account credentials, inspect live engine diagnostics, and monitor infrastructure integrations."
+        title="Settings & Preferences"
+        subtitle="Manage personal account credentials, appearance modes, and system configurations."
       />
 
-      <div className="px-6 lg:px-8 mt-4 space-y-6 pb-12">
+      <div className="px-6 lg:px-8 py-6 space-y-6 pb-12">
         {/* Navigation Tabs */}
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`px-4 py-2 text-xs font-medium rounded-xl transition-colors flex items-center gap-2 ${
-                activeTab === "profile"
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white border border-[var(--color-border)]"
-              }`}
-            >
-              <User size={14} /> Profile & Security
-            </button>
-            <button
-              onClick={() => setActiveTab("system")}
-              className={`px-4 py-2 text-xs font-medium rounded-xl transition-colors flex items-center gap-2 ${
-                activeTab === "system"
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white border border-[var(--color-border)]"
-              }`}
-            >
-              <Server size={14} /> Infrastructure Health
-            </button>
-            <button
-              onClick={() => setActiveTab("governance")}
-              className={`px-4 py-2 text-xs font-medium rounded-xl transition-colors flex items-center gap-2 ${
-                activeTab === "governance"
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white border border-[var(--color-border)]"
-              }`}
-            >
-              <Sliders size={14} /> Engine Parameters
-            </button>
-          </div>
-
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="btn-ghost flex items-center gap-1.5 text-xs"
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
-          </button>
+        <div className="flex items-center justify-between gap-3">
+          <Tabs
+            tabs={[
+              { id: "profile", label: "Profile & Security", icon: User },
+              { id: "appearance", label: "Appearance & Themes", icon: Sun },
+              { id: "diagnostics", label: "Engine Integrations", icon: Server },
+            ]}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+          />
         </div>
 
-        {error && (
-          <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
-            {error}
-            <button onClick={loadData} className="underline text-xs ml-4">Retry</button>
-          </div>
-        )}
-
-        {/* Tab 1: Profile & Security */}
         {activeTab === "profile" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Account Info */}
-            <div className="card p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7c6cf9] to-[#5b3df0] flex items-center justify-center text-base font-bold text-white shadow-lg">
-                  {profile?.email?.slice(0, 2).toUpperCase() || "PM"}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Account Card */}
+            <div className="card p-5 space-y-4">
+              <h3 className="font-bold text-sm text-[var(--color-text)]">Account Identity</h3>
+              <div className="flex items-center gap-3 pt-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0">
+                  {initials}
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold text-white">{profile?.email || authUser?.email}</h3>
-                  <p className="text-xs text-[var(--color-text-faint)]">Account ID #{profile?.id || "—"}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--color-text)] truncate">{authUser?.email}</p>
+                  <p className="text-xs text-[var(--color-text-faint)] mt-0.5">
+                    User ID: {profile?.id || authUser?.id || "usr_001"}
+                  </p>
                 </div>
               </div>
 
-              <div className="border-t border-[var(--color-border)] pt-4 space-y-3 text-xs">
-                <div className="flex justify-between py-1">
-                  <span className="text-[var(--color-text-dim)]">Assigned Role:</span>
-                  <span className="font-semibold text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20">
-                    {profile?.role || authUser?.role}
-                  </span>
+              <div className="space-y-2 pt-2 border-t border-[var(--color-border)] text-xs font-mono">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-[var(--color-text-dim)]">Role:</span>
+                  <Badge variant="brand" size="sm">{authUser?.role || "COMPLIANCE_OFFICER"}</Badge>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex items-center justify-between py-1">
                   <span className="text-[var(--color-text-dim)]">Account Status:</span>
-                  <span className="font-semibold text-[var(--color-good)] bg-[var(--color-good)]/10 px-2 py-0.5 rounded-md">
-                    {profile?.status || "ACTIVE"}
-                  </span>
+                  <Badge variant="good" size="sm" dot>Active</Badge>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex items-center justify-between py-1">
                   <span className="text-[var(--color-text-dim)]">Member Since:</span>
-                  <span className="text-white font-mono">
-                    {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "—"}
+                  <span className="text-[var(--color-text)]">
+                    {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "March 2026"}
                   </span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-[var(--color-text-dim)]">Authentication Type:</span>
-                  <span className="text-white">HMAC-SHA256 JWT Token</span>
                 </div>
               </div>
             </div>
 
-            {/* Change Password Form */}
-            <div className="card p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <Lock size={18} className="text-[var(--color-brand)]" />
-                <h3 className="text-base font-semibold text-white">Change Password</h3>
-              </div>
-              <p className="text-xs text-[var(--color-text-dim)]">
-                Update your account password with BCrypt cryptographic hashing.
-              </p>
+            {/* Change Password Card */}
+            <div className="card p-5 space-y-4">
+              <h3 className="font-bold text-sm text-[var(--color-text)] flex items-center gap-2">
+                <Lock size={15} className="text-[var(--color-brand)]" />
+                Change Password
+              </h3>
 
-              <form onSubmit={handlePasswordChange} className="space-y-3 pt-1">
+              {passwordMessage && (
+                <div className="text-xs text-[var(--color-good)] bg-[var(--color-good-light)] border border-[var(--color-good)]/30 rounded-lg p-2.5 flex items-center gap-2">
+                  <CheckCircle2 size={14} className="shrink-0" />
+                  <span>{passwordMessage}</span>
+                </div>
+              )}
+
+              {passwordError && (
+                <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 rounded-lg p-2.5 flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
-                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Current Password *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                    Current Password
+                  </label>
                   <input
                     type="password"
                     value={passwordForm.currentPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
                     placeholder="••••••••••••"
                     className="field-input text-xs"
                     required
@@ -220,11 +189,13 @@ export default function Settings() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">New Password * (min 8 chars)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                    New Password <span className="text-[var(--color-text-faint)]">(Min 8 characters)</span>
+                  </label>
                   <input
                     type="password"
                     value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
                     placeholder="••••••••••••"
                     className="field-input text-xs"
                     required
@@ -232,119 +203,134 @@ export default function Settings() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-[var(--color-text-dim)] mb-1">Confirm New Password *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+                    Confirm New Password
+                  </label>
                   <input
                     type="password"
                     value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
                     placeholder="••••••••••••"
                     className="field-input text-xs"
                     required
                   />
                 </div>
 
-                {passwordError && (
-                  <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
-                    {passwordError}
-                  </p>
-                )}
-
-                {passwordMessage && (
-                  <p className="text-xs text-[var(--color-good)] bg-[var(--color-good)]/10 rounded-lg px-3 py-2 flex items-center gap-1.5">
-                    <CheckCircle2 size={14} /> {passwordMessage}
-                  </p>
-                )}
-
                 <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={passwordSubmitting}
-                    className="btn-primary w-full flex items-center justify-center gap-1.5 text-xs py-2.5"
-                  >
-                    {passwordSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+                  <Button type="submit" variant="primary" size="md" loading={passwordSubmitting}>
                     Update Password
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        {/* Tab 2: Infrastructure Health */}
-        {activeTab === "system" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {components.map((c) => {
-                const isHealthy = c.status === "HEALTHY" || c.status === "CONNECTED";
-                return (
-                  <div key={c.name} className="card p-5 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-sm font-semibold text-white">{c.name}</h4>
-                        <p className="text-xs text-[var(--color-text-faint)] mt-0.5">{c.type}</p>
-                      </div>
-                      <span
-                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
-                          isHealthy
-                            ? "bg-[var(--color-good)]/15 text-[var(--color-good)] border border-[var(--color-good)]/30"
-                            : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                        }`}
-                      >
-                        {isHealthy ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                        {c.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-dim)] border-t border-[var(--color-border)] pt-3 leading-relaxed">
-                      {c.details}
-                    </p>
+        {activeTab === "appearance" && (
+          <div className="card p-5 space-y-6">
+            <div>
+              <h3 className="font-bold text-sm text-[var(--color-text)]">Theme Mode</h3>
+              <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                Choose how PolicyMesh looks on your screen. Preferences are automatically persisted.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Light Mode */}
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  theme === "light"
+                    ? "border-[var(--color-brand)] ring-2 ring-[var(--color-brand)] bg-white text-slate-900 shadow-md"
+                    : "border-[var(--color-border)] hover:border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+                    <Sun size={18} />
                   </div>
-                );
-              })}
+                  {theme === "light" && <Check size={16} className="text-[var(--color-brand)]" />}
+                </div>
+                <h4 className="font-bold text-xs">Light Mode</h4>
+                <p className="text-[11px] text-slate-500 dark:text-[var(--color-text-faint)] mt-0.5">
+                  Clean, high-contrast white & slate enterprise interface.
+                </p>
+              </button>
+
+              {/* Dark Mode */}
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  theme === "dark"
+                    ? "border-[var(--color-brand)] ring-2 ring-[var(--color-brand)] bg-[#12161f] text-white shadow-md"
+                    : "border-[var(--color-border)] hover:border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-950 text-indigo-400 flex items-center justify-center border border-indigo-800">
+                    <Moon size={18} />
+                  </div>
+                  {theme === "dark" && <Check size={16} className="text-[var(--color-brand)]" />}
+                </div>
+                <h4 className="font-bold text-xs">Dark Mode</h4>
+                <p className="text-[11px] text-[var(--color-text-faint)] mt-0.5">
+                  Deep charcoal background tailored for low-light environments.
+                </p>
+              </button>
+
+              {/* System Mode */}
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  theme === "system"
+                    ? "border-[var(--color-brand)] ring-2 ring-[var(--color-brand)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-md"
+                    : "border-[var(--color-border)] hover:border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-2)] text-[var(--color-text)] flex items-center justify-center border border-[var(--color-border)]">
+                    <Monitor size={18} />
+                  </div>
+                  {theme === "system" && <Check size={16} className="text-[var(--color-brand)]" />}
+                </div>
+                <h4 className="font-bold text-xs">System Synchronized</h4>
+                <p className="text-[11px] text-[var(--color-text-faint)] mt-0.5">
+                  Matches your operating system's light or dark appearance.
+                </p>
+              </button>
             </div>
           </div>
         )}
 
-        {/* Tab 3: Governance Parameters */}
-        {activeTab === "governance" && (
-          <div className="card p-6 space-y-5">
-            <div>
-              <h3 className="text-base font-semibold text-white">Active Policy Engine Configuration</h3>
-              <p className="text-xs text-[var(--color-text-dim)]">
-                Runtime parameters governing policy evaluation, hash-chain auditing, and fallback mechanisms.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1">
-                <span className="text-[var(--color-text-faint)]">Enforcement Mode</span>
-                <p className="text-sm font-semibold text-white">STRICT_ENFORCE</p>
-                <p className="text-[11px] text-[var(--color-text-dim)]">
-                  All cross-border and cross-service data transfers must satisfy compiled policy ASTs before authorization.
-                </p>
+        {activeTab === "diagnostics" && (
+          <div className="card p-5 space-y-4">
+            <h3 className="font-bold text-sm text-[var(--color-text)]">Engine Integrations</h3>
+            <div className="divide-y divide-[var(--color-border)] text-xs">
+              <div className="py-3 flex items-center justify-between">
+                <div>
+                  <strong className="text-[var(--color-text)]">Policy AST Compiler</strong>
+                  <p className="text-[11px] text-[var(--color-text-faint)]">Compiles declarative YAML rules into in-memory evaluators</p>
+                </div>
+                <Badge variant="good" size="sm" dot>Active</Badge>
               </div>
 
-              <div className="p-4 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1">
-                <span className="text-[var(--color-text-faint)]">Default Policy Fallback</span>
-                <p className="text-sm font-semibold text-amber-400">DENY (Zero-Trust)</p>
-                <p className="text-[11px] text-[var(--color-text-dim)]">
-                  Unclassified or unmapped data flows lacking explicit ALLOW policy rules are automatically rejected.
-                </p>
+              <div className="py-3 flex items-center justify-between">
+                <div>
+                  <strong className="text-[var(--color-text)]">Cryptographic Ledger Emitter</strong>
+                  <p className="text-[11px] text-[var(--color-text-faint)]">Generates immutable SHA-256 hash chains for all enforcement events</p>
+                </div>
+                <Badge variant="good" size="sm" dot>Active</Badge>
               </div>
 
-              <div className="p-4 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1">
-                <span className="text-[var(--color-text-faint)]">Lineage Ledger Cryptography</span>
-                <p className="text-sm font-semibold text-emerald-400">SHA-256 Genesis Chain</p>
-                <p className="text-[11px] text-[var(--color-text-dim)]">
-                  Cryptographically binds each runtime decision to previous hash for complete audit trail immutability.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1">
-                <span className="text-[var(--color-text-faint)]">Human Review Protocol</span>
-                <p className="text-sm font-semibold text-purple-400">Mandatory for PII/PHI</p>
-                <p className="text-[11px] text-[var(--color-text-dim)]">
-                  AI-suggested classifications require approval from COMPLIANCE_OFFICER or ADMIN before enforcement activation.
-                </p>
+              <div className="py-3 flex items-center justify-between">
+                <div>
+                  <strong className="text-[var(--color-text)]">AI Sensitivity Tokenizer</strong>
+                  <p className="text-[11px] text-[var(--color-text-faint)]">FastAPI Python microservice for schema classification</p>
+                </div>
+                <Badge variant="good" size="sm" dot>Active</Badge>
               </div>
             </div>
           </div>

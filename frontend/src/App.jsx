@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -19,41 +20,43 @@ import SystemStatus from "./pages/SystemStatus";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          {/* Protected routes — all require a valid JWT */}
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-          <Route path="/data-flows" element={<ProtectedRoute><DataFlows /></ProtectedRoute>} />
-          <Route path="/runtime-monitor" element={<ProtectedRoute><RuntimeMonitor /></ProtectedRoute>} />
-          <Route path="/lineage" element={<ProtectedRoute><Lineage /></ProtectedRoute>} />
-          <Route path="/ai-classification" element={<ProtectedRoute><AiClassification /></ProtectedRoute>} />
-          <Route path="/ci-check" element={<ProtectedRoute><CiCheck /></ProtectedRoute>} />
-          <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          <Route path="/system" element={<ProtectedRoute><SystemStatus /></ProtectedRoute>} />
-          <Route path="/users-roles" element={<ProtectedRoute><UsersRoles /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            {/* Protected routes — all require a valid JWT */}
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
+            <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+            <Route path="/data-flows" element={<ProtectedRoute><DataFlows /></ProtectedRoute>} />
+            <Route path="/runtime-monitor" element={<ProtectedRoute><RuntimeMonitor /></ProtectedRoute>} />
+            <Route path="/lineage" element={<ProtectedRoute><Lineage /></ProtectedRoute>} />
+            <Route path="/ai-classification" element={<ProtectedRoute><AiClassification /></ProtectedRoute>} />
+            <Route path="/ci-check" element={<ProtectedRoute><CiCheck /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/system" element={<ProtectedRoute><SystemStatus /></ProtectedRoute>} />
+            <Route path="/users-roles" element={<ProtectedRoute><UsersRoles /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-          {/* 404 catch-all */}
-          <Route
-            path="*"
-            element={
-              <div className="flex flex-col items-center justify-center h-screen text-center px-6">
-                <p className="text-6xl font-bold text-[var(--color-text-faint)] mb-4">404</p>
-                <p className="text-lg text-[var(--color-text-dim)] mb-6">Page not found</p>
-                <a href="/" className="text-sm text-[var(--color-brand)] hover:underline">← Back to Dashboard</a>
-              </div>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* 404 catch-all */}
+            <Route
+              path="*"
+              element={
+                <div className="flex flex-col items-center justify-center h-screen text-center px-6">
+                  <p className="text-6xl font-bold text-[var(--color-text-faint)] mb-4">404</p>
+                  <p className="text-lg text-[var(--color-text-dim)] mb-6">Page not found</p>
+                  <a href="/" className="text-sm text-[var(--color-brand)] hover:underline">← Back to Dashboard</a>
+                </div>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

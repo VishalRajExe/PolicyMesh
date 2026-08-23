@@ -36,8 +36,8 @@ export default function Pagination({
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-dim)]">
       <div className="flex items-center gap-3">
         <span>
-          Showing <strong className="text-white">{startItem}</strong>–<strong className="text-white">{endItem}</strong> of{" "}
-          <strong className="text-white">{totalItems}</strong>
+          Showing <strong className="text-[var(--color-text)] font-semibold">{startItem}</strong>–<strong className="text-[var(--color-text)] font-semibold">{endItem}</strong> of{" "}
+          <strong className="text-[var(--color-text)] font-semibold">{totalItems}</strong>
         </span>
 
         {onPageSizeChange && (
@@ -46,7 +46,7 @@ export default function Pagination({
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-white text-xs outline-none"
+              className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-[var(--color-text)] text-xs outline-none focus:border-[var(--color-brand)]"
             >
               {pageSizeOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -62,7 +62,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(safePage - 1)}
           disabled={safePage <= 1}
-          className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
           title="Previous Page"
         >
           <ChevronLeft size={14} />
@@ -83,8 +83,8 @@ export default function Pagination({
               onClick={() => onPageChange(page)}
               className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-medium transition-colors ${
                 isSelected
-                  ? "bg-[var(--color-brand)] text-white font-semibold"
-                  : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-white"
+                  ? "bg-[var(--color-brand)] text-white font-semibold shadow-sm"
+                  : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)]"
               }`}
             >
               {page}
@@ -95,7 +95,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(safePage + 1)}
           disabled={safePage >= totalPages}
-          className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
           title="Next Page"
         >
           <ChevronRight size={14} />

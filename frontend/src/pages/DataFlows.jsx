@@ -7,19 +7,22 @@ import {
   GitBranch,
   Loader2,
   RefreshCw,
-  X,
   Search,
   CheckCircle2,
   AlertTriangle,
-  Info,
+  RotateCcw,
 } from "lucide-react";
-import Topbar from "../components/layout/Topbar";
+import Topbar, { TopbarActions } from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSkeleton } from "../components/ui/LoadingSkeleton";
 import SearchableCombobox from "../components/ui/SearchableCombobox";
 import { servicesApi, edgesApi, graphApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useFormDraft } from "../hooks/useFormDraft";
-import { useQueryState } from "../hooks/useQueryState";
 
 const DATA_CLASSES = ["PII", "PCI", "PHI", "NON_SENSITIVE", "UNKNOWN"];
 
@@ -40,16 +43,16 @@ export default function DataFlows() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // URL query state
-  const [search, setSearch] = useQueryState("search", "");
-  const [dataClassFilter, setDataClassFilter] = useQueryState("dataClass", "ALL");
-  const [statusFilter, setStatusFilter] = useQueryState("status", "ALL");
-  const [page, setPage] = useQueryState("page", 1);
-  const [pageSize, setPageSize] = useQueryState("size", 10);
+  // Filter state
+  const [search, setSearch] = useState("");
+  const [dataClassFilter, setDataClassFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  // Form draft state
-  const [showForm, setShowForm] = useState(false);
-  const { values: form, setValues: setForm, clearDraft } = useFormDraft(
+  // Form modal
+  const [showModal, setShowModal] = useState(false);
+  const { values: form, setValues: setForm, clearDraft, resetForm } = useFormDraft(
     "dataflow-edge",
     DEFAULT_EDGE_FORM
   );
@@ -64,8 +67,8 @@ export default function DataFlows() {
     setError(null);
     try {
       const [svcs, edg] = await Promise.all([servicesApi.list(), edgesApi.list()]);
-      setServices(svcs || []);
-      setEdges(edg || []);
+      setServices(Array.isArray(svcs) ? svcs : []);
+      setEdges(Array.isArray(edg) ? edg : []);
     } catch (err) {
       setError(err.message || "Failed to load data flows");
     } finally {
@@ -84,8 +87,8 @@ export default function DataFlows() {
       ]);
       setValidationResult(result);
       setViolations(result.violations || []);
-      setServices(svcs || []);
-      setEdges(edg || []);
+      setServices(Array.isArray(svcs) ? svcs : []);
+      setEdges(Array.isArray(edg) ? edg : []);
 
       if (isManual) {
         const vCount = result.violationCount != null ? result.violationCount : (result.violations || []).length;
@@ -118,20 +121,21 @@ export default function DataFlows() {
     }));
   }
 
-  async function handleCreate(e) {
+  async function handleAddEdge(e) {
     e.preventDefault();
     if (!form.sourceServiceId || !form.destinationServiceId) {
       setFormError("Both source and destination services are required.");
+      return;
+    }
+    if (form.sourceServiceId === form.destinationServiceId) {
+      setFormError("Source and destination services cannot be identical.");
       return;
     }
     if (form.dataClasses.length === 0) {
       setFormError("Select at least one data class.");
       return;
     }
-    if (String(form.sourceServiceId) === String(form.destinationServiceId)) {
-      setFormError("Source and destination must be different services.");
-      return;
-    }
+
     setSubmitting(true);
     setFormError(null);
     try {
@@ -140,95 +144,136 @@ export default function DataFlows() {
         destinationServiceId: Number(form.destinationServiceId),
         dataClasses: form.dataClasses,
       });
-      setShowForm(false);
       clearDraft();
+      setShowModal(false);
+      await loadData();
       await runValidation(false);
     } catch (err) {
-      setFormError(err.message || "Failed to create data flow edge");
+      setFormError(err.message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDelete(id) {
+  async function handleDeleteEdge(id) {
+    if (!window.confirm("Remove this data flow edge?")) return;
     try {
       await edgesApi.remove(id);
+      await loadData();
       await runValidation(false);
     } catch (err) {
       setError(err.message);
     }
   }
 
-  function getEdgeViolation(edge) {
-    return violations.find((v) => {
-      if (v.edgeId && edge.id && Number(v.edgeId) === Number(edge.id)) {
-        return true;
-      }
-      const edgeSrc = edge.sourceServiceName || svcMap[edge.sourceServiceId]?.name;
-      const edgeDst = edge.destinationServiceName || svcMap[edge.destinationServiceId]?.name;
-      return v.sourceService === edgeSrc && v.destinationService === edgeDst;
-    });
+  function getViolation(srcId, dstId) {
+    return violations.find(
+      (v) =>
+        (v.sourceServiceId === srcId && v.destinationServiceId === dstId) ||
+        (v.sourceService === svcMap[srcId]?.name && v.destinationService === svcMap[dstId]?.name)
+    );
   }
 
-  // Filtered edges
-  const filteredEdges = edges.filter((edge) => {
-    const src = (edge.sourceServiceName || svcMap[edge.sourceServiceId]?.name || "").toLowerCase();
-    const dst = (edge.destinationServiceName || svcMap[edge.destinationServiceId]?.name || "").toLowerCase();
+  // Filtering
+  const filteredEdges = edges.filter((e) => {
+    const src = svcMap[e.sourceServiceId];
+    const dst = svcMap[e.destinationServiceId];
+    const srcName = src?.name?.toLowerCase() || "";
+    const dstName = dst?.name?.toLowerCase() || "";
     const q = search.trim().toLowerCase();
-    const matchSearch = !q || src.includes(q) || dst.includes(q);
+    const matchSearch =
+      !q ||
+      srcName.includes(q) ||
+      dstName.includes(q) ||
+      e.dataClasses.some((dc) => dc.toLowerCase().includes(q));
 
     const matchDataClass =
-      dataClassFilter === "ALL" || (edge.dataClasses && edge.dataClasses.includes(dataClassFilter));
+      dataClassFilter === "ALL" || e.dataClasses.includes(dataClassFilter);
 
-    const violation = getEdgeViolation(edge);
+    const viol = getViolation(e.sourceServiceId, e.destinationServiceId);
     const matchStatus =
       statusFilter === "ALL" ||
-      (statusFilter === "VIOLATION" && Boolean(violation)) ||
-      (statusFilter === "COMPLIANT" && !violation);
+      (statusFilter === "VIOLATION" && viol) ||
+      (statusFilter === "COMPLIANT" && !viol);
 
     return matchSearch && matchDataClass && matchStatus;
   });
 
   const paginatedEdges = filteredEdges.slice((page - 1) * pageSize, page * pageSize);
-  const violationCount = violations.length;
+  const totalViolationsCount = validationResult?.violationCount != null ? validationResult.violationCount : violations.length;
+
+  const topActions = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="secondary"
+        size="md"
+        icon={validating ? Loader2 : RefreshCw}
+        onClick={() => runValidation(true)}
+        disabled={validating}
+      >
+        {validating ? "Evaluating..." : "Re-evaluate Graph"}
+      </Button>
+
+      {canWrite && (
+        <Button
+          variant="primary"
+          size="md"
+          icon={Plus}
+          onClick={() => setShowModal(true)}
+        >
+          Add Data Flow
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div>
       <Topbar
-        title="Data Flows"
-        subtitle="Manage and analyze cross-service data pipelines and residency compliance boundaries."
+        title="Data Flow Graph & Topology"
+        subtitle="Graph topology mapping cross-service egress pipelines and automated compliance verification."
+        actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 mt-4 space-y-3 pb-12">
-        {/* Floating Toast Notification (bottom-right) */}
+      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+        {/* Toast feedback */}
         {toast && (
           <div
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-xl border text-xs backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200 ${
+            className={`text-xs p-3 rounded-xl border flex items-center justify-between animate-in fade-in ${
               toast.type === "success"
-                ? "bg-[var(--color-surface)] border-[var(--color-good)]/40 text-[var(--color-good)]"
-                : "bg-[var(--color-surface)] border-amber-500/40 text-amber-300"
+                ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30 text-[var(--color-good-text)]"
+                : "bg-[var(--color-warn-light)] border-[var(--color-warn)]/30 text-[var(--color-warn-text)]"
             }`}
           >
-            {toast.type === "success" ? (
-              <CheckCircle2 size={15} className="shrink-0" />
-            ) : (
-              <AlertTriangle size={15} className="shrink-0" />
-            )}
-            <span className="font-medium text-white">{toast.text}</span>
-            <button
-              onClick={() => setToast(null)}
-              className="text-[var(--color-text-faint)] hover:text-white p-0.5 ml-1"
-            >
-              <X size={13} />
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={15} />
+              <span>{toast.text}</span>
+            </div>
+            <button onClick={() => setToast(null)} className="text-xs font-semibold hover:underline">
+              Dismiss
             </button>
           </div>
         )}
 
-        {/* Controls Bar */}
+        {/* Error notification */}
+        {error && (
+          <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/20 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} />
+              <span>{error}</span>
+            </div>
+            <button onClick={() => setError(null)} className="text-xs font-semibold hover:underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Filter Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            <div className="relative w-52 sm:w-64">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
+          <div className="flex items-center gap-2.5 flex-1 max-w-2xl">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
               <input
                 value={search}
                 onChange={(e) => {
@@ -236,10 +281,11 @@ export default function DataFlows() {
                   setPage(1);
                 }}
                 placeholder="Search..."
-                className="field-input pl-9 text-xs w-full"
+                className="field-input pl-8 text-xs"
               />
             </div>
 
+            {/* Data Class Filter */}
             <select
               value={dataClassFilter}
               onChange={(e) => {
@@ -248,7 +294,7 @@ export default function DataFlows() {
               }}
               className="field-input py-1.5 text-xs w-36"
             >
-              <option value="ALL">All Sensitivity</option>
+              <option value="ALL">All Data Classes</option>
               {DATA_CLASSES.map((dc) => (
                 <option key={dc} value={dc}>
                   {dc}
@@ -256,289 +302,267 @@ export default function DataFlows() {
               ))}
             </select>
 
+            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-36"
+              className="field-input py-1.5 text-xs w-32"
             >
               <option value="ALL">All Statuses</option>
-              <option value="COMPLIANT">Compliant Only</option>
-              <option value="VIOLATION">Violations Only</option>
+              <option value="COMPLIANT">Compliant</option>
+              <option value="VIOLATION">Violation</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Total Violations Badge beside Re-evaluate Graph */}
-            {validationResult && (
-              <div
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border font-mono whitespace-nowrap ${
-                  violations.length === 0
-                    ? "bg-[var(--color-good)]/10 text-[var(--color-good)] border-[var(--color-good)]/30"
-                    : "bg-[var(--color-bad)]/10 text-[var(--color-bad)] border-[var(--color-bad)]/30"
-                }`}
-                title={
-                  violations.length === 0
-                    ? "All registered data flow edges satisfy jurisdictional policies."
-                    : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join("\n")
-                }
-              >
-                {violations.length === 0 ? (
-                  <ShieldCheck size={13} className="shrink-0" />
-                ) : (
-                  <ShieldAlert size={13} className="shrink-0" />
-                )}
-                <span>
-                  {violations.length === 0
-                    ? "0 Violations"
-                    : `${violations.length} Violation${violations.length !== 1 ? "s" : ""} Found`}
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={() => runValidation(true)}
-              disabled={validating}
-              className="btn-ghost flex items-center gap-1.5 text-xs text-[var(--color-text-dim)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-surface-2)]"
-              title="Perform a fresh compliance evaluation of all current services and data flow edges"
+          {/* Violations Badge */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--color-text-faint)] font-mono">
+              Total Violations Found:
+            </span>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-lg border font-mono ${
+                totalViolationsCount > 0
+                  ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/40"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
+              }`}
             >
-              <RefreshCw size={13} className={validating ? "animate-spin text-[var(--color-brand)]" : ""} />
-              <span>{validating ? "Re-evaluating…" : "Re-evaluate Graph"}</span>
-            </button>
-
-            {canWrite && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="btn-primary flex items-center gap-1.5 text-xs"
-              >
-                <Plus size={15} />
-                Add Flow Edge
-              </button>
-            )}
+              {totalViolationsCount}
+            </span>
           </div>
         </div>
 
-        {error && (
-          <div className="rounded-lg bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-3 py-2 text-xs text-[var(--color-bad)] flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => runValidation(false)} className="underline ml-4">
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* Table */}
+        {/* Data Flows Table Card */}
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[var(--color-text-faint)] border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
-                <th className="px-5 py-3 font-medium text-xs">Source Service</th>
-                <th className="px-5 py-3 font-medium text-xs">Destination Service</th>
-                <th className="px-5 py-3 font-medium text-xs">Data Classification</th>
-                <th className="px-5 py-3 font-medium text-xs">Compliance Status</th>
-                {canWrite && <th className="px-5 py-3 text-right text-xs">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-[var(--color-text-faint)] text-xs">
-                    <Loader2 size={16} className="animate-spin inline mr-2 text-[var(--color-brand)]" /> Loading data flow edges…
-                  </td>
-                </tr>
-              )}
-              {!loading && filteredEdges.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center">
-                    <GitBranch size={28} className="mx-auto mb-2 text-[var(--color-text-faint)] opacity-60" />
-                    <p className="text-[var(--color-text-faint)] text-xs">No data flows match the current filters.</p>
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                paginatedEdges.map((edge) => {
-                  const src = svcMap[edge.sourceServiceId];
-                  const dst = svcMap[edge.destinationServiceId];
-                  const srcName = edge.sourceServiceName || src?.name || `Service #${edge.sourceServiceId}`;
-                  const dstName = edge.destinationServiceName || dst?.name || `Service #${edge.destinationServiceId}`;
-                  const violation = getEdgeViolation(edge);
+          {loading ? (
+            <TableSkeleton rows={5} cols={6} />
+          ) : filteredEdges.length === 0 ? (
+            <EmptyState
+              icon={GitBranch}
+              title="No data flows configured"
+              description={
+                search || dataClassFilter !== "ALL" || statusFilter !== "ALL"
+                  ? "Try adjusting your search criteria or status filters."
+                  : "Connect your service nodes to establish egress boundaries and real-time compliance gates."
+              }
+              actionLabel={canWrite ? "Add Data Flow" : null}
+              onAction={() => setShowModal(true)}
+              actionIcon={Plus}
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[var(--color-surface-2)] text-[var(--color-text-dim)] border-b border-[var(--color-border)] uppercase tracking-wider font-semibold text-[10px]">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold">Source Service</th>
+                    <th className="px-5 py-3 font-semibold">Destination Service</th>
+                    <th className="px-5 py-3 font-semibold">Data Classes</th>
+                    <th className="px-5 py-3 font-semibold">Compliance Status</th>
+                    <th className="px-5 py-3 font-semibold">Violation Reason</th>
+                    <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {paginatedEdges.map((edge) => {
+                    const src = svcMap[edge.sourceServiceId];
+                    const dst = svcMap[edge.destinationServiceId];
+                    const viol = getViolation(edge.sourceServiceId, edge.destinationServiceId);
 
-                  return (
-                    <tr
-                      key={edge.id}
-                      className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-2)] transition-colors"
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white text-xs font-mono">{srcName}</span>
-                          {src && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">
-                              {src.region}
+                    return (
+                      <tr
+                        key={edge.id}
+                        className={`transition-colors ${
+                          viol
+                            ? "bg-rose-500/5 hover:bg-rose-500/10"
+                            : "hover:bg-[var(--color-surface-2)]/60"
+                        }`}
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-semibold text-[var(--color-text)]">
+                              {src?.name || `Service #${edge.sourceServiceId}`}
                             </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white text-xs font-mono">{dstName}</span>
-                          {dst && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">
-                              {dst.region}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(edge.dataClasses || []).map((dc) => (
-                            <span
-                              key={dc}
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
-                            >
-                              {dc}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        {violation ? (
-                          <div className="flex items-center gap-1.5 text-[var(--color-bad)] text-xs font-medium">
-                            <ShieldAlert size={14} className="shrink-0" />
-                            <span>
-                              Violation: {violation.policyCode ? `[${violation.policyCode}] ` : ""}{violation.reason}
-                            </span>
+                            {src?.region && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                {src.region}
+                              </span>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-[var(--color-good)] text-xs font-medium">
-                            <ShieldCheck size={14} className="shrink-0" />
-                            <span>Compliant</span>
-                          </div>
-                        )}
-                      </td>
-                      {canWrite && (
-                        <td className="px-5 py-3 text-right">
-                          <button
-                            onClick={() => handleDelete(edge.id)}
-                            className="text-[var(--color-text-faint)] hover:text-[var(--color-bad)] p-1 transition-colors"
-                            title="Delete Flow Edge"
-                          >
-                            <Trash2 size={14} />
-                          </button>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
 
-          <Pagination
-            currentPage={page}
-            totalItems={filteredEdges.length}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(sz) => {
-              setPageSize(sz);
-              setPage(1);
-            }}
-          />
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-semibold text-[var(--color-text)]">
+                              {dst?.name || `Service #${edge.destinationServiceId}`}
+                            </span>
+                            {dst?.region && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                {dst.region}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {edge.dataClasses.map((dc) => (
+                              <span
+                                key={dc}
+                                className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                              >
+                                {dc}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-3">
+                          {viol ? (
+                            <Badge variant="bad" dot icon={ShieldAlert}>
+                              VIOLATION
+                            </Badge>
+                          ) : (
+                            <Badge variant="good" dot icon={ShieldCheck}>
+                              COMPLIANT
+                            </Badge>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-3 text-xs text-[var(--color-bad)] max-w-xs truncate font-mono text-[11px]">
+                          {viol?.reason || (viol?.policyCode ? `Blocked by ${viol.policyCode}` : "—")}
+                        </td>
+
+                        <td className="px-5 py-3 text-right">
+                          {canWrite && (
+                            <button
+                              onClick={() => handleDeleteEdge(edge.id)}
+                              className="p-1 rounded-lg text-[var(--color-text-faint)] hover:text-[var(--color-bad)] hover:bg-[var(--color-bad-light)] transition-colors"
+                              title="Delete Flow Edge"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <Pagination
+                currentPage={page}
+                totalItems={filteredEdges.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <form
-            onSubmit={handleCreate}
-            className="card w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="font-semibold text-white text-base">Add Data Flow Edge</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setFormError(null);
-                }}
-                className="text-[var(--color-text-faint)] hover:text-white"
-              >
-                <X size={18} />
-              </button>
+      {/* Add Data Flow Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Add Data Flow Edge"
+        subtitle="Define an egress boundary between two services and associate transferred data classifications."
+      >
+        <form onSubmit={handleAddEdge} className="space-y-4">
+          {formError && (
+            <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 rounded-lg p-2.5 flex items-center gap-2">
+              <AlertTriangle size={14} className="shrink-0" />
+              <span>{formError}</span>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">Source Service *</label>
-              <SearchableCombobox
-                value={form.sourceServiceId}
-                onChange={(val) => setForm((prev) => ({ ...prev, sourceServiceId: val }))}
-                options={services}
-                getOptionLabel={(s) => s.name || s.id}
-                getOptionValue={(s) => String(s.id)}
-                placeholder="Select source service..."
-                searchPlaceholder="Search services..."
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+              Source Service *
+            </label>
+            <SearchableCombobox
+              value={form.sourceServiceId}
+              onChange={(val) => setForm((f) => ({ ...f, sourceServiceId: val }))}
+              options={services.map((s) => ({
+                id: String(s.id),
+                name: s.name,
+                region: s.region,
+                environment: s.environment,
+              }))}
+              placeholder="Select source service..."
+              getOptionLabel={(o) => o.name}
+              getOptionValue={(o) => o.id}
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs text-[var(--color-text-dim)] mb-1.5">Destination Service *</label>
-              <SearchableCombobox
-                value={form.destinationServiceId}
-                onChange={(val) => setForm((prev) => ({ ...prev, destinationServiceId: val }))}
-                options={services}
-                getOptionLabel={(s) => s.name || s.id}
-                getOptionValue={(s) => String(s.id)}
-                placeholder="Select destination service..."
-                searchPlaceholder="Search services..."
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1">
+              Destination Service *
+            </label>
+            <SearchableCombobox
+              value={form.destinationServiceId}
+              onChange={(val) => setForm((f) => ({ ...f, destinationServiceId: val }))}
+              options={services.map((s) => ({
+                id: String(s.id),
+                name: s.name,
+                region: s.region,
+                environment: s.environment,
+              }))}
+              placeholder="Select destination service..."
+              getOptionLabel={(o) => o.name}
+              getOptionValue={(o) => o.id}
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs text-[var(--color-text-dim)] mb-2">Data Sensitivity Classes *</label>
-              <div className="flex flex-wrap gap-2">
-                {DATA_CLASSES.map((dc) => (
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1.5">
+              Data Classes Transferred *
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {DATA_CLASSES.map((dc) => {
+                const isSelected = form.dataClasses.includes(dc);
+                return (
                   <button
                     key={dc}
                     type="button"
                     onClick={() => toggleDataClass(dc)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-                      form.dataClasses.includes(dc)
-                        ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white"
-                        : "border-[var(--color-border)] text-[var(--color-text-dim)] hover:border-[var(--color-brand)] hover:text-white"
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      isSelected
+                        ? "bg-[var(--color-brand-light)] text-[var(--color-brand-text)] border border-[var(--color-brand)]/40 font-semibold"
+                        : "bg-[var(--color-surface-2)] text-[var(--color-text-dim)] border border-[var(--color-border)] hover:text-[var(--color-text)]"
                     }`}
                   >
                     {dc}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </div>
 
-            {formError && (
-              <p className="text-xs text-[var(--color-bad)] bg-[var(--color-bad)]/10 rounded-lg px-3 py-2">
-                {formError}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setFormError(null);
-                }}
-                className="btn-ghost text-xs"
-              >
+          <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-xs text-[var(--color-text-faint)] hover:text-[var(--color-text)] flex items-center gap-1"
+            >
+              <RotateCcw size={12} /> Reset Draft
+            </button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="md" onClick={() => setShowModal(false)}>
                 Cancel
-              </button>
-              <button type="submit" disabled={submitting} className="btn-primary text-xs">
-                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                Add Flow Edge
-              </button>
+              </Button>
+              <Button variant="primary" size="md" type="submit" loading={submitting}>
+                Save Edge
+              </Button>
             </div>
-          </form>
-        </div>
-      )}
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

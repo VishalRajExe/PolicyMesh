@@ -12,9 +12,12 @@ import {
   Users,
   Settings,
   ChevronLeft,
+  ChevronRight,
   Shield,
   CheckSquare,
   Server,
+  User,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -26,15 +29,15 @@ const NAV_ITEMS = [
   { to: "/runtime-monitor", label: "Runtime Monitor", icon: Activity },
   { to: "/lineage", label: "Lineage", icon: Link2 },
   { to: "/ai-classification", label: "AI Classification", icon: Sparkles },
-  { to: "/ci-check", label: "CI Check", icon: CheckSquare },
-  { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/reports", label: "Reports", icon: ClipboardList },
+  { to: "/alerts", label: "Alerts", icon: Bell },
+  { to: "/ci-check", label: "CI Check", icon: CheckSquare },
   { to: "/system", label: "System Status", icon: Server },
   { to: "/users-roles", label: "Users & Roles", icon: Users },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const { user } = useAuth();
 
   const initials = (user?.email || "CO")
@@ -42,73 +45,114 @@ export default function Sidebar({ collapsed, onToggle }) {
     .slice(0, 2)
     .toUpperCase();
 
-  return (
-    <aside
-      className={`hidden lg:flex flex-col shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg)] transition-all duration-200 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
-    >
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-[var(--color-border)]">
-        <img
-          src="/logo.png"
-          alt="PolicyMesh"
-          className="w-9 h-9 object-contain drop-shadow-md shrink-0 transition-transform hover:scale-105"
-        />
+  const roleLabel = user?.role ? toTitleCase(user.role) : "Compliance Officer";
+
+  const content = (
+    <div className="flex flex-col h-full bg-[var(--color-surface)] border-r border-[var(--color-border)] select-none">
+      {/* Brand Logo & Tagline */}
+      <div className="flex items-center gap-3 px-5 h-18 border-b border-[var(--color-border)] shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center text-[var(--color-brand)] shrink-0 shadow-sm">
+          <Shield size={20} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+        </div>
         {!collapsed && (
-          <div className="leading-tight">
-            <p className="font-semibold text-[15px] text-white">PolicyMesh</p>
-            <p className="text-[11px] text-[var(--color-text-faint)]">Govern. Enforce. Trust.</p>
+          <div className="leading-tight min-w-0">
+            <p className="font-bold text-sm tracking-tight text-[var(--color-text)]">PolicyMesh</p>
+            <p className="text-[11px] text-[var(--color-text-faint)] font-medium">Govern. Enforce. Trust.</p>
           </div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      {/* Navigation Items */}
+      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            onClick={() => onMobileClose && onMobileClose()}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors focus-ring ${
+              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 focus-ring ${
                 isActive
-                  ? "bg-[var(--color-brand)] text-white font-medium"
-                  : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-2)] hover:text-white"
+                  ? "bg-[var(--color-brand-light)] text-[var(--color-brand-text)] font-semibold shadow-xs"
+                  : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
               }`
             }
             title={collapsed ? label : undefined}
           >
-            <Icon size={18} className="shrink-0" />
+            <Icon
+              size={17}
+              className="shrink-0 transition-transform duration-150"
+            />
             {!collapsed && <span className="truncate">{label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      {/* User + collapse */}
-      <div className="border-t border-[var(--color-border)] p-3 space-y-2">
-        <NavLink to="/settings" className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-[var(--color-surface-2)] transition-colors">
-          <div className="w-9 h-9 rounded-full bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center text-xs font-semibold text-white shrink-0">
-            {initials}
+      {/* User Card & Collapse Button */}
+      <div className="border-t border-[var(--color-border)] p-3 space-y-2 shrink-0 bg-[var(--color-surface-2)]/30">
+        <NavLink
+          to="/settings"
+          onClick={() => onMobileClose && onMobileClose()}
+          className="flex items-center justify-between gap-2.5 rounded-xl p-2 hover:bg-[var(--color-surface-2)] border border-transparent hover:border-[var(--color-border)] transition-all group"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white shrink-0 shadow-xs">
+              {initials}
+            </div>
+            {!collapsed && (
+              <div className="leading-tight min-w-0">
+                <p className="text-xs font-semibold text-[var(--color-text)] truncate">{roleLabel}</p>
+                <p className="text-[10px] text-[var(--color-text-faint)] truncate group-hover:text-[var(--color-brand)]">
+                  View all permissions
+                </p>
+              </div>
+            )}
           </div>
           {!collapsed && (
-            <div className="leading-tight min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user?.role ? toTitleCase(user.role) : "Compliance Officer"}
-              </p>
-              <p className="text-[11px] text-[var(--color-text-faint)] truncate">Settings & Profile</p>
-            </div>
+            <ChevronRight size={14} className="text-[var(--color-text-faint)] group-hover:text-[var(--color-text)] shrink-0" />
           )}
         </NavLink>
+
         <button
+          type="button"
           onClick={onToggle}
-          className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-2)] hover:text-white transition-colors focus-ring"
+          className="w-full hidden lg:flex items-center justify-center gap-2 rounded-lg py-1.5 text-xs text-[var(--color-text-faint)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors focus-ring"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <ChevronLeft size={16} className={`transition-transform ${collapsed ? "rotate-180" : ""}`} />
-          {!collapsed && <span>Collapse</span>}
+          <ChevronLeft
+            size={15}
+            className={`transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+          />
+          {!collapsed && <span className="text-[11px]">Collapse</span>}
         </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside
+        className={`hidden lg:block shrink-0 transition-all duration-200 ${
+          collapsed ? "w-18" : "w-60"
+        }`}
+      >
+        {content}
+      </aside>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            onClick={onMobileClose}
+          />
+          <div className="relative w-64 max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+            {content}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
