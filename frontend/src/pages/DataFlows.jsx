@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Plus,
   Trash2,
@@ -9,6 +9,8 @@ import {
   RefreshCw,
   X,
   Search,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -35,6 +37,7 @@ export default function DataFlows() {
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
+  const [evaluationFeedback, setEvaluationFeedback] = useState(null);
 
   // URL query state
   const [search, setSearch] = useQueryState("search", "");
@@ -55,7 +58,7 @@ export default function DataFlows() {
   const canWrite = user?.role === "ADMIN" || user?.role === "ENGINEER";
   const svcMap = Object.fromEntries(services.map((s) => [s.id, s]));
 
-  async function load() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -67,24 +70,43 @@ export default function DataFlows() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function runValidation() {
+  const runValidation = useCallback(async () => {
     setValidating(true);
+    setError(null);
     try {
-      const result = await graphApi.validate();
+      const [result, svcs, edg] = await Promise.all([
+        graphApi.reEvaluate(),
+        servicesApi.list(),
+        edgesApi.list(),
+      ]);
       setValidationResult(result);
       setViolations(result.violations || []);
+      setServices(svcs || []);
+      setEdges(edg || []);
+
+      const vCount = result.violationCount != null ? result.violationCount : (result.violations || []).length;
+      const total = result.totalFlows != null ? result.totalFlows : (edg || []).length;
+      const compliant = result.compliantFlows != null ? result.compliantFlows : Math.max(0, total - vCount);
+
+      setEvaluationFeedback({
+        type: vCount === 0 ? "success" : "warning",
+        total,
+        compliant,
+        violations: vCount,
+        message: `Graph re-evaluated: ${total} flows checked, ${compliant} compliant, ${vCount} violation${vCount !== 1 ? "s" : ""}.`,
+      });
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Unable to re-evaluate the current graph. Please try again.");
     } finally {
       setValidating(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load().then(() => runValidation());
-  }, []);
+    loadData().then(() => runValidation());
+  }, [loadData, runValidation]);
 
   function toggleDataClass(dc) {
     setForm((f) => ({
@@ -119,7 +141,6 @@ export default function DataFlows() {
       });
       setShowForm(false);
       clearDraft();
-      await load();
       await runValidation();
     } catch (err) {
       setFormError(err.message || "Failed to create data flow edge");
@@ -131,7 +152,6 @@ export default function DataFlows() {
   async function handleDelete(id) {
     try {
       await edgesApi.remove(id);
-      await load();
       await runValidation();
     } catch (err) {
       setError(err.message);
@@ -139,11 +159,14 @@ export default function DataFlows() {
   }
 
   function getEdgeViolation(edge) {
-    return violations.find(
-      (v) =>
-        (v.sourceService === edge.sourceServiceName || v.sourceService === svcMap[edge.sourceServiceId]?.name) &&
-        (v.destinationService === edge.destinationServiceName || v.destinationService === svcMap[edge.destinationServiceId]?.name)
-    );
+    return violations.find((v) => {
+      if (v.edgeId && edge.id && Number(v.edgeId) === Number(edge.id)) {
+        return true;
+      }
+      const edgeSrc = edge.sourceServiceName || svcMap[edge.sourceServiceId]?.name;
+      const edgeDst = edge.destinationServiceName || svcMap[edge.destinationServiceId]?.name;
+      return v.sourceService === edgeSrc && v.destinationService === edgeDst;
+    });
   }
 
   // Filtered edges
@@ -175,7 +198,33 @@ export default function DataFlows() {
       />
 
       <div className="px-6 lg:px-8 mt-4 space-y-4 pb-12">
-        {/* Validation banner */}
+        {/* Re-evaluation result toast / banner */}
+        {evaluationFeedback && (
+          <div
+            className={`rounded-xl px-4 py-2.5 border flex items-center justify-between text-xs transition-all ${
+              evaluationFeedback.type === "success"
+                ? "bg-[var(--color-good)]/10 border-[var(--color-good)]/30 text-[var(--color-good)]"
+                : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {evaluationFeedback.type === "success" ? (
+                <CheckCircle2 size={15} className="shrink-0" />
+              ) : (
+                <AlertTriangle size={15} className="shrink-0" />
+              )}
+              <span>{evaluationFeedback.message}</span>
+            </div>
+            <button
+              onClick={() => setEvaluationFeedback(null)}
+              className="text-[var(--color-text-faint)] hover:text-white p-1"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+
+        {/* Validation summary banner */}
         {validationResult && (
           <div
             className={`rounded-2xl p-4 border flex items-center justify-between transition-colors ${
@@ -192,7 +241,7 @@ export default function DataFlows() {
                     ? "All Data Flows Compliant"
                     : `${violations.length} Active Cross-Border Policy Violation${violations.length !== 1 ? "s" : ""}`}
                 </p>
-                <p className="text-xs opacity-80">
+                <p className="text-xs opacity-80 mt-0.5">
                   {violations.length === 0
                     ? "All registered data flow edges satisfy jurisdictional policies."
                     : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join(" | ")}
@@ -202,10 +251,11 @@ export default function DataFlows() {
             <button
               onClick={runValidation}
               disabled={validating}
-              className="btn-ghost flex items-center gap-1.5 text-xs text-inherit border-inherit/40"
+              className="btn-ghost flex items-center gap-1.5 text-xs text-inherit border-inherit/40 hover:bg-white/10"
+              title="Perform a fresh compliance evaluation of all current services and data flow edges"
             >
               <RefreshCw size={13} className={validating ? "animate-spin" : ""} />
-              Re-evaluate Graph
+              {validating ? "Re-evaluating…" : "Re-evaluate Graph"}
             </button>
           </div>
         )}
@@ -266,8 +316,8 @@ export default function DataFlows() {
 
         {error && (
           <div className="rounded-xl bg-[var(--color-bad)]/10 border border-[var(--color-bad)]/30 px-4 py-3 text-sm text-[var(--color-bad)] flex items-center justify-between">
-            {error}
-            <button onClick={load} className="underline ml-4 text-xs">
+            <span>{error}</span>
+            <button onClick={runValidation} className="underline ml-4 text-xs">
               Retry
             </button>
           </div>
@@ -339,7 +389,7 @@ export default function DataFlows() {
                           {(edge.dataClasses || []).map((dc) => (
                             <span
                               key={dc}
-                              className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                              className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
                             >
                               {dc}
                             </span>
@@ -350,7 +400,9 @@ export default function DataFlows() {
                         {violation ? (
                           <div className="flex items-center gap-1.5 text-[var(--color-bad)] text-xs font-medium">
                             <ShieldAlert size={14} className="shrink-0" />
-                            <span>Violation: {violation.policyId || violation.reason}</span>
+                            <span>
+                              Violation: {violation.policyCode ? `[${violation.policyCode}] ` : ""}{violation.reason}
+                            </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-[var(--color-good)] text-xs font-medium">

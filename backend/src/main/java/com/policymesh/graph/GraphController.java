@@ -16,6 +16,6 @@ public class GraphController {
   public GraphModels.View graph() { return analyzer.graph(); }
 
   /** Compliance violations are a valid business outcome and always return HTTP 200. */
-  @PostMapping("/validate")
+  @PostMapping({"/validate", "/re-evaluate"})
   public GraphModels.CheckResult validate() { return analyzer.validate(); }
 }
