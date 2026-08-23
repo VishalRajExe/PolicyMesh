@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   Shield,
   CheckSquare,
+  Server,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: "/ci-check", label: "CI Check", icon: CheckSquare },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/reports", label: "Reports", icon: ClipboardList },
+  { to: "/system", label: "System Status", icon: Server },
   { to: "/users-roles", label: "Users & Roles", icon: Users },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

@@ -15,6 +15,7 @@ import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import UsersRoles from "./pages/UsersRoles";
 import Settings from "./pages/Settings";
+import SystemStatus from "./pages/SystemStatus";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/ci-check" element={<ProtectedRoute><CiCheck /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/system" element={<ProtectedRoute><SystemStatus /></ProtectedRoute>} />
           <Route path="/users-roles" element={<ProtectedRoute><UsersRoles /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
