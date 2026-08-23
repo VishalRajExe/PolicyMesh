@@ -45,7 +45,11 @@ const SCAN_STEPS = [
 ];
 
 export default function CiCheck() {
-  const [form, setForm, resetDraft] = useFormDraft("ci_check", {
+  const {
+    values: form,
+    setValues: setForm,
+    resetForm: resetDraft,
+  } = useFormDraft("ci_check", {
     branch: "main",
     commitHash: "HEAD",
   });
