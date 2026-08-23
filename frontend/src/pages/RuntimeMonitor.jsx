@@ -93,11 +93,37 @@ export default function RuntimeMonitor() {
     }
   }, [searchParams, setForm]);
 
+  // Auto-sync regions when services list loads or updates
+  useEffect(() => {
+    if (services.length > 0) {
+      setForm((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        if (prev.sourceService) {
+          const srcObj = services.find((s) => s.name === prev.sourceService || String(s.id) === prev.sourceService);
+          if (srcObj && srcObj.region && prev.sourceRegion !== srcObj.region) {
+            next.sourceRegion = srcObj.region;
+            changed = true;
+          }
+        }
+        if (prev.destinationService) {
+          const dstObj = services.find((s) => s.name === prev.destinationService || String(s.id) === prev.destinationService);
+          if (dstObj && dstObj.region && prev.destinationRegion !== dstObj.region) {
+            next.destinationRegion = dstObj.region;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
+  }, [services, setForm]);
+
   const setSourceService = (val, opt) => {
     setForm((prev) => {
       const next = { ...prev, sourceService: val };
-      if (opt && opt.region && !prev.sourceRegion) {
-        next.sourceRegion = opt.region;
+      const serviceObj = opt || services.find((s) => s.name === val || String(s.id) === val);
+      if (serviceObj && serviceObj.region) {
+        next.sourceRegion = serviceObj.region;
       }
       return next;
     });
@@ -106,8 +132,9 @@ export default function RuntimeMonitor() {
   const setDestinationService = (val, opt) => {
     setForm((prev) => {
       const next = { ...prev, destinationService: val };
-      if (opt && opt.region && !prev.destinationRegion) {
-        next.destinationRegion = opt.region;
+      const serviceObj = opt || services.find((s) => s.name === val || String(s.id) === val);
+      if (serviceObj && serviceObj.region) {
+        next.destinationRegion = serviceObj.region;
       }
       return next;
     });
