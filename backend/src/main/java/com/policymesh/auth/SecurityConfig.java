@@ -82,8 +82,10 @@ public class SecurityConfig {
             .requestMatchers("DELETE", "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
             .requestMatchers("POST", "/api/v1/enforce/check").hasAnyRole("ADMIN", "ENGINEER")
             .requestMatchers("POST", "/api/v1/ci/check").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/ai/classify").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/ai/classify/*/approve", "/api/v1/ai/classify/*/reject").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/ai/**").authenticated()
+            .requestMatchers("POST", "/api/v1/ai/classify", "/api/v1/ai/classifications").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers("POST", "/api/v1/ai/classify/*/approve", "/api/v1/ai/classify/*/reject",
+                             "/api/v1/ai/classifications/*/approve", "/api/v1/ai/classifications/*/reject").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
             .requestMatchers("POST", "/api/v1/compiler/compile").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
             .requestMatchers("POST", "/api/v1/dev/seed").hasRole("ADMIN")
             .anyRequest().authenticated())

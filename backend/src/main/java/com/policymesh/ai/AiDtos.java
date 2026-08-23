@@ -1,6 +1,7 @@
 package com.policymesh.ai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -21,11 +22,31 @@ public final class AiDtos {
       @Size(max = 500, message = "sampleValue must not exceed 500 characters")
       String sampleValue) {}
 
-  public record Response(Long id, String fieldName, String suggestedClass, double confidence,
-                         String status, String provider, String reviewedBy, Instant createdAt) {}
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record Response(
+      Long id,
+      String fieldName,
+      String classification,
+      String suggestedClass,
+      double confidence,
+      String status,
+      String provider,
+      String reviewedBy,
+      Instant createdAt,
+      boolean requiresHumanApproval) {}
 
   static Response from(AIClassification a) {
-    return new Response(a.getId(), a.getFieldName(), a.getClassification(), a.getConfidence(),
-        a.getStatus(), a.getProvider(), a.getReviewedBy(), a.getCreatedAt());
+    String cls = a.getClassification();
+    return new Response(
+        a.getId(),
+        a.getFieldName(),
+        cls,
+        cls,
+        a.getConfidence(),
+        a.getStatus(),
+        a.getProvider(),
+        a.getReviewedBy(),
+        a.getCreatedAt(),
+        "PENDING".equals(a.getStatus()));
   }
 }

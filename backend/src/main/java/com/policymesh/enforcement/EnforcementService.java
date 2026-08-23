@@ -1,5 +1,6 @@
 package com.policymesh.enforcement;
 
+import com.policymesh.ai.ClassificationService;
 import com.policymesh.common.ApiException;
 import com.policymesh.events.EventPublisher;
 import com.policymesh.lineage.LineageService;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,14 +31,17 @@ public class EnforcementService {
   private final LineageService lineage;
   private final DecisionRepository decisions;
   private final ServiceNodeRepository services;
+  private final ClassificationService classificationService;
   private final EventPublisher events;
 
   public EnforcementService(PolicyEngine engine, LineageService lineage, DecisionRepository decisions,
-                            ServiceNodeRepository services, EventPublisher events) {
+                            ServiceNodeRepository services, ClassificationService classificationService,
+                            EventPublisher events) {
     this.engine = engine;
     this.lineage = lineage;
     this.decisions = decisions;
     this.services = services;
+    this.classificationService = classificationService;
     this.events = events;
   }
 
@@ -45,9 +50,21 @@ public class EnforcementService {
     String destination = requireName(r.effectiveDestination(), "destinationService");
     String sourceRegion = resolveRegion(r.effectiveSourceRegion(), source, "sourceRegion");
     String destinationRegion = resolveRegion(r.effectiveDestinationRegion(), destination, "destinationRegion");
-    Set<String> dataClasses = PolicyRuleEvaluator.canonicalDataClasses(r.effectiveTags());
+
+    Set<String> resolvedTags = new HashSet<>(r.effectiveTags());
+    Set<String> fields = r.effectiveFields();
+    if (!fields.isEmpty()) {
+      for (String field : fields) {
+        String resolved = classificationService.resolveEffectiveClass(field);
+        if (resolved != null && !resolved.isBlank()) {
+          resolvedTags.add(resolved);
+        }
+      }
+    }
+
+    Set<String> dataClasses = PolicyRuleEvaluator.canonicalDataClasses(resolvedTags);
     if (dataClasses.isEmpty()) {
-      throw ApiException.unprocessable("dataClassTags must contain at least one data class");
+      throw ApiException.unprocessable("dataClassTags or registered schema field is required");
     }
 
     List<PolicyEvaluation> evaluations = new ArrayList<>();

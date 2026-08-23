@@ -19,6 +19,8 @@ public class EventPublisher {
   public static final String TOPIC_DECISION_CREATED = "policymesh.decision.created";
   public static final String TOPIC_LINEAGE_CREATED = "policymesh.lineage.created";
   public static final String TOPIC_CI_COMPLETED = "policymesh.ci.completed";
+  public static final String TOPIC_AI_APPROVED = "policymesh.ai.approved";
+  public static final String TOPIC_AI_REJECTED = "policymesh.ai.rejected";
 
   private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(EventPublisher.class);
 

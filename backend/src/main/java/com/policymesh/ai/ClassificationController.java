@@ -2,14 +2,17 @@ package com.policymesh.ai;
 
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/v1/ai/classify")
+@RequestMapping({"/api/v1/ai/classify", "/api/v1/ai/classifications"})
 public class ClassificationController {
   private final ClassificationService service;
 
@@ -18,6 +21,16 @@ public class ClassificationController {
   @PostMapping
   public AiDtos.Response classify(@Valid @RequestBody AiDtos.Request r) {
     return service.classify(r);
+  }
+
+  @GetMapping
+  public List<AiDtos.Response> list() {
+    return service.listAll();
+  }
+
+  @GetMapping("/{id}")
+  public AiDtos.Response one(@PathVariable long id) {
+    return service.getById(id);
   }
 
   /** Human approval is mandatory before a suggestion becomes enforcement-relevant. */
