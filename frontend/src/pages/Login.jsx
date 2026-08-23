@@ -39,8 +39,21 @@ export default function Login() {
       <div className="w-full max-w-sm">
         {/* Brand Header */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center text-[var(--color-brand)] mb-3 shadow-sm">
-            <Shield size={24} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+          <div className="w-12 h-12 rounded-2xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center mb-3 shadow-sm overflow-hidden p-1.5">
+            <img
+              src="/logo.png"
+              alt="PolicyMesh Logo"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                if (e.currentTarget.nextElementSibling) {
+                  e.currentTarget.nextElementSibling.style.display = "flex";
+                }
+              }}
+            />
+            <div style={{ display: "none" }} className="w-full h-full items-center justify-center text-[var(--color-brand)]">
+              <Shield size={24} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+            </div>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)]">PolicyMesh</h1>
           <p className="text-xs text-[var(--color-text-dim)] mt-0.5">Govern. Enforce. Trust.</p>
