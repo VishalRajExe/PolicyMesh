@@ -11,6 +11,9 @@ import {
   Loader2,
   Search,
   X,
+  Lock,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -19,10 +22,11 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import { TableSkeleton } from "../components/ui/LoadingSkeleton";
 import { reportsApi } from "../api/reports";
+
 function formatComplianceScore(score) {
-  if (score == null) return "94%";
+  if (score == null) return "100%";
   const num = typeof score === "number" ? score : parseFloat(score);
-  if (isNaN(num)) return "94%";
+  if (isNaN(num)) return "100%";
   const pct = num <= 1 ? num * 100 : num;
   return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
 }
@@ -37,7 +41,7 @@ export default function Reports() {
   const [violationFilter, setViolationFilter] = useState("ALL");
   const [policySearch, setPolicySearch] = useState("");
   const [policyPage, setPolicyPage] = useState(1);
-  const [policySize, setPolicySize] = useState(5);
+  const [policySize, setPolicySize] = useState(10);
   const [violationPage, setViolationPage] = useState(1);
   const [violationSize, setViolationSize] = useState(5);
 
@@ -73,7 +77,7 @@ export default function Reports() {
   const policyList = report?.policyBreakdown || [];
   const filteredPolicies = policyList.filter((p) => {
     const q = policySearch.trim().toLowerCase();
-    return !q || p.policyCode.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+    return !q || (p.policyCode && p.policyCode.toLowerCase().includes(q)) || (p.name && p.name.toLowerCase().includes(q));
   });
   const paginatedPolicies = filteredPolicies.slice((policyPage - 1) * policySize, policyPage * policySize);
 
@@ -84,6 +88,13 @@ export default function Reports() {
     return v.dataClass === violationFilter;
   });
   const paginatedViolations = filteredViolations.slice((violationPage - 1) * violationSize, violationPage * violationSize);
+
+  const totalEvaluations =
+    report?.summary
+      ? (report.summary.allowedTransfers || 0) + (report.summary.blockedTransfers || 0)
+      : 0;
+
+  const lineageBlocks = report?.lineageStatus?.recordsChecked || 0;
 
   const topActions = (
     <div className="flex items-center gap-2">
@@ -132,12 +143,13 @@ export default function Reports() {
 
         {/* 4 Executive KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Compliance Score */}
           <div className="card p-4.5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-dim)]">Compliance Score</p>
                 <p className="text-2xl font-bold text-[var(--color-text)] mt-1">
-                  {formatComplianceScore(report?.complianceRate || report?.complianceScore)}
+                  {loading ? "..." : formatComplianceScore(report?.summary?.complianceScore)}
                 </p>
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-green">
@@ -145,16 +157,19 @@ export default function Reports() {
               </div>
             </div>
             <span className="text-[11px] text-[var(--color-good)] font-medium mt-2 block">
-              ↑ 4% over last 30 days
+              {report?.summary?.activeViolations
+                ? `${report.summary.activeViolations} active violation(s)`
+                : "Active topology 100% compliant"}
             </span>
           </div>
 
+          {/* Card 2: Total Policies */}
           <div className="card p-4.5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-dim)]">Total Policies</p>
                 <p className="text-2xl font-bold text-[var(--color-text)] mt-1">
-                  {report?.totalPolicies != null ? report.totalPolicies : policyList.length || 24}
+                  {loading ? "..." : report?.summary?.totalPolicies != null ? report.summary.totalPolicies : policyList.length}
                 </p>
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-purple">
@@ -162,16 +177,19 @@ export default function Reports() {
               </div>
             </div>
             <span className="text-[11px] text-[var(--color-text-faint)] mt-2 block">
-              Across 5 Jurisdictions
+              {report?.summary?.activePolicies != null
+                ? `${report.summary.activePolicies} active across jurisdictions`
+                : "Active governance rules"}
             </span>
           </div>
 
+          {/* Card 3: Total Runtime Evaluations */}
           <div className="card p-4.5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-dim)]">Total Evaluations</p>
                 <p className="text-2xl font-bold text-[var(--color-text)] mt-1">
-                  {report?.totalEvaluations != null ? report.totalEvaluations.toLocaleString() : "1,420"}
+                  {loading ? "..." : totalEvaluations.toLocaleString()}
                 </p>
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-blue">
@@ -179,29 +197,36 @@ export default function Reports() {
               </div>
             </div>
             <span className="text-[11px] text-[var(--color-text-faint)] mt-2 block">
-              100% evaluated in &lt; 2ms
+              {report?.summary
+                ? `${(report.summary.allowedTransfers || 0).toLocaleString()} allowed • ${(report.summary.blockedTransfers || 0).toLocaleString()} blocked`
+                : "Real-time decision logs"}
             </span>
           </div>
 
+          {/* Card 4: Cryptographic Lineage Blocks */}
           <div className="card p-4.5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-dim)]">Lineage Blocks</p>
                 <p className="text-2xl font-bold text-[var(--color-text)] mt-1">
-                  {report?.lineageBlockCount != null ? report.lineageBlockCount.toLocaleString() : "1,420"}
+                  {loading ? "..." : lineageBlocks.toLocaleString()}
                 </p>
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-amber">
                 <Database size={18} />
               </div>
             </div>
-            <span className="text-[11px] text-[var(--color-good)] font-medium mt-2 block">
-              Chain verification: 100% Valid
+            <span className={`text-[11px] font-medium mt-2 block ${
+              report?.lineageStatus?.valid ? "text-[var(--color-good)]" : "text-[var(--color-bad)]"
+            }`}>
+              {report?.lineageStatus?.valid
+                ? `SHA-256 Ledger: 100% Valid (${lineageBlocks} blocks)`
+                : "Chain verification failed"}
             </span>
           </div>
         </div>
 
-        {/* Policy Breakdown Table */}
+        {/* Policy Enforcement Breakdown Table */}
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -250,6 +275,7 @@ export default function Reports() {
                   <tr>
                     <th className="px-5 py-3 font-semibold">Policy Code</th>
                     <th className="px-5 py-3 font-semibold">Name</th>
+                    <th className="px-5 py-3 font-semibold">Jurisdiction</th>
                     <th className="px-5 py-3 font-semibold">Allowed Transfers</th>
                     <th className="px-5 py-3 font-semibold">Blocked Violations</th>
                     <th className="px-5 py-3 font-semibold">Compliance Rate</th>
@@ -257,18 +283,23 @@ export default function Reports() {
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
                   {paginatedPolicies.map((p) => {
-                    const allowed = p.allowedCount || 0;
-                    const blocked = p.blockedCount || 0;
+                    const allowed = p.allowedEvaluations || 0;
+                    const blocked = p.blockedEvaluations || 0;
                     const total = allowed + blocked;
                     const rate = total > 0 ? Math.round((allowed / total) * 100) : 100;
 
                     return (
-                      <tr key={p.policyCode} className="hover:bg-[var(--color-surface-2)]/60 transition-colors">
+                      <tr key={p.policyCode || p.id} className="hover:bg-[var(--color-surface-2)]/60 transition-colors">
                         <td className="px-5 py-3 font-mono font-bold text-xs text-[var(--color-text)]">
                           {p.policyCode}
                         </td>
                         <td className="px-5 py-3 text-xs text-[var(--color-text)] font-medium">
                           {p.name}
+                        </td>
+                        <td className="px-5 py-3">
+                          <Badge variant="brand" size="sm">
+                            {p.jurisdiction || "GLOBAL"}
+                          </Badge>
                         </td>
                         <td className="px-5 py-3 font-mono text-[11px] text-[var(--color-good)] font-semibold">
                           {allowed.toLocaleString()}
@@ -296,8 +327,8 @@ export default function Reports() {
               </table>
 
               <Pagination
-                currentPage={policyPage}
-                totalItems={filteredPolicies.length}
+                page={policyPage}
+                total={filteredPolicies.length}
                 pageSize={policySize}
                 onPageChange={setPolicyPage}
                 onPageSizeChange={(sz) => {
@@ -308,6 +339,81 @@ export default function Reports() {
             </div>
           )}
         </div>
+
+        {/* Section 2: Recent Violations Audit Trail */}
+        {violations.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text)]">Recent Policy Violations Audit Trail</h3>
+                <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                  Captured runtime egress attempts that were denied by zero-trust policies.
+                </p>
+              </div>
+
+              <select
+                value={violationFilter}
+                onChange={(e) => {
+                  setViolationFilter(e.target.value);
+                  setViolationPage(1);
+                }}
+                className="field-input py-1.5 text-xs w-36"
+              >
+                <option value="ALL">All Data Classes</option>
+                <option value="PII">PII</option>
+                <option value="NON_SENSITIVE">NON_SENSITIVE</option>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[var(--color-surface-2)] text-[var(--color-text-dim)] border-b border-[var(--color-border)] uppercase tracking-wider font-semibold text-[10px]">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold">Timestamp</th>
+                    <th className="px-5 py-3 font-semibold">Flow</th>
+                    <th className="px-5 py-3 font-semibold">Data Class</th>
+                    <th className="px-5 py-3 font-semibold">Policy Blocked</th>
+                    <th className="px-5 py-3 font-semibold">Reason</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {paginatedViolations.map((v) => (
+                    <tr key={v.id} className="hover:bg-[var(--color-surface-2)]/60 transition-colors">
+                      <td className="px-5 py-3 font-mono text-[11px] text-[var(--color-text-faint)] whitespace-nowrap">
+                        {v.timestamp ? new Date(v.timestamp).toLocaleString() : "Recent"}
+                      </td>
+                      <td className="px-5 py-3 font-mono text-xs font-semibold text-[var(--color-text)]">
+                        {v.sourceService} [{v.sourceRegion}] → {v.destinationService} [{v.destinationRegion}]
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge variant="warn" size="sm">
+                          {v.dataClass}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3 font-mono text-xs text-[var(--color-bad)] font-bold">
+                        {v.policyId || "DEFAULT_DENY"}
+                      </td>
+                      <td className="px-5 py-3 text-xs text-[var(--color-text-dim)] max-w-xs truncate">
+                        {v.reason}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <Pagination
+                page={violationPage}
+                total={filteredViolations.length}
+                pageSize={violationSize}
+                onPageChange={setViolationPage}
+                onPageSizeChange={(sz) => {
+                  setViolationSize(sz);
+                  setViolationPage(1);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
