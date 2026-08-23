@@ -1,11 +1,13 @@
 {
-  "name": "EU Internal Processing",
-  "description": "orders-api sends PII and PCI to payments-api, both in the EU. Should be ALLOWED.",
+  "name": "EU to US Cross-Border Transfer",
+  "description": "orders-api in EU transfers PII to analytics-api in US. Violates policy EU-PII-001.",
   "dataFlows": [
     {
       "source": "orders-api",
-      "destination": "payments-api",
-      "dataClasses": ["PII", "PCI"]
+      "destination": "analytics-api",
+      "dataClasses": [
+        "PII"
+      ]
     }
   ]
 }
