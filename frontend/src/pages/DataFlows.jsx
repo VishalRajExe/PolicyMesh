@@ -224,11 +224,10 @@ export default function DataFlows() {
           </div>
         )}
 
-        {/* Clean Controls & Action Toolbar in a single horizontal line */}
-        <div className="flex items-center justify-between gap-3 pt-1">
-          {/* Left: Filters & Search in one line */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative flex-1 max-w-sm min-w-[200px]">
+        {/* Controls Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+            <div className="relative flex-1 min-w-[200px]">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
               <input
                 value={search}
@@ -247,7 +246,7 @@ export default function DataFlows() {
                 setDataClassFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-36 shrink-0"
+              className="field-input py-1.5 text-xs w-36"
             >
               <option value="ALL">All Sensitivity</option>
               {DATA_CLASSES.map((dc) => (
@@ -263,35 +262,15 @@ export default function DataFlows() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-36 shrink-0"
+              className="field-input py-1.5 text-xs w-36"
             >
               <option value="ALL">All Statuses</option>
               <option value="COMPLIANT">Compliant Only</option>
               <option value="VIOLATION">Violations Only</option>
             </select>
-
-            {/* Compact Status Pill */}
-            {validationResult && (
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shrink-0 font-mono whitespace-nowrap ${
-                  violationCount === 0
-                    ? "bg-[var(--color-good)]/10 text-[var(--color-good)] border-[var(--color-good)]/30"
-                    : "bg-[var(--color-bad)]/10 text-[var(--color-bad)] border-[var(--color-bad)]/30"
-                }`}
-                title={
-                  violationCount === 0
-                    ? "All registered data flow edges satisfy jurisdictional policies."
-                    : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join("\n")
-                }
-              >
-                {violationCount === 0 ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
-                <span>{violationCount === 0 ? "Compliant" : `${violationCount} Violation${violationCount !== 1 ? "s" : ""}`}</span>
-              </div>
-            )}
           </div>
 
-          {/* Right: Actions in one line */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => runValidation(true)}
               disabled={validating}
