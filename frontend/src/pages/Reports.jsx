@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Loader2,
   Search,
+  X,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import Pagination from "../components/ui/Pagination";
@@ -210,16 +211,26 @@ export default function Reports() {
             </div>
 
             <div className="relative w-64">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
               <input
                 value={policySearch}
                 onChange={(e) => {
                   setPolicySearch(e.target.value);
                   setPolicyPage(1);
                 }}
-                placeholder="Search policy breakdown..."
-                className="field-input pl-8 text-xs"
+                placeholder="Search..."
+                className="field-input field-input-search !pl-9 text-xs"
               />
+              {policySearch && (
+                <button
+                  type="button"
+                  onClick={() => setPolicySearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] hover:text-[var(--color-text)] p-0.5"
+                  title="Clear search"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
 
