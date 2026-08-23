@@ -227,16 +227,16 @@ export default function DataFlows() {
         {/* Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+            <div className="relative w-52 sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search flows by source or destination service..."
-                className="field-input pl-9 text-xs"
+                placeholder="Search..."
+                className="field-input pl-9 text-xs w-full"
               />
             </div>
 
@@ -270,7 +270,34 @@ export default function DataFlows() {
             </select>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* Total Violations Badge beside Re-evaluate Graph */}
+            {validationResult && (
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border font-mono whitespace-nowrap ${
+                  violations.length === 0
+                    ? "bg-[var(--color-good)]/10 text-[var(--color-good)] border-[var(--color-good)]/30"
+                    : "bg-[var(--color-bad)]/10 text-[var(--color-bad)] border-[var(--color-bad)]/30"
+                }`}
+                title={
+                  violations.length === 0
+                    ? "All registered data flow edges satisfy jurisdictional policies."
+                    : violations.map((v) => `${v.sourceService} → ${v.destinationService} (${v.reason})`).join("\n")
+                }
+              >
+                {violations.length === 0 ? (
+                  <ShieldCheck size={13} className="shrink-0" />
+                ) : (
+                  <ShieldAlert size={13} className="shrink-0" />
+                )}
+                <span>
+                  {violations.length === 0
+                    ? "0 Violations"
+                    : `${violations.length} Violation${violations.length !== 1 ? "s" : ""} Found`}
+                </span>
+              </div>
+            )}
+
             <button
               onClick={() => runValidation(true)}
               disabled={validating}
