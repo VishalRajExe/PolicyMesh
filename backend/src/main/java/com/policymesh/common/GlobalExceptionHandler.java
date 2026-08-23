@@ -29,6 +29,15 @@ public class GlobalExceptionHandler {
     return problem(ex.status(), ex.type(), title(ex.status()), ex.getMessage(), req, null);
   }
 
+  @ExceptionHandler(com.policymesh.ci.git.CiValidationException.class)
+  public ProblemDetail ciValidation(com.policymesh.ci.git.CiValidationException ex, HttpServletRequest req) {
+    Map<String, Object> props = new java.util.HashMap<>();
+    props.put("errorCode", ex.getErrorCode());
+    if (ex.getBranch() != null) props.put("branch", ex.getBranch());
+    if (ex.getCommitHash() != null) props.put("commitHash", ex.getCommitHash());
+    return problem(HttpStatus.UNPROCESSABLE_ENTITY, "ci-validation", "Invalid Commit Reference", ex.getMessage(), req, props);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ProblemDetail validation(MethodArgumentNotValidException ex, HttpServletRequest req) {
     List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()

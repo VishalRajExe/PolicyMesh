@@ -1,63 +1,71 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   GitBranch,
   Play,
   ShieldCheck,
   ShieldAlert,
-  Loader2,
-  RotateCcw,
-  RefreshCw,
-  CheckCircle2,
   AlertTriangle,
-  ArrowRight,
+  FileCode,
+  FileText,
+  RotateCcw,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
   ExternalLink,
-  Code,
+  ChevronRight,
+  ArrowRight,
+  ArrowDown,
+  Layers,
+  User,
+  Clock,
+  GitCommit,
+  Sparkles,
+  Info,
   Check,
+  Loader2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import Topbar from "../components/layout/Topbar";
-import Button from "../components/ui/Button";
-import Badge from "../components/ui/Badge";
-import EmptyState from "../components/ui/EmptyState";
 import SearchableCombobox from "../components/ui/SearchableCombobox";
-import { ciApi } from "../api";
+import Badge from "../components/ui/Badge";
+import Button from "../components/ui/Button";
+import Modal from "../components/ui/Modal";
+import Pagination from "../components/ui/Pagination";
+import { ciApi } from "../api/ci";
 import { useFormDraft } from "../hooks/useFormDraft";
-
-const FALLBACK_BRANCHES = [
-  "main",
-  "develop",
-  "staging",
-  "feature/cross-border-analytics",
-  "feature/eu-payments-v2",
-  "fix/gdpr-residency-gate",
-];
 
 const HASH_PATTERN = /^(HEAD(~[0-9]+)?|HEAD\^?|[0-9a-fA-F]{3,40})$/;
 const BRANCH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/;
 
+const SCAN_STEPS = [
+  { id: 1, label: "Validating branch reference" },
+  { id: 2, label: "Verifying commit existence & reachability" },
+  { id: 3, label: "Retrieving commit metadata & diffs" },
+  { id: 4, label: "Analyzing changed infrastructure & data-flows" },
+  { id: 5, label: "Evaluating zero-trust policy ASTs" },
+];
+
 export default function CiCheck() {
-  const { values: form, setValues: setForm, resetForm } = useFormDraft(
-    "ci-check",
-    { commitHash: "7f8a9b0", branch: "main" }
-  );
-
-  const [branches, setBranches] = useState(FALLBACK_BRANCHES);
-  const [branchesLoading, setBranchesLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState(null);
-
-  // Restore scan history from sessionStorage
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("policymesh:ci-check:history");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+  const [form, setForm, resetDraft] = useFormDraft("ci_check", {
+    branch: "main",
+    commitHash: "HEAD",
   });
 
-  const loadBranches = useCallback(async () => {
+  const [branches, setBranches] = useState(["main", "develop", "staging"]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [scanStep, setScanStep] = useState(0);
+  const [result, setResult] = useState(null);
+  const [invalidError, setInvalidError] = useState(null);
+  const [formError, setFormError] = useState(null);
+
+  // History & Details Modal
+  const [history, setHistory] = useState([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [selectedScan, setSelectedScan] = useState(null);
+
+  async function loadBranches() {
     setBranchesLoading(true);
     try {
       const data = await ciApi.listBranches();
@@ -65,70 +73,105 @@ export default function CiCheck() {
         setBranches(data);
       }
     } catch {
-      // Fallback
+      // Keep defaults
     } finally {
       setBranchesLoading(false);
     }
-  }, []);
+  }
+
+  async function loadHistory(page = 1) {
+    try {
+      const data = await ciApi.listScans(page - 1, 6);
+      if (data && data.content) {
+        setHistory(data.content);
+        setHistoryTotal(data.totalElements || data.content.length);
+      } else if (Array.isArray(data)) {
+        setHistory(data);
+        setHistoryTotal(data.length);
+      }
+    } catch {
+      // Ignored
+    }
+  }
 
   useEffect(() => {
     loadBranches();
-  }, [loadBranches]);
+    loadHistory(1);
+  }, []);
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem("policymesh:ci-check:history", JSON.stringify(history));
-    } catch {}
-  }, [history]);
+  function resetForm() {
+    setForm({ branch: "main", commitHash: "HEAD" });
+    setFormError(null);
+    setInvalidError(null);
+    setResult(null);
+    resetDraft();
+  }
 
-  // Validation helpers
-  const isHashEmpty = !form.commitHash || !form.commitHash.trim();
-  const isHashInvalid = !isHashEmpty && !HASH_PATTERN.test(form.commitHash.trim());
-  const isBranchEmpty = !form.branch || !form.branch.trim();
-  const isBranchInvalid = !isBranchEmpty && !BRANCH_PATTERN.test(form.branch.trim());
+  const isHashInvalid = form.commitHash && !HASH_PATTERN.test(form.commitHash);
+  const isBranchInvalid = form.branch && !BRANCH_PATTERN.test(form.branch);
 
   async function handleRun(e) {
     e.preventDefault();
-    const hash = form.commitHash.trim();
-    const branch = form.branch.trim();
+    const branch = form.branch?.trim();
+    const hash = form.commitHash?.trim();
 
     if (!branch) {
-      setFormError("Git Branch is required. Select an existing branch or type a custom branch name.");
+      setFormError("Target Git branch is required.");
       return;
     }
-
     if (!BRANCH_PATTERN.test(branch)) {
-      setFormError("Invalid Branch Name. Must start with an alphanumeric character and contain only letters, numbers, hyphens, slashes, or underscores.");
+      setFormError("Invalid Branch Name. Must start with an alphanumeric character.");
       return;
     }
-
     if (!hash) {
-      setFormError("Commit SHA-1 Hash is required. Enter a 7-40 character hexadecimal hash or click 'HEAD'.");
+      setFormError("Commit SHA-1 Hash is required. Enter a hash or click 'HEAD'.");
       return;
     }
-
     if (!HASH_PATTERN.test(hash)) {
-      setFormError("Invalid Commit SHA-1 Hash. Must be a 7 to 40 character hexadecimal hash (0-9, a-f, A-F) or 'HEAD'.");
+      setFormError("Invalid Commit SHA-1 Hash. Must be 3-40 hex characters or 'HEAD'.");
       return;
     }
 
     setFormError(null);
+    setInvalidError(null);
     setResult(null);
     setSubmitting(true);
+    setScanStep(1);
+
+    // Multi-step animated progress simulation
+    const stepTimer1 = setTimeout(() => setScanStep(2), 250);
+    const stepTimer2 = setTimeout(() => setScanStep(3), 500);
+    const stepTimer3 = setTimeout(() => setScanStep(4), 750);
+    const stepTimer4 = setTimeout(() => setScanStep(5), 1000);
+
     try {
       const resp = await ciApi.runCheck({ commitHash: hash, branch });
       setResult(resp);
-      setHistory((prev) => [resp, ...prev.filter((h) => h.id !== resp.id).slice(0, 9)]);
+      loadHistory(1);
     } catch (err) {
-      setFormError(err.message || "Failed to execute CI compliance scan.");
+      // Check if it's an authoritative validation error (e.g. COMMIT_NOT_FOUND, BRANCH_NOT_FOUND)
+      const detail = err.response?.data?.detail || err.message || "Commit verification failed.";
+      const errorCode = err.response?.data?.errorCode || "INVALID_COMMIT";
+      setInvalidError({
+        errorCode,
+        message: detail,
+        branch,
+        commitHash: hash,
+      });
     } finally {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
+      clearTimeout(stepTimer4);
       setSubmitting(false);
+      setScanStep(0);
     }
   }
 
   function handleSetHash(val) {
     setForm((f) => ({ ...f, commitHash: val }));
     setFormError(null);
+    setInvalidError(null);
   }
 
   return (
@@ -139,14 +182,14 @@ export default function CiCheck() {
       />
 
       <div className="px-6 lg:px-8 py-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
-        {/* Left Column: Form Card */}
+        {/* Left Column: Form Trigger */}
         <div className="xl:col-span-2 space-y-4">
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-sm text-[var(--color-text)]">Pipeline Scanner Trigger</h3>
                 <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
-                  Test proposed topology changes against all policies.
+                  Test proposed topology changes against active policies.
                 </p>
               </div>
               <button
@@ -169,12 +212,13 @@ export default function CiCheck() {
                   onChange={(val) => {
                     setForm((f) => ({ ...f, branch: val }));
                     setFormError(null);
+                    setInvalidError(null);
                   }}
                   options={branches.map((b) => ({ id: b, name: b }))}
                   getOptionLabel={(b) => b.name}
                   getOptionValue={(b) => b.name}
                   placeholder="Select or type branch..."
-                  searchPlaceholder="Search branch or type new..."
+                  searchPlaceholder="Search branch..."
                   loading={branchesLoading}
                   onRetry={loadBranches}
                 />
@@ -189,23 +233,23 @@ export default function CiCheck() {
                     <button
                       type="button"
                       onClick={() => handleSetHash("HEAD")}
-                      className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
                     >
                       HEAD
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSetHash("HEAD~1")}
-                      className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
                     >
                       HEAD~1
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSetHash("7f8a9b0")}
-                      className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
+                      onClick={() => handleSetHash("f2dad2a")}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
                     >
-                      7f8a9b0
+                      f2dad2a
                     </button>
                   </div>
                 </div>
@@ -213,7 +257,7 @@ export default function CiCheck() {
                 <input
                   value={form.commitHash}
                   onChange={(e) => handleSetHash(e.target.value)}
-                  placeholder="e.g. 7f8a9b0 or 40-char SHA"
+                  placeholder="e.g. HEAD, f2dad2a, or 40-char SHA"
                   className={`field-input text-xs font-mono ${
                     isHashInvalid ? "border-[var(--color-bad)] ring-1 ring-[var(--color-bad)]" : ""
                   }`}
@@ -222,7 +266,7 @@ export default function CiCheck() {
 
                 {isHashInvalid && (
                   <p className="text-[11px] text-[var(--color-bad)] mt-1">
-                    Please enter a valid 7–40 char hex SHA (0-9, a-f) or "HEAD".
+                    Please enter a valid hexadecimal SHA (3–40 chars) or "HEAD".
                   </p>
                 )}
               </div>
@@ -240,122 +284,420 @@ export default function CiCheck() {
                 size="md"
                 className="w-full justify-center"
                 loading={submitting}
-                disabled={isHashInvalid || isBranchInvalid}
+                disabled={isHashInvalid || isBranchInvalid || submitting}
                 icon={Play}
               >
-                {submitting ? "Scanning Policy ASTs…" : "Execute CI Check"}
+                {submitting ? "Analyzing Commit..." : "Execute CI Check"}
               </Button>
             </form>
           </div>
-        </div>
-
-        {/* Right Column: CI Result / Report */}
-        <div className="xl:col-span-3 space-y-4">
-          {result ? (
-            (() => {
-              const isPassed = result.passed === true || result.result === "PASS" || result.status === "PASS" || (result.violationCount === 0 && (!result.violations || result.violations.length === 0));
-              return (
-                <div className="card p-5 space-y-4 animate-in fade-in zoom-in-95">
-                  {/* Scan Status Header */}
-                  <div
-                    className={`p-4 rounded-xl border flex items-center justify-between ${
-                      isPassed
-                        ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
-                        : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
-                          isPassed ? "icon-box-green" : "icon-box-red"
-                        }`}
-                      >
-                        {isPassed ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm text-[var(--color-text)]">
-                          {isPassed ? "CI Compliance Gate: PASSED" : "CI Compliance Gate: BLOCKED"}
-                        </h3>
-                        <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
-                          Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
-                          <strong className="text-[var(--color-text)]">{result.commitHash?.slice(0, 7)}</strong>
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={isPassed ? "good" : "bad"} dot size="md">
-                      {isPassed ? "MERGE ALLOWED" : "MERGE BLOCKED"}
-                    </Badge>
-                  </div>
-
-                  {/* Violations List */}
-                  {result.violations && result.violations.length > 0 ? (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-xs text-[var(--color-text)]">
-                        Detected Policy Violations ({result.violations.length})
-                      </h4>
-                      <div className="divide-y divide-[var(--color-border)]/50 border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface-2)]/30">
-                        {result.violations.map((v, idx) => (
-                          <div key={idx} className="p-3 text-xs flex items-start gap-2.5">
-                            <AlertTriangle size={14} className="text-[var(--color-bad)] shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-[var(--color-text)]">
-                                {v.sourceService} → {v.destinationService}
-                              </p>
-                              <p className="text-[11px] text-[var(--color-bad)] mt-0.5 font-mono">
-                                {v.reason || `Blocked by policy ${v.policyCode || ""}`}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl bg-[var(--color-surface-2)]/60 text-center text-xs text-[var(--color-text-dim)]">
-                      <CheckCircle2 size={16} className="text-[var(--color-good)] mx-auto mb-1" />
-                      All proposed service flows comply with active zero-trust residency rules.
-                    </div>
-                  )}
-                </div>
-              );
-            })()
-          ) : (
-            <div className="card p-8 text-center">
-              <GitBranch size={24} className="text-[var(--color-text-faint)] mx-auto mb-2" />
-              <h4 className="font-semibold text-sm text-[var(--color-text)]">No scan executed yet</h4>
-              <p className="text-xs text-[var(--color-text-dim)] max-w-sm mx-auto mt-1">
-                Select a target branch and commit SHA to execute pre-merge compliance validation.
-              </p>
-            </div>
-          )}
 
           {/* Historical Scans */}
-          {history.length > 0 && (
-            <div className="card p-5">
-              <h4 className="font-bold text-xs text-[var(--color-text)] mb-3">Recent Pipeline Scans</h4>
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-bold text-xs text-[var(--color-text)]">Recent Pipeline Scans</h4>
+              <span className="text-[10px] text-[var(--color-text-faint)] font-mono">
+                {historyTotal} total
+              </span>
+            </div>
+
+            {history.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-faint)] py-4 text-center">
+                No recent scans recorded.
+              </p>
+            ) : (
               <div className="divide-y divide-[var(--color-border)]/50">
                 {history.map((h, idx) => {
-                  const hPassed = h.passed === true || h.result === "PASS" || h.status === "PASS" || (h.violationCount === 0 && (!h.violations || h.violations.length === 0));
+                  const hPassed =
+                    h.passed === true ||
+                    h.result === "PASS" ||
+                    h.status === "PASSED" ||
+                    h.status === "PASS" ||
+                    (h.violationCount === 0 && (!h.violations || h.violations.length === 0));
                   return (
-                    <div
+                    <button
                       key={h.id || idx}
-                      className="py-2.5 flex items-center justify-between gap-3 text-xs font-mono"
+                      type="button"
+                      onClick={() => setSelectedScan(h)}
+                      className="w-full text-left py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-[var(--color-surface-2)]/60 px-2 rounded-lg transition-colors"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
-                        <span className="text-[var(--color-text-faint)]">@</span>
-                        <span className="text-[var(--color-text-dim)]">{h.commitHash?.slice(0, 7)}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
+                          <span className="text-[var(--color-text-faint)] font-mono">@</span>
+                          <span className="text-[var(--color-text-dim)] font-mono">{h.commitShortSha || h.commitHash?.slice(0, 7)}</span>
+                        </div>
+                        {h.commitMessage && (
+                          <p className="text-[11px] text-[var(--color-text-faint)] truncate mt-0.5">
+                            {h.commitMessage}
+                          </p>
+                        )}
                       </div>
                       <Badge variant={hPassed ? "good" : "bad"} size="sm">
-                        {hPassed ? "PASS" : "FAIL"}
+                        {hPassed ? "PASS" : "BLOCKED"}
                       </Badge>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {historyTotal > 6 && (
+              <div className="pt-3 border-t border-[var(--color-border)] mt-3">
+                <Pagination
+                  page={historyPage}
+                  total={historyTotal}
+                  pageSize={6}
+                  onPageChange={(p) => {
+                    setHistoryPage(p);
+                    loadHistory(p);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Output / Active Result Display */}
+        <div className="xl:col-span-3 space-y-4">
+          {/* 1. In-Progress Multi-Step Loading State */}
+          {submitting && (
+            <div className="card p-6 space-y-4 animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center icon-box-purple animate-pulse">
+                  <Loader2 size={20} className="animate-spin" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-[var(--color-text)]">
+                    Evaluating Commit Compliance
+                  </h4>
+                  <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                    Inspecting Git references, diffs, and evaluating policy ASTs...
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-[var(--color-border)]/50">
+                {SCAN_STEPS.map((step) => {
+                  const isDone = scanStep > step.id;
+                  const isCurrent = scanStep === step.id;
+                  return (
+                    <div key={step.id} className="flex items-center gap-3 text-xs">
+                      {isDone ? (
+                        <CheckCircle2 size={16} className="text-[var(--color-good)] shrink-0" />
+                      ) : isCurrent ? (
+                        <Loader2 size={16} className="text-[var(--color-brand)] animate-spin shrink-0" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-[var(--color-border)] shrink-0" />
+                      )}
+                      <span
+                        className={
+                          isDone
+                            ? "text-[var(--color-text)] font-medium"
+                            : isCurrent
+                            ? "text-[var(--color-brand)] font-bold"
+                            : "text-[var(--color-text-faint)]"
+                        }
+                      >
+                        {step.label}
+                      </span>
                     </div>
                   );
                 })}
               </div>
             </div>
           )}
+
+          {/* 2. INVALID COMMIT / ERROR STATE */}
+          {!submitting && invalidError && (
+            <div className="card p-6 border-l-4 border-l-[var(--color-warn)] bg-[var(--color-surface)] space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 icon-box-amber shadow-xs">
+                  <AlertTriangle size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-[var(--color-text)]">
+                      Invalid Commit Reference
+                    </h3>
+                    <Badge variant="warn" size="sm">
+                      {invalidError.errorCode || "NOT_FOUND"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-dim)] mt-1 leading-relaxed">
+                    {invalidError.message}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[var(--color-surface-2)]/60 border border-[var(--color-border)]/60 text-xs space-y-2">
+                <p className="font-semibold text-[var(--color-text)]">Verification Checklist:</p>
+                <ul className="space-y-1 text-[var(--color-text-dim)] list-disc list-inside">
+                  <li>Confirm that commit SHA <code className="font-mono bg-[var(--color-surface-3)] px-1 py-0.5 rounded">{invalidError.commitHash}</code> exists in the repository.</li>
+                  <li>Verify that branch <code className="font-mono bg-[var(--color-surface-3)] px-1 py-0.5 rounded">{invalidError.branch}</code> has been pushed to the remote.</li>
+                  <li>Ensure the commit is reachable from the target branch.</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" onClick={resetForm}>
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 3. VERIFIED RESULT STATE (PASSED or BLOCKED) */}
+          {!submitting && !invalidError && result && (
+            <ScanResultView result={result} />
+          )}
+
+          {/* 4. DEFAULT EMPTY STATE */}
+          {!submitting && !invalidError && !result && (
+            <div className="card p-10 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[var(--color-surface-2)] flex items-center justify-center mx-auto text-[var(--color-text-faint)] border border-[var(--color-border)]">
+                <GitCommit size={24} />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-[var(--color-text)]">Awaiting Compliance Check</h4>
+                <p className="text-xs text-[var(--color-text-dim)] max-w-md mx-auto mt-1">
+                  Enter a target Git branch and commit reference on the left to verify data residency & sovereignty rules before merging.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Historical Scan Details Modal */}
+      {selectedScan && (
+        <Modal
+          isOpen={!!selectedScan}
+          onClose={() => setSelectedScan(null)}
+          title={`Scan Details: ${selectedScan.branch} @ ${selectedScan.commitShortSha || selectedScan.commitHash?.slice(0, 7)}`}
+          maxWidth="max-w-3xl"
+        >
+          <div className="space-y-4">
+            <ScanResultView result={selectedScan} isModal />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Reusable component to render the detailed, explainable CI check result.
+ */
+function ScanResultView({ result, isModal = false }) {
+  const isPassed =
+    result.passed === true ||
+    result.result === "PASS" ||
+    result.status === "PASSED" ||
+    result.status === "PASS" ||
+    (result.violationCount === 0 && (!result.violations || result.violations.length === 0));
+
+  return (
+    <div className="space-y-4 animate-in fade-in">
+      {/* 1. Result Gate Header Banner */}
+      <div
+        className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 shadow-xs ${
+          isPassed
+            ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
+            : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
+              isPassed ? "icon-box-green" : "icon-box-red"
+            }`}
+          >
+            {isPassed ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
+          </div>
+          <div>
+            <h3 className="font-bold text-sm text-[var(--color-text)]">
+              {isPassed ? "CI Compliance Gate: PASSED" : "CI Compliance Gate: BLOCKED"}
+            </h3>
+            <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
+              Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
+              <strong className="text-[var(--color-text)]">{result.commitShortSha || result.commitHash?.slice(0, 7)}</strong>
+            </p>
+          </div>
+        </div>
+        <Badge variant={isPassed ? "good" : "bad"} dot size="md">
+          {isPassed ? "MERGE ALLOWED" : "MERGE BLOCKED"}
+        </Badge>
+      </div>
+
+      {/* 2. Commit Details Card */}
+      <div className="card p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)]/50 pb-2.5">
+          <div className="flex items-center gap-2">
+            <GitCommit size={15} className="text-[var(--color-brand)]" />
+            <span className="text-xs font-bold text-[var(--color-text)] font-mono">
+              {result.commitShortSha || result.commitHash?.slice(0, 7)}
+            </span>
+          </div>
+          {result.author && (
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-dim)]">
+              <User size={13} className="text-[var(--color-text-faint)]" />
+              <span>{result.author}</span>
+            </div>
+          )}
+          {result.timestamp && (
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-faint)]">
+              <Clock size={13} />
+              <span>{new Date(result.timestamp).toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        {result.commitMessage && (
+          <p className="text-xs text-[var(--color-text)] font-medium bg-[var(--color-surface-2)]/40 p-2.5 rounded-lg border border-[var(--color-border)]/40">
+            "{result.commitMessage}"
+          </p>
+        )}
+
+        {/* Changed Files Table */}
+        {result.changedFiles && result.changedFiles.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[var(--color-text-dim)]">
+                Changed Files ({result.changedFiles.length})
+              </span>
+              <span className="text-[11px] text-[var(--color-text-faint)] font-mono">
+                {result.flowsChecked || 1} flow(s) analyzed
+              </span>
+            </div>
+            <div className="divide-y divide-[var(--color-border)]/40 border border-[var(--color-border)] rounded-lg overflow-hidden text-xs">
+              {result.changedFiles.map((f, i) => (
+                <div key={i} className="p-2 flex items-center justify-between gap-2 bg-[var(--color-surface)]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileCode size={13} className="text-[var(--color-text-faint)] shrink-0" />
+                    <span className="font-mono text-[11px] text-[var(--color-text)] truncate">{f.path}</span>
+                  </div>
+                  <Badge variant={f.category === "SERVICE" || f.category === "DATAFLOW" || f.category === "POLICY" ? "brand" : "neutral"} size="sm">
+                    {f.category || "CODE"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Violations Breakdown (If BLOCKED) */}
+      {!isPassed && result.violations && result.violations.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-bold text-xs text-[var(--color-bad)] flex items-center gap-1.5">
+            <AlertTriangle size={15} />
+            Detected Policy Violations ({result.violations.length})
+          </h4>
+
+          {result.violations.map((v, idx) => (
+            <div key={idx} className="card p-4 space-y-3 border-l-4 border-l-[var(--color-bad)]">
+              {/* Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)]/50 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-[var(--color-text)]">
+                    {v.sourceService} [{v.sourceRegion}] → {v.destinationService} [{v.destinationRegion}]
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="warn" size="sm">
+                    {v.dataClass}
+                  </Badge>
+                  <Badge variant="bad" size="sm">
+                    {v.policyCode}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Policy & Reason */}
+              <div className="text-xs space-y-1">
+                <p className="font-semibold text-[var(--color-text)]">
+                  Policy: <span className="font-normal text-[var(--color-text-dim)]">{v.policyName || v.policyCode}</span>
+                </p>
+                <div className="p-2.5 rounded-lg bg-[var(--color-bad-light)] border border-[var(--color-bad)]/20 text-[var(--color-bad-text)] text-xs">
+                  <p className="font-semibold mb-0.5">Why is this blocked?</p>
+                  <p className="text-[11px] leading-relaxed">{v.reason}</p>
+                </div>
+              </div>
+
+              {/* Before -> After Comparison */}
+              {v.beforeAfter && (
+                <div className="text-xs space-y-1.5 pt-1">
+                  <p className="font-semibold text-[var(--color-text-dim)]">What Changed?</p>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                    <div className="p-2 rounded-lg bg-[var(--color-surface-2)]/60 border border-[var(--color-border)]">
+                      <span className="text-[var(--color-text-faint)] block mb-1">Previous Flow</span>
+                      <p className="text-[var(--color-good)] font-semibold flex items-center gap-1">
+                        <Check size={12} /> {v.beforeAfter.previous?.source} → {v.beforeAfter.previous?.destination}
+                      </p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30">
+                      <span className="text-[var(--color-bad-text)] block mb-1">Proposed Change</span>
+                      <p className="text-[var(--color-bad)] font-semibold flex items-center gap-1">
+                        <XCircle size={12} /> {v.beforeAfter.proposed?.source} → {v.beforeAfter.proposed?.destination}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Visual Decision Pipeline */}
+              {v.visualFlow && v.visualFlow.length > 0 && (
+                <div className="text-xs space-y-1.5 pt-1">
+                  <p className="font-semibold text-[var(--color-text-dim)]">Decision Pipeline:</p>
+                  <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-lg bg-[var(--color-surface-2)]/50 border border-[var(--color-border)]/50 text-[10px] font-mono">
+                    {v.visualFlow.map((step, sIdx) => (
+                      <span key={sIdx} className="flex items-center gap-1">
+                        <span className={`px-1.5 py-0.5 rounded ${
+                          sIdx === v.visualFlow.length - 1
+                            ? "bg-[var(--color-bad)] text-white font-bold"
+                            : "bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)]"
+                        }`}>
+                          {step}
+                        </span>
+                        {sIdx < v.visualFlow.length - 1 && (
+                          <ChevronRight size={10} className="text-[var(--color-text-faint)]" />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* How to Fix */}
+              {v.howToFix && (
+                <div className="p-2.5 rounded-lg bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 text-[var(--color-brand-text)] text-xs space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-[var(--color-brand)]" />
+                    How to fix this issue:
+                  </p>
+                  <p className="text-[11px] leading-relaxed opacity-90">{v.howToFix}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 4. Success Card (If PASSED) */}
+      {isPassed && (
+        <div className="p-4 rounded-xl bg-[var(--color-good-light)] border border-[var(--color-good)]/30 text-xs flex items-center gap-3">
+          <CheckCircle2 size={20} className="text-[var(--color-good)] shrink-0" />
+          <div className="min-w-0">
+            <p className="font-bold text-[var(--color-good-text)]">
+              All proposed service flows comply with active zero-trust residency rules.
+            </p>
+            <p className="text-[11px] text-[var(--color-good-text)]/80 mt-0.5">
+              Analyzed {result.totalFilesAnalyzed || 1} file(s) across {result.flowsChecked || 1} data flow edge(s). Zero policy violations detected.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

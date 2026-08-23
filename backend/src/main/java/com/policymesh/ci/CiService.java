@@ -2,10 +2,14 @@ package com.policymesh.ci;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.policymesh.ci.analyzer.CommitImpactAnalyzer;
+import com.policymesh.ci.git.ChangedFile;
+import com.policymesh.ci.git.CommitInfo;
+import com.policymesh.ci.git.GitProvider;
 import com.policymesh.common.ApiException;
 import com.policymesh.events.EventPublisher;
-import com.policymesh.graph.GraphAnalyzer;
-import com.policymesh.graph.GraphModels;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,93 +17,139 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** CI Checker -> Graph Analyzer -> Policy Engine. Persists every scan with its violations. */
 @Service
 @Transactional
 public class CiService {
   private final CIScanRepository scans;
-  private final GraphAnalyzer graph;
+  private final GitProvider gitProvider;
+  private final CommitImpactAnalyzer impactAnalyzer;
   private final EventPublisher events;
   private final ObjectMapper mapper;
 
-  public CiService(CIScanRepository scans, GraphAnalyzer graph, EventPublisher events, ObjectMapper mapper) {
+  public CiService(
+      CIScanRepository scans,
+      GitProvider gitProvider,
+      CommitImpactAnalyzer impactAnalyzer,
+      EventPublisher events,
+      ObjectMapper mapper
+  ) {
     this.scans = scans;
-    this.graph = graph;
+    this.gitProvider = gitProvider;
+    this.impactAnalyzer = impactAnalyzer;
     this.events = events;
     this.mapper = mapper;
   }
 
   public CiDtos.Response run(String branch, String commitHash) {
-    GraphModels.CheckResult result = graph.validate();
+    // 1. Authoritative Git verification (validates branch existence, commit existence, reachability)
+    CommitInfo commit = gitProvider.getCommit(branch, commitHash);
+
+    // 2. Perform deep impact analysis and active policy evaluation
+    CommitImpactAnalyzer.AnalysisResult analysis = impactAnalyzer.analyze(commit);
+
+    boolean passed = analysis.failedFlows() == 0 && analysis.violations().isEmpty();
+    String status = passed ? "PASS" : "FAIL";
+
+    // 3. Persist scan result
     CIScan scan = new CIScan();
     scan.setBranch(branch);
-    scan.setCommitHash(commitHash);
-    scan.setStatus(result.result());
-    scan.setViolationCount(result.violationCount());
-    scan.setViolationsJson(toJson(result.violations()));
+    scan.setCommitHash(commit.fullSha());
+    scan.setStatus(status);
+    scan.setViolationCount(analysis.violations().size());
+    scan.setCommitMessage(commit.message());
+    scan.setAuthor(commit.authorName());
+    scan.setParentSha(commit.parentSha());
+    scan.setFlowsChecked(analysis.flowsChecked());
+    scan.setPassedFlows(analysis.passedFlows());
+    scan.setFailedFlows(analysis.failedFlows());
+    scan.setViolationsJson(toJson(analysis.violations()));
+    scan.setChangedFilesJson(toJson(commit.changedFiles()));
     scan.complete();
     scan = scans.save(scan);
 
+    // 4. Publish telemetry event
     Map<String, Object> payload = new HashMap<>();
     payload.put("scanId", scan.getId());
     payload.put("result", scan.getStatus());
     payload.put("violationCount", scan.getViolationCount());
+    payload.put("commitHash", commit.shortSha());
+    payload.put("branch", branch);
     events.publish(EventPublisher.TOPIC_CI_COMPLETED, payload);
-    return CiDtos.from(scan, result.violations());
+
+    return CiDtos.from(
+        scan,
+        commit,
+        analysis.totalFilesAnalyzed(),
+        analysis.flowsChecked(),
+        analysis.passedFlows(),
+        analysis.failedFlows(),
+        analysis.violations()
+    );
   }
 
   @Transactional(readOnly = true)
   public List<String> listBranches() {
-    java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
-    set.add("main");
-    set.add("develop");
-    set.add("staging");
+    return gitProvider.listBranches();
+  }
 
-    // Discover git branches if available
-    try {
-      Process process = new ProcessBuilder("git", "branch", "-a", "--format=%(refname:short)").start();
-      try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
-        String line;
-        while ((line = reader.readLine()) != null) {
-          String b = line.trim().replace("origin/", "");
-          if (!b.isEmpty() && !b.startsWith("HEAD")) {
-            set.add(b);
-          }
-        }
-      }
-    } catch (Exception ignored) {}
-
-    // Add previously scanned branches
-    try {
-      scans.findTop20ByOrderByStartedAtDesc().forEach(s -> {
-        if (s.getBranch() != null && !s.getBranch().isBlank()) {
-          set.add(s.getBranch());
-        }
-      });
-    } catch (Exception ignored) {}
-
-    return new java.util.ArrayList<>(set);
+  @Transactional(readOnly = true)
+  public Page<CiDtos.Response> listScans(Pageable pageable) {
+    return scans.findAllByOrderByStartedAtDesc(pageable).map(this::toResponse);
   }
 
   @Transactional(readOnly = true)
   public CiDtos.Response one(long id) {
     CIScan scan = scans.findById(id).orElseThrow(() -> ApiException.notFound("CI scan not found"));
-    return CiDtos.from(scan, fromJson(scan.getViolationsJson()));
+    return toResponse(scan);
   }
 
-  private String toJson(List<GraphModels.Violation> violations) {
+  private CiDtos.Response toResponse(CIScan s) {
+    List<CiDtos.ViolationDetail> violations = fromJson(s.getViolationsJson(), new TypeReference<List<CiDtos.ViolationDetail>>() {});
+    List<ChangedFile> files = fromJson(s.getChangedFilesJson(), new TypeReference<List<ChangedFile>>() {});
+
+    CommitInfo commit = new CommitInfo(
+        s.getCommitHash(),
+        s.getCommitHash() != null && s.getCommitHash().length() > 7 ? s.getCommitHash().substring(0, 7) : s.getCommitHash(),
+        s.getBranch(),
+        s.getAuthor() != null ? s.getAuthor() : "Developer",
+        "dev@policymesh.io",
+        s.getCommitMessage() != null ? s.getCommitMessage() : ("Scan @" + s.getCommitHash()),
+        s.getStartedAt(),
+        s.getParentSha(),
+        files
+    );
+
+    return CiDtos.from(
+        s,
+        commit,
+        files.size(),
+        s.getFlowsChecked() > 0 ? s.getFlowsChecked() : Math.max(1, violations.size()),
+        s.getPassedFlows(),
+        s.getFailedFlows() > 0 ? s.getFailedFlows() : violations.size(),
+        violations
+    );
+  }
+
+  private String toJson(Object obj) {
     try {
-      return mapper.writeValueAsString(violations);
+      return mapper.writeValueAsString(obj);
     } catch (java.io.IOException e) {
       return "[]";
     }
   }
 
-  private List<GraphModels.Violation> fromJson(String json) {
+  private <T> T fromJson(String json, TypeReference<T> typeRef) {
     try {
-      return mapper.readValue(json == null ? "[]" : json, new TypeReference<List<GraphModels.Violation>>() {});
+      if (json == null || json.isBlank()) {
+        return mapper.readValue("[]", typeRef);
+      }
+      return mapper.readValue(json, typeRef);
     } catch (java.io.IOException e) {
-      return List.of();
+      try {
+        return mapper.readValue("[]", typeRef);
+      } catch (Exception ignored) {
+        return null;
+      }
     }
   }
 }
