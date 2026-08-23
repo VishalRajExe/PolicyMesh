@@ -1,18 +1,22 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Pagination({
-  currentPage = 1,
-  totalItems = 0,
+  currentPage,
+  page,
+  totalItems,
+  total,
   pageSize = 10,
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [10, 20, 50, 100],
 }) {
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const activePage = page ?? currentPage ?? 1;
+  const count = total ?? totalItems ?? 0;
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+  const safePage = Math.min(Math.max(1, activePage), totalPages);
 
-  const startItem = totalItems === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const endItem = Math.min(safePage * pageSize, totalItems);
+  const startItem = count === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const endItem = Math.min(safePage * pageSize, count);
 
   function getPageNumbers() {
     const pages = [];

@@ -18,6 +18,7 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import { TableSkeleton } from "../components/ui/LoadingSkeleton";
+import { reportsApi } from "../api/reports";
 function formatComplianceScore(score) {
   if (score == null) return "94%";
   const num = typeof score === "number" ? score : parseFloat(score);
