@@ -17,7 +17,13 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import { TableSkeleton } from "../components/ui/LoadingSkeleton";
-import { reportsApi } from "../api";
+function formatComplianceScore(score) {
+  if (score == null) return "94%";
+  const num = typeof score === "number" ? score : parseFloat(score);
+  if (isNaN(num)) return "94%";
+  const pct = num <= 1 ? num * 100 : num;
+  return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+}
 
 export default function Reports() {
   const [report, setReport] = useState(null);
@@ -129,10 +135,10 @@ export default function Reports() {
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-dim)]">Compliance Score</p>
                 <p className="text-2xl font-bold text-[var(--color-text)] mt-1">
-                  {report?.complianceRate != null ? `${Math.round(report.complianceRate * 100)}%` : "94%"}
+                  {formatComplianceScore(report?.complianceRate || report?.complianceScore)}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-green">
                 <ShieldCheck size={18} />
               </div>
             </div>
@@ -149,7 +155,7 @@ export default function Reports() {
                   {report?.totalPolicies != null ? report.totalPolicies : policyList.length || 24}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-purple">
                 <FileText size={18} />
               </div>
             </div>
@@ -166,7 +172,7 @@ export default function Reports() {
                   {report?.totalEvaluations != null ? report.totalEvaluations.toLocaleString() : "1,420"}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-blue">
                 <Layers size={18} />
               </div>
             </div>
@@ -183,7 +189,7 @@ export default function Reports() {
                   {report?.lineageBlockCount != null ? report.lineageBlockCount.toLocaleString() : "1,420"}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs icon-box-amber">
                 <Database size={18} />
               </div>
             </div>

@@ -86,8 +86,8 @@ export default function Alerts() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 max-w-xl">
             {denyCount > 0 && (
-              <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400 shrink-0">
-                <ShieldAlert size={14} />
+              <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 text-[var(--color-bad-text)] shrink-0 shadow-2xs">
+                <ShieldAlert size={14} className="text-[var(--color-bad)]" />
                 {denyCount} blocked flow{denyCount !== 1 ? "s" : ""}
               </span>
             )}
@@ -159,10 +159,8 @@ export default function Alerts() {
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                          isDeny
-                            ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
-                            : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ${
+                          isDeny ? "icon-box-red" : "icon-box-green"
                         }`}
                       >
                         {isDeny ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
@@ -173,9 +171,9 @@ export default function Alerts() {
                           <span className="font-bold text-[var(--color-text)] font-mono">
                             {d.sourceService} → {d.destinationService}
                           </span>
-                          <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          <Badge variant="warn" size="sm">
                             {d.dataClass || "PII"}
-                          </span>
+                          </Badge>
                         </div>
 
                         <p className="text-xs text-[var(--color-text-dim)] mt-1 font-mono text-[11px] leading-relaxed">

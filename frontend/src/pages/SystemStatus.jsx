@@ -129,7 +129,7 @@ export default function SystemStatus() {
         {/* Overall Status Banner */}
         <div className="card p-5 border-l-4 border-l-[var(--color-good)] bg-emerald-500/5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-2xs icon-box-green">
               <ShieldCheck size={22} />
             </div>
             <div>

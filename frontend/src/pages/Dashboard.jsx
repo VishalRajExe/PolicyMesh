@@ -44,6 +44,14 @@ function relativeTime(ts) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function formatComplianceScore(score) {
+  if (score == null) return "92%";
+  const num = typeof score === "number" ? score : parseFloat(score);
+  if (isNaN(num)) return "92%";
+  const pct = num <= 1 ? num * 100 : num;
+  return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+}
+
 function buildDecisionChart(decisions) {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const today = new Date();
@@ -257,7 +265,7 @@ export default function Dashboard() {
   const activePoliciesCount = policies.filter((p) => p.status === "ACTIVE").length || summary?.activePolicies || 18;
   const flowsCheckedCount = (summary?.allowedTransfers || 0) + (summary?.blockedTransfers || 0) || 1248;
   const blockedFlowsCount = decisions.filter((d) => d.decision === "DENY").length || summary?.blockedTransfers || 36;
-  const complianceScore = summary?.complianceScore ? `${Math.round(summary.complianceScore * 100)}%` : "92%";
+  const complianceScore = formatComplianceScore(summary?.complianceScore);
 
   const roleName = user?.role ? toTitleCase(user.role) : "Compliance Officer";
 

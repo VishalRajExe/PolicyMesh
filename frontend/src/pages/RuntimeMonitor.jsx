@@ -345,11 +345,11 @@ export default function RuntimeMonitor() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {result.decision === "ALLOW" ? (
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-2xs icon-box-green">
                       <ShieldCheck size={18} />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-2xs icon-box-red">
                       <ShieldAlert size={18} />
                     </div>
                   )}

@@ -217,9 +217,9 @@ export default function AiClassification() {
             <div className="card p-5 border-l-4 border-l-[var(--color-brand)] animate-in fade-in zoom-in-95 bg-[var(--color-surface)]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-[var(--color-text)]">Classification Result</span>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <Badge variant="warn" size="sm">
                   {recentClassified.dataClass || recentClassified.classification}
-                </span>
+                </Badge>
               </div>
               <p className="text-xs font-mono text-[var(--color-text-dim)]">
                 Field: <strong className="text-[var(--color-text)]">{recentClassified.fieldName}</strong>

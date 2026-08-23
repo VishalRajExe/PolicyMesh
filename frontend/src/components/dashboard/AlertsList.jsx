@@ -4,17 +4,17 @@ import Badge from "../ui/Badge";
 const SEVERITY_CONFIG = {
   High: {
     icon: ShieldAlert,
-    iconBg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40",
+    iconBoxClass: "icon-box-red",
     badgeVariant: "bad",
   },
   Medium: {
     icon: AlertTriangle,
-    iconBg: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40",
+    iconBoxClass: "icon-box-amber",
     badgeVariant: "warn",
   },
   Low: {
     icon: Info,
-    iconBg: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40",
+    iconBoxClass: "icon-box-blue",
     badgeVariant: "info",
   },
 };
@@ -36,7 +36,7 @@ export default function AlertsList({ alerts = [] }) {
 
         return (
           <div key={idx} className="flex items-start gap-2.5 pt-2.5 first:pt-0">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${config.iconBg}`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${config.iconBoxClass}`}>
               <Icon size={14} />
             </div>
 

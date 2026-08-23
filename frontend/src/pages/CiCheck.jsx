@@ -257,27 +257,25 @@ export default function CiCheck() {
               <div
                 className={`p-4 rounded-xl border flex items-center justify-between ${
                   result.passed
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/40"
-                    : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/40"
+                    ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
+                    : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  {result.passed ? (
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
-                      <ShieldCheck size={22} />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center">
-                      <ShieldAlert size={22} />
-                    </div>
-                  )}
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
+                      result.passed ? "icon-box-green" : "icon-box-red"
+                    }`}
+                  >
+                    {result.passed ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
+                  </div>
                   <div>
                     <h3 className="font-bold text-sm text-[var(--color-text)]">
                       {result.passed ? "CI Compliance Gate: PASSED" : "CI Compliance Gate: BLOCKED"}
                     </h3>
                     <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
-                      Branch: <strong>{result.branch}</strong> • Commit:{" "}
-                      <strong>{result.commitHash?.slice(0, 7)}</strong>
+                      Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
+                      <strong className="text-[var(--color-text)]">{result.commitHash?.slice(0, 7)}</strong>
                     </p>
                   </div>
                 </div>

@@ -323,10 +323,10 @@ export default function DataFlows() {
               Total Violations Found:
             </span>
             <span
-              className={`text-xs font-bold px-2 py-0.5 rounded-lg border font-mono ${
+              className={`text-xs font-bold px-2.5 py-0.5 rounded-lg border font-mono ${
                 totalViolationsCount > 0
-                  ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/40"
-                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
+                  ? "bg-[var(--color-bad-light)] text-[var(--color-bad-text)] border-[var(--color-bad)]/30"
+                  : "bg-[var(--color-good-light)] text-[var(--color-good-text)] border-[var(--color-good)]/30"
               }`}
             >
               {totalViolationsCount}

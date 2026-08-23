@@ -145,11 +145,11 @@ export default function Lineage() {
             <div
               className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border shrink-0 ${
                 verification.valid
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400"
+                  ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30 text-[var(--color-good-text)]"
+                  : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30 text-[var(--color-bad-text)]"
               }`}
             >
-              {verification.valid ? <CheckCircle size={14} /> : <XCircle size={14} />}
+              {verification.valid ? <CheckCircle size={14} className="text-[var(--color-good)]" /> : <XCircle size={14} className="text-[var(--color-bad)]" />}
               <span>
                 {verification.valid
                   ? `Hash Chain Valid (${verification.recordsChecked || records.length} blocks verified)`
