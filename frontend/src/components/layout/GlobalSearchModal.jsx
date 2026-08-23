@@ -41,8 +41,14 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      policiesApi.list().then(setPolicies).catch(() => {});
-      servicesApi.list().then(setServices).catch(() => {});
+      policiesApi
+        .list()
+        .then((res) => setPolicies(Array.isArray(res) ? res : []))
+        .catch(() => setPolicies([]));
+      servicesApi
+        .list()
+        .then((res) => setServices(Array.isArray(res) ? res : []))
+        .catch(() => setServices([]));
     } else {
       setQuery("");
     }
@@ -53,9 +59,6 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         if (isOpen) onClose();
-        else {
-          // Open handled by parent or custom event
-        }
       }
       if (e.key === "Escape" && isOpen) {
         onClose();
@@ -67,29 +70,32 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const q = query.trim().toLowerCase();
+  const q = (query || "").trim().toLowerCase();
 
   const matchingRoutes = STATIC_ROUTES.filter((r) =>
-    r.label.toLowerCase().includes(q)
+    (r.label || "").toLowerCase().includes(q)
   );
 
-  const matchingPolicies = policies
-    .filter(
-      (p) =>
-        p.policyCode?.toLowerCase().includes(q) ||
-        p.name?.toLowerCase().includes(q) ||
-        p.jurisdiction?.toLowerCase().includes(q) ||
-        p.dataClass?.toLowerCase().includes(q)
-    )
+  const safePolicies = Array.isArray(policies) ? policies : [];
+  const matchingPolicies = safePolicies
+    .filter((p) => {
+      const code = String(p.policyCode || "").toLowerCase();
+      const name = String(p.name || "").toLowerCase();
+      const juris = String(p.jurisdiction || "").toLowerCase();
+      const dc = String(p.dataClass || "").toLowerCase();
+      return code.includes(q) || name.includes(q) || juris.includes(q) || dc.includes(q);
+    })
     .slice(0, 5);
 
-  const matchingServices = services
-    .filter(
-      (s) =>
-        s.id?.toLowerCase().includes(q) ||
-        s.name?.toLowerCase().includes(q) ||
-        s.region?.toLowerCase().includes(q)
-    )
+  const safeServices = Array.isArray(services) ? services : [];
+  const matchingServices = safeServices
+    .filter((s) => {
+      const id = String(s.id || "").toLowerCase();
+      const name = String(s.name || "").toLowerCase();
+      const reg = String(s.region || "").toLowerCase();
+      const env = String(s.environment || "").toLowerCase();
+      return id.includes(q) || name.includes(q) || reg.includes(q) || env.includes(q);
+    })
     .slice(0, 5);
 
   function handleSelect(path) {
@@ -98,8 +104,16 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="card w-full max-w-xl shadow-2xl border-[var(--color-border)] overflow-hidden">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+    >
+      <div
+        className="card w-full max-w-xl shadow-2xl border-[var(--color-border)] overflow-hidden animate-in zoom-in-95 duration-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
           <Search size={18} className="text-[var(--color-brand)] shrink-0" />
@@ -133,16 +147,18 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
               </p>
               {matchingPolicies.map((p) => (
                 <button
-                  key={p.policyCode}
-                  onClick={() => handleSelect(`/policies?search=${p.policyCode}`)}
+                  key={p.id || p.policyCode}
+                  onClick={() => handleSelect(`/policies?search=${p.policyCode || p.name}`)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-[var(--color-surface-2)] transition-colors group"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <FileText size={15} className="text-purple-400 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{p.policyCode} — {p.name}</p>
+                      <p className="text-xs font-semibold text-white truncate">
+                        {p.policyCode} {p.name ? `— ${p.name}` : ""}
+                      </p>
                       <p className="text-[11px] text-[var(--color-text-faint)]">
-                        {p.jurisdiction} • {p.dataClass} • Status: {p.status}
+                        {p.jurisdiction} • {p.dataClass} • Status: {p.status || "ACTIVE"}
                       </p>
                     </div>
                   </div>
@@ -161,14 +177,16 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
               {matchingServices.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => handleSelect(`/services?search=${s.id}`)}
+                  onClick={() => handleSelect(`/services?search=${s.name || s.id}`)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-[var(--color-surface-2)] transition-colors group"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Boxes size={15} className="text-blue-400 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{s.id}</p>
-                      <p className="text-[11px] text-[var(--color-text-faint)]">{s.name} • Region: {s.region}</p>
+                      <p className="text-xs font-semibold text-white truncate">{s.name || `Service #${s.id}`}</p>
+                      <p className="text-[11px] text-[var(--color-text-faint)]">
+                        Region: {s.region || "?"} • Env: {s.environment || "production"}
+                      </p>
                     </div>
                   </div>
                   <ArrowRight size={13} className="text-[var(--color-text-faint)] group-hover:text-white shrink-0" />
@@ -211,7 +229,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
         <div className="px-4 py-2 bg-[var(--color-surface-2)] border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-faint)] flex items-center justify-between">
           <span>Navigate with click or Enter</span>
-          <span>Press ESC to close</span>
+          <span>Press ESC or click outside to close</span>
         </div>
       </div>
     </div>
