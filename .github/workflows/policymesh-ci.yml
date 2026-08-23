@@ -31,7 +31,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'demo/**']
     paths:
       - .github/workflows/policymesh-ci.yml
       - .github/scripts/**
