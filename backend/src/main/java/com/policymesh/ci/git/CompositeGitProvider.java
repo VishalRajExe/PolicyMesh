@@ -57,6 +57,16 @@ public class CompositeGitProvider implements GitProvider {
   }
 
   @Override
+  public String getFileContentAtCommit(String commitSha, String filePath) {
+    GitProvider provider = activeProvider();
+    String content = provider.getFileContentAtCommit(commitSha, filePath);
+    if (content == null && provider == gitHubProvider) {
+      content = localGitProvider.getFileContentAtCommit(commitSha, filePath);
+    }
+    return content;
+  }
+
+  @Override
   public CommitInfo getCommit(String branch, String commitRef) {
     GitProvider provider = activeProvider();
     log.info("Resolving commit '{}' on branch '{}' using provider: {}", commitRef, branch, provider.getProviderName());

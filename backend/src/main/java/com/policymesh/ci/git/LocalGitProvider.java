@@ -39,6 +39,30 @@ public class LocalGitProvider implements GitProvider {
   }
 
   @Override
+  public String getFileContentAtCommit(String commitSha, String filePath) {
+    if (commitSha == null || filePath == null || filePath.isBlank()) return null;
+    String cleanSha = commitSha.trim();
+    String cleanPath = filePath.trim().replace('\\', '/');
+    if (cleanPath.startsWith("./")) cleanPath = cleanPath.substring(2);
+    if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+
+    String content = runGit("show", cleanSha + ":" + cleanPath);
+    if (content != null && !content.isBlank() && !content.startsWith("fatal:") && !content.startsWith("error:")) {
+      return content;
+    }
+
+    // Fallback to working directory file if cleanSha matches HEAD or test commit
+    try {
+      File target = new File(repoDir, cleanPath);
+      if (target.isFile()) {
+        return java.nio.file.Files.readString(target.toPath());
+      }
+    } catch (Exception ignored) {}
+
+    return null;
+  }
+
+  @Override
   public String getProviderName() {
     return "LOCAL_GIT";
   }

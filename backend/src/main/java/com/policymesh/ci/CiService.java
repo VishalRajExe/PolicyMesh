@@ -23,6 +23,7 @@ public class CiService {
   private final CIScanRepository scans;
   private final GitProvider gitProvider;
   private final CommitImpactAnalyzer impactAnalyzer;
+  private final com.policymesh.enforcement.DecisionRepository decisions;
   private final EventPublisher events;
   private final ObjectMapper mapper;
 
@@ -30,12 +31,14 @@ public class CiService {
       CIScanRepository scans,
       GitProvider gitProvider,
       CommitImpactAnalyzer impactAnalyzer,
+      com.policymesh.enforcement.DecisionRepository decisions,
       EventPublisher events,
       ObjectMapper mapper
   ) {
     this.scans = scans;
     this.gitProvider = gitProvider;
     this.impactAnalyzer = impactAnalyzer;
+    this.decisions = decisions;
     this.events = events;
     this.mapper = mapper;
   }
@@ -67,13 +70,14 @@ public class CiService {
     scan.complete();
     scan = scans.save(scan);
 
-    // 4. Publish telemetry event
+    // 4. Publish telemetry event for asynchronous alerts and audit pipelines
     Map<String, Object> payload = new HashMap<>();
     payload.put("scanId", scan.getId());
     payload.put("result", scan.getStatus());
     payload.put("violationCount", scan.getViolationCount());
     payload.put("commitHash", commit.shortSha());
     payload.put("branch", branch);
+    payload.put("violations", analysis.violations());
     events.publish(EventPublisher.TOPIC_CI_COMPLETED, payload);
 
     return CiDtos.from(

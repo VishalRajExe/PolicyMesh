@@ -44,6 +44,21 @@ public class GitHubProvider implements GitProvider {
   }
 
   @Override
+  public String getFileContentAtCommit(String commitSha, String filePath) {
+    if (!isConfigured() || commitSha == null || filePath == null) return null;
+    try {
+      String url = "https://raw.githubusercontent.com/" + owner + "/" + repo + "/" + commitSha.trim() + "/" + filePath.trim();
+      ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      if (response.getStatusCode().is2xxSuccessful()) {
+        return response.getBody();
+      }
+    } catch (Exception e) {
+      log.debug("GitHub raw file fetch error: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  @Override
   public String getProviderName() {
     return "GITHUB_REST";
   }

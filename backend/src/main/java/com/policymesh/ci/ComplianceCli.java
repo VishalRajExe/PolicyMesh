@@ -98,14 +98,41 @@ public final class ComplianceCli {
       if (json) {
         System.out.println(reportJson);
       } else {
-        System.out.println("PolicyMesh compliance check: " + result
-            + " (" + violations.size() + " violation(s) over " + checked + " data-class flow(s), "
-            + policies.size() + " active policy file(s))");
-        for (CliViolation v : violations) {
-          System.out.println("  x " + v.source() + " [" + v.sourceRegion() + "] -> " + v.destination()
-              + " [" + v.destinationRegion() + "]  dataClass=" + v.dataClass()
-              + (v.policyCode() != null ? "  policy=" + v.policyCode() : ""));
-          System.out.println("      " + v.reason());
+        if (violations.isEmpty()) {
+          System.out.println("========================================");
+          System.out.println("PolicyMesh Compliance Check");
+          System.out.println("========================================\n");
+          System.out.println("Result: PASSED\n");
+          System.out.println("Flows checked: " + checked);
+          System.out.println("Passed: " + checked);
+          System.out.println("Failed: 0\n");
+          System.out.println("✅ PolicyMesh Compliance Passed");
+          System.out.println("========================================\n");
+        } else {
+          for (CliViolation v : violations) {
+            System.out.println("::error title=PolicyMesh Compliance::" + (v.policyCode() != null ? v.policyCode() : "POLICY-VIOLATION") + " violation: "
+                + v.source() + " (" + v.sourceRegion() + ") → " + v.destination() + " (" + v.destinationRegion() + ") carrying " + v.dataClass());
+          }
+          System.out.println("========================================");
+          System.out.println("PolicyMesh Compliance Check");
+          System.out.println("========================================\n");
+          System.out.println("Result: FAILED\n");
+          System.out.println("Violations: " + violations.size() + "\n");
+          for (int i = 0; i < violations.size(); i++) {
+            CliViolation v = violations.get(i);
+            System.out.println("[" + (i + 1) + "] " + (v.policyCode() != null ? v.policyCode() : "DEFAULT_DENY"));
+            System.out.println("Source: " + v.source() + " (" + v.sourceRegion() + ")");
+            System.out.println("Destination: " + v.destination() + " (" + v.destinationRegion() + ")");
+            System.out.println("Data Class: " + v.dataClass() + "\n");
+            System.out.println("Reason:\n" + v.reason() + "\n");
+            System.out.println("Remediation:");
+            System.out.println("- Reroute the data flow");
+            System.out.println("- Remove the sensitive data from the flow");
+            System.out.println("- Mask/tokenize the data");
+            System.out.println("- Change the destination only if legally permitted");
+            System.out.println("- Update the governance policy only when legitimately authorized\n");
+          }
+          System.out.println("========================================\n");
         }
       }
       if (reportFile != null) {

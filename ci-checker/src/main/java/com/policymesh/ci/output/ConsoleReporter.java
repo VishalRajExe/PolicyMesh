@@ -3,47 +3,16 @@ package com.policymesh.ci.output;
 import com.policymesh.ci.model.ComplianceResult;
 import com.policymesh.ci.model.ComplianceViolation;
 
+import java.util.List;
+
 /**
- * Formats compliance results for the terminal.
+ * Formats compliance results for the terminal and GitHub Actions.
  *
  * Features:
  * - ANSI color support (can be disabled with --no-color)
  * - Clear visual hierarchy
- * - Pass/fail indicators
- * - Summary section
- *
- * Example output:
- * <pre>
- * ========================================
- *        POLICYMESH COMPLIANCE CHECK
- * ========================================
- *
- * Policies loaded: 2
- * Services loaded: 3
- * Data flows loaded: 2
- *
- * Checking data flows...
- *
- * [PASS] orders-api [EU]
- *        ↓
- *        payments-api [EU]
- *        Data: PII
- *
- * [FAIL] orders-api [EU]
- *        ↓
- *        analytics-api [US]
- *        Data: PII
- *
- *        Policy: EU-PII-001
- *        Reason: EU PII cannot be transferred to US
- *
- * ----------------------------------------
- * RESULT: FAILED
- * Flows checked: 2
- * Passed: 1
- * Failed: 1
- * ----------------------------------------
- * </pre>
+ * - GitHub Actions workflow annotation integration (::error title=...)
+ * - Actionable remediation guidance
  */
 public class ConsoleReporter {
 
@@ -70,17 +39,17 @@ public class ConsoleReporter {
     }
 
     /**
-     * Prints the full compliance report to stdout.
+     * Prints the full compliance report header to stdout.
      */
     public void report(ComplianceResult result, int policiesLoaded, int servicesLoaded, int flowsLoaded) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("\n");
-        sb.append(color(CYAN, "========================================="));
+        sb.append(color(CYAN, "========================================"));
         sb.append("\n");
-        sb.append(color(CYAN, bold("        POLICYMESH COMPLIANCE CHECK")));
+        sb.append(color(CYAN, bold("      POLICYMESH COMPLIANCE CHECK")));
         sb.append("\n");
-        sb.append(color(CYAN, "========================================="));
+        sb.append(color(CYAN, "========================================"));
         sb.append("\n\n");
 
         sb.append("Policies loaded: ").append(policiesLoaded).append("\n");
@@ -108,11 +77,15 @@ public class ConsoleReporter {
     }
 
     /**
-     * Prints a failing flow with violation details.
+     * Prints a failing flow with violation details and emits GitHub Actions workflow command.
      */
     public void reportFail(String sourceId, String sourceRegion,
                            String destId, String destRegion,
                            String dataClasses, ComplianceViolation violation) {
+        // Emit GitHub Actions annotation command if running in CI environment
+        System.out.println("::error title=PolicyMesh Compliance::" + violation.getPolicyId() + " violation: "
+            + sourceId + " (" + sourceRegion + ") → " + destId + " (" + destRegion + ") carrying " + dataClasses);
+
         StringBuilder sb = new StringBuilder();
         sb.append(color(RED, bold("[FAIL] "))).append(sourceId)
           .append(" [").append(sourceRegion).append("]").append("\n");
@@ -125,31 +98,53 @@ public class ConsoleReporter {
     }
 
     /**
-     * Prints the final summary.
+     * Prints the final summary with formatted remediation and exit results.
      */
     public void reportSummary(ComplianceResult result) {
         StringBuilder sb = new StringBuilder();
-        sb.append(color(CYAN, "----------------------------------------")).append("\n");
+        sb.append("\n");
+        sb.append("========================================\n");
+        sb.append("PolicyMesh Compliance Check\n");
+        sb.append("========================================\n\n");
 
         if (result.getStatus() == ComplianceResult.Status.PASSED) {
-            sb.append(color(GREEN, bold("RESULT: PASSED")));
+            sb.append("Result: PASSED\n\n");
+            sb.append("Flows checked: ").append(result.getTotalFlows()).append("\n");
+            sb.append("Passed: ").append(result.getPassedFlows()).append("\n");
+            sb.append("Failed: 0\n\n");
+            sb.append(color(GREEN, bold("✅ PolicyMesh Compliance Passed\n")));
         } else if (result.getStatus() == ComplianceResult.Status.FAILED) {
-            sb.append(color(RED, bold("RESULT: FAILED")));
+            sb.append("Result: FAILED\n\n");
+            sb.append("Violations: ").append(result.getViolations().size()).append("\n\n");
+
+            List<ComplianceViolation> violations = result.getViolations();
+            for (int i = 0; i < violations.size(); i++) {
+                ComplianceViolation v = violations.get(i);
+                sb.append("[").append(i + 1).append("] ").append(v.getPolicyId()).append("\n");
+                sb.append("Source: ").append(v.getSourceService()).append(" (").append(v.getSourceRegion()).append(")\n");
+                sb.append("Destination: ").append(v.getDestinationService()).append(" (").append(v.getDestinationRegion()).append(")\n");
+                sb.append("Data Class: ").append(v.getDataClass()).append("\n\n");
+                sb.append("Reason:\n").append(v.getReason()).append("\n\n");
+                sb.append("Remediation:\n");
+                sb.append("- Reroute the data flow\n");
+                sb.append("- Remove the sensitive data from the flow\n");
+                sb.append("- Mask/tokenize the data\n");
+                sb.append("- Change the destination only if legally permitted\n");
+                sb.append("- Update the governance policy only when legitimately authorized\n\n");
+            }
+
+            sb.append("Flows checked: ").append(result.getTotalFlows()).append("\n");
+            sb.append("Passed: ").append(result.getPassedFlows()).append("\n");
+            sb.append("Failed: ").append(result.getFailedFlows()).append("\n\n");
+            sb.append(color(RED, bold("❌ PolicyMesh Compliance FAILED\n")));
         } else {
-            sb.append(color(YELLOW, bold("RESULT: ERROR")));
+            sb.append("Result: ERROR\n\n");
+            if (result.getErrorMessage() != null) {
+                sb.append("Error: ").append(result.getErrorMessage()).append("\n\n");
+            }
         }
 
-        sb.append("\n");
-        sb.append("Flows checked: ").append(result.getTotalFlows()).append("\n");
-        sb.append("Passed: ").append(result.getPassedFlows()).append("\n");
-        sb.append("Failed: ").append(result.getFailedFlows()).append("\n");
-
-        if (result.getErrorMessage() != null) {
-            sb.append("\n");
-            sb.append(color(RED, "Error: ")).append(result.getErrorMessage()).append("\n");
-        }
-
-        sb.append(color(CYAN, "----------------------------------------")).append("\n\n");
+        sb.append("========================================\n\n");
         System.out.print(sb);
     }
 }

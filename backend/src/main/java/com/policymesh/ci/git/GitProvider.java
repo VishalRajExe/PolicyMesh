@@ -15,6 +15,12 @@ public interface GitProvider {
    */
   CommitInfo getCommit(String branch, String commitRef);
 
+  /**
+   * Reads raw file content from the git repository at the exact specified commit SHA.
+   * Returns null if file does not exist at that commit.
+   */
+  String getFileContentAtCommit(String commitSha, String filePath);
+
   /** Provider identifier for telemetry/audit logs (e.g. "LOCAL_GIT", "GITHUB_REST"). */
   String getProviderName();
 }
