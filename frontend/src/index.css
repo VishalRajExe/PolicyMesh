@@ -183,6 +183,11 @@ body {
   border-color: var(--color-brand);
   box-shadow: 0 0 0 1px var(--color-brand);
 }
+.field-input.has-icon,
+.field-input.has-icon-left,
+.field-input-search {
+  padding-left: 2.25rem !important;
+}
 .field-input option {
   background-color: var(--color-surface);
   color: var(--color-text);
