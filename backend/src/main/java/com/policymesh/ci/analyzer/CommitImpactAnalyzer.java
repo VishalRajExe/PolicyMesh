@@ -228,7 +228,15 @@ public class CommitImpactAnalyzer {
   private Map<String, String> resolveServicesAtCommit(String commitSha) {
     Map<String, String> serviceRegions = new LinkedHashMap<>();
 
-    // 1. Try reading services.json at the exact commit from git
+    // 1. Database services (runtime & in-memory test overrides)
+    for (ServiceNode sn : serviceNodeRepository.findAll()) {
+      if (sn.getName() != null && sn.getRegion() != null) {
+        serviceRegions.put(sn.getName(), sn.getRegion());
+      }
+    }
+    if (!serviceRegions.isEmpty()) return serviceRegions;
+
+    // 2. Try reading services.json at the exact commit from git
     List<String> serviceCandidates = List.of("examples/services/services.json", "examples/services.json", "services.json");
     for (String path : serviceCandidates) {
       String json = gitProvider.getFileContentAtCommit(commitSha, path);
@@ -252,20 +260,11 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 2. Database services fallback
-    for (ServiceNode sn : serviceNodeRepository.findAll()) {
-      if (sn.getName() != null && sn.getRegion() != null) {
-        serviceRegions.put(sn.getName(), sn.getRegion());
-      }
-    }
-
-    if (serviceRegions.isEmpty()) {
-      serviceRegions.put("web-app", "EU");
-      serviceRegions.put("orders-api", "EU");
-      serviceRegions.put("payments-api", "EU");
-      serviceRegions.put("analytics-api", "US");
-      serviceRegions.put("customer-db", "EU");
-    }
+    serviceRegions.put("web-app", "EU");
+    serviceRegions.put("orders-api", "EU");
+    serviceRegions.put("payments-api", "EU");
+    serviceRegions.put("analytics-api", "US");
+    serviceRegions.put("customer-db", "EU");
 
     return serviceRegions;
   }
