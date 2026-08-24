@@ -42,6 +42,20 @@ public class CIScan {
   @Column(columnDefinition = "text")
   private String changedFilesJson = "[]";
 
+  private String githubOverallStatus;
+  private int githubTotalChecks;
+  private int githubPassedChecks;
+  private int githubFailedChecks;
+  private int githubSkippedChecks;
+  private int githubPendingChecks;
+  private Boolean mergeAllowed;
+
+  @Column(columnDefinition = "mediumtext")
+  private String githubChecksJson = "{}";
+
+  @Column(columnDefinition = "text")
+  private String finalDecisionJson = "{}";
+
   public Long getId() { return id; }
   public String getCommitHash() { return commitHash; }
   public String getBranch() { return branch; }
@@ -57,6 +71,15 @@ public class CIScan {
   public int getFlowsChecked() { return flowsChecked; }
   public int getPassedFlows() { return passedFlows; }
   public int getFailedFlows() { return failedFlows; }
+  public String getGithubOverallStatus() { return githubOverallStatus; }
+  public int getGithubTotalChecks() { return githubTotalChecks; }
+  public int getGithubPassedChecks() { return githubPassedChecks; }
+  public int getGithubFailedChecks() { return githubFailedChecks; }
+  public int getGithubSkippedChecks() { return githubSkippedChecks; }
+  public int getGithubPendingChecks() { return githubPendingChecks; }
+  public Boolean getMergeAllowed() { return mergeAllowed; }
+  public String getGithubChecksJson() { return githubChecksJson; }
+  public String getFinalDecisionJson() { return finalDecisionJson; }
 
   public void setCommitHash(String v) { commitHash = v; }
   public void setBranch(String v) { branch = v; }
@@ -70,5 +93,14 @@ public class CIScan {
   public void setFlowsChecked(int v) { flowsChecked = v; }
   public void setPassedFlows(int v) { passedFlows = v; }
   public void setFailedFlows(int v) { failedFlows = v; }
+  public void setGithubOverallStatus(String v) { githubOverallStatus = v; }
+  public void setGithubTotalChecks(int v) { githubTotalChecks = v; }
+  public void setGithubPassedChecks(int v) { githubPassedChecks = v; }
+  public void setGithubFailedChecks(int v) { githubFailedChecks = v; }
+  public void setGithubSkippedChecks(int v) { githubSkippedChecks = v; }
+  public void setGithubPendingChecks(int v) { githubPendingChecks = v; }
+  public void setMergeAllowed(Boolean v) { mergeAllowed = v; }
+  public void setGithubChecksJson(String v) { githubChecksJson = v; }
+  public void setFinalDecisionJson(String v) { finalDecisionJson = v; }
   public void complete() { completedAt = Instant.now(); }
 }

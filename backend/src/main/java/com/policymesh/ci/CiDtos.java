@@ -63,25 +63,68 @@ public final class CiDtos {
   ) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  public record GitHubCheckStep(
+      String name,
+      String status,      // completed, in_progress, queued
+      String conclusion,  // success, failure, skipped
+      int number
+  ) {}
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public record GitHubCheckItem(
       String name,
+      String workflowName,
+      String jobName,
       String status,      // completed, in_progress, queued
       String conclusion,  // success, failure, neutral, cancelled, skipped
       String details,
-      String url
+      String errorSnippet,
+      String url,
+      Long durationSeconds,
+      List<GitHubCheckStep> steps
+  ) {
+    public GitHubCheckItem(String name, String status, String conclusion, String details, String url) {
+      this(name, null, name, status, conclusion, details, null, url, null, List.of());
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record GitHubWorkflowRunItem(
+      Long id,
+      String name,
+      String status,
+      String conclusion,
+      String event,
+      String url,
+      Integer runNumber,
+      String createdAt
   ) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record GitHubChecksSummary(
-      String overallStatus, // SUCCESS, FAILURE, SKIPPED, PENDING, UNAVAILABLE, LOCAL_SYNTHETIC
+      String overallStatus, // SUCCESS, FAILURE, SKIPPED, PENDING, NO_RUNS, GITHUB_RATE_LIMIT, GITHUB_AUTH_ERROR, UNAVAILABLE, LOCAL_SYNTHETIC
       int totalChecks,
       int passedChecks,
       int failedChecks,
       int skippedChecks,
       int pendingChecks,
       String failureReason,
-      List<GitHubCheckItem> checks
-  ) {}
+      List<GitHubCheckItem> checks,
+      List<GitHubWorkflowRunItem> workflowRuns
+  ) {
+    public GitHubChecksSummary(
+        String overallStatus,
+        int totalChecks,
+        int passedChecks,
+        int failedChecks,
+        int skippedChecks,
+        int pendingChecks,
+        String failureReason,
+        List<GitHubCheckItem> checks
+    ) {
+      this(overallStatus, totalChecks, passedChecks, failedChecks, skippedChecks, pendingChecks, failureReason, checks, List.of());
+    }
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FinalMergeDecision(

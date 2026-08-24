@@ -14,9 +14,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class GitHubProvider implements GitProvider {
@@ -25,7 +31,7 @@ public class GitHubProvider implements GitProvider {
   private final ObjectMapper mapper;
   private final String owner;
   private final String repo;
-  private final String token;
+  private String token;
 
   public GitHubProvider(
       @Value("${github.owner:${GITHUB_OWNER:VishalRajExe}}") String owner,
@@ -33,11 +39,50 @@ public class GitHubProvider implements GitProvider {
       @Value("${github.token:${GITHUB_TOKEN:}}") String token,
       ObjectMapper mapper
   ) {
-    this.owner = owner != null ? owner.trim() : "VishalRajExe";
-    this.repo = repo != null ? repo.trim() : "PolicyMesh";
-    this.token = token != null ? token.trim() : "";
+    this.owner = owner != null && !owner.isBlank() ? owner.trim() : "VishalRajExe";
+    this.repo = repo != null && !repo.isBlank() ? repo.trim() : "PolicyMesh";
+    this.token = resolveGitHubToken(token);
     this.mapper = mapper;
     this.restTemplate = new RestTemplate();
+  }
+
+  private String resolveGitHubToken(String configuredToken) {
+    if (configuredToken != null && !configuredToken.isBlank()) {
+      return configuredToken.trim();
+    }
+    String envToken = System.getenv("GITHUB_TOKEN");
+    if (envToken != null && !envToken.isBlank()) {
+      return envToken.trim();
+    }
+    String ghEnvToken = System.getenv("GH_TOKEN");
+    if (ghEnvToken != null && !ghEnvToken.isBlank()) {
+      return ghEnvToken.trim();
+    }
+    // Attempt local git credential helper discovery
+    try {
+      ProcessBuilder pb = new ProcessBuilder("git", "credential", "fill");
+      pb.redirectErrorStream(true);
+      Process p = pb.start();
+      try (var out = p.getOutputStream()) {
+        out.write("protocol=https\nhost=github.com\n\n".getBytes(StandardCharsets.UTF_8));
+        out.flush();
+      }
+      try (var reader = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          if (line.startsWith("password=")) {
+            String pass = line.substring("password=".length()).trim();
+            if (!pass.isBlank()) {
+              log.info("Successfully discovered GitHub credentials from local Git Credential Manager.");
+              return pass;
+            }
+          }
+        }
+      }
+      p.waitFor();
+    } catch (Exception ignored) {}
+
+    return "";
   }
 
   public boolean isConfigured() {
@@ -187,88 +232,347 @@ public class GitHubProvider implements GitProvider {
   @Override
   public CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha) {
     if (!isConfigured() || commitSha == null || commitSha.isBlank()) {
-      return new CiDtos.GitHubChecksSummary("UNAVAILABLE", 0, 0, 0, 0, 0, "GitHub credentials not configured.", List.of());
+      return new CiDtos.GitHubChecksSummary("UNAVAILABLE", 0, 0, 0, 0, 0, "GitHub credentials not configured.", List.of(), List.of());
     }
 
+    String cleanSha = commitSha.trim();
+    String shortSha = cleanSha.length() > 7 ? cleanSha.substring(0, 7) : cleanSha;
+
     try {
-      String url = "https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + commitSha.trim() + "/check-runs";
-      ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      // 1. Query workflow runs for this commit SHA
+      List<CiDtos.GitHubWorkflowRunItem> workflowRuns = fetchWorkflowRuns(cleanSha);
+      Map<Long, String> workflowRunNames = new HashMap<>();
+      for (var wr : workflowRuns) {
+        if (wr.id() != null && wr.name() != null) {
+          workflowRunNames.put(wr.id(), wr.name());
+        }
+      }
+
+      // 2. Query check runs for this commit SHA
+      String checkRunsUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + cleanSha + "/check-runs?per_page=100";
+      ResponseEntity<String> response = restTemplate.exchange(checkRunsUrl, HttpMethod.GET, buildEntity(), String.class);
+      
+      List<CiDtos.GitHubCheckItem> items = new ArrayList<>();
       if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
         JsonNode root = mapper.readTree(response.getBody());
         JsonNode checkRuns = root.path("check_runs");
-        if (checkRuns.isArray() && checkRuns.size() > 0) {
-          List<CiDtos.GitHubCheckItem> items = new ArrayList<>();
-          int passed = 0;
-          int failed = 0;
-          int skipped = 0;
-          int pending = 0;
-          List<String> failedNames = new ArrayList<>();
-          List<String> skippedNames = new ArrayList<>();
-          List<String> pendingNames = new ArrayList<>();
-
+        if (checkRuns.isArray()) {
           for (JsonNode cr : checkRuns) {
+            long checkRunId = cr.path("id").asLong();
             String name = cr.path("name").asText("Check");
             String status = cr.path("status").asText("completed");
-            String conclusion = cr.path("conclusion").asText(null);
+            String conclusion = cr.path("conclusion").isNull() ? null : cr.path("conclusion").asText();
             String htmlUrl = cr.path("html_url").asText("");
+            if (htmlUrl.isBlank()) htmlUrl = cr.path("details_url").asText("");
+
             String title = cr.path("output").path("title").asText("");
             String summary = cr.path("output").path("summary").asText("");
+            String text = cr.path("output").path("text").asText("");
             String details = !title.isBlank() ? title : (!summary.isBlank() ? summary : conclusion);
 
-            if ("success".equalsIgnoreCase(conclusion) || "neutral".equalsIgnoreCase(conclusion)) {
-              passed++;
-            } else if ("failure".equalsIgnoreCase(conclusion) || "timed_out".equalsIgnoreCase(conclusion) || "action_required".equalsIgnoreCase(conclusion) || "cancelled".equalsIgnoreCase(conclusion)) {
-              failed++;
-              failedNames.add(name);
-            } else if ("skipped".equalsIgnoreCase(conclusion)) {
-              skipped++;
-              skippedNames.add(name);
-            } else if ("in_progress".equalsIgnoreCase(status) || "queued".equalsIgnoreCase(status) || "waiting".equalsIgnoreCase(status) || conclusion == null) {
-              pending++;
-              pendingNames.add(name);
-            } else {
-              failed++;
-              failedNames.add(name);
+            // Compute duration
+            Long durationSeconds = null;
+            String startedAtStr = cr.path("started_at").asText("");
+            String completedAtStr = cr.path("completed_at").asText("");
+            if (!startedAtStr.isBlank() && !completedAtStr.isBlank()) {
+              try {
+                Instant start = Instant.parse(startedAtStr);
+                Instant end = Instant.parse(completedAtStr);
+                durationSeconds = Math.max(0, Duration.between(start, end).toSeconds());
+              } catch (Exception ignored) {}
             }
 
-            items.add(new CiDtos.GitHubCheckItem(name, status, conclusion != null ? conclusion : status, details, htmlUrl));
-          }
+            // Derive workflow name
+            String workflowName = null;
+            if (htmlUrl.contains("/actions/runs/")) {
+              try {
+                String runIdStr = htmlUrl.substring(htmlUrl.indexOf("/actions/runs/") + "/actions/runs/".length());
+                if (runIdStr.contains("/")) runIdStr = runIdStr.substring(0, runIdStr.indexOf("/"));
+                long runId = Long.parseLong(runIdStr);
+                workflowName = workflowRunNames.get(runId);
+              } catch (Exception ignored) {}
+            }
+            if (workflowName == null || workflowName.isBlank()) {
+              workflowName = normalizeWorkflowName(name);
+            }
 
-          String overall;
-          String failureReason = null;
-          if (failed > 0) {
-            overall = "FAILURE";
-            failureReason = failed + " check(s) failed: " + String.join(", ", failedNames) + (skipped > 0 ? " (" + skipped + " skipped)" : "");
-          } else if (skipped > 0) {
-            overall = "SKIPPED";
-            failureReason = skipped + " required check(s) skipped: " + String.join(", ", skippedNames);
-          } else if (pending > 0) {
-            overall = "PENDING";
-            failureReason = pending + " check(s) in progress: " + String.join(", ", pendingNames);
-          } else if (passed == items.size() && items.size() > 0) {
-            overall = "SUCCESS";
-          } else {
-            overall = "UNAVAILABLE";
-            failureReason = "No conclusive check runs found.";
-          }
+            // Fetch real error snippet from annotations if check failed
+            String errorSnippet = null;
+            if ("failure".equalsIgnoreCase(conclusion) || "cancelled".equalsIgnoreCase(conclusion) || "timed_out".equalsIgnoreCase(conclusion)) {
+              errorSnippet = fetchCheckRunFailureSnippet(checkRunId, text, summary);
+            }
 
-          return new CiDtos.GitHubChecksSummary(overall, items.size(), passed, failed, skipped, pending, failureReason, items);
+            items.add(new CiDtos.GitHubCheckItem(
+                name,
+                workflowName,
+                name,
+                status,
+                conclusion != null ? conclusion : status,
+                details,
+                errorSnippet,
+                htmlUrl,
+                durationSeconds,
+                List.of()
+            ));
+          }
+        }
+      }
+
+      // If check-runs returned 0 items but workflow runs exist, fetch jobs from workflow runs
+      if (items.isEmpty() && !workflowRuns.isEmpty()) {
+        for (var wr : workflowRuns) {
+          if (wr.id() != null) {
+            List<CiDtos.GitHubCheckItem> jobItems = fetchWorkflowRunJobs(wr.id(), wr.name());
+            items.addAll(jobItems);
+          }
+        }
+      }
+
+      // If genuinely no workflow runs and no check runs exist for this commit
+      if (items.isEmpty() && workflowRuns.isEmpty()) {
+        return new CiDtos.GitHubChecksSummary(
+            "NO_RUNS",
+            0,
+            0,
+            0,
+            0,
+            0,
+            "No GitHub Actions workflow was triggered for commit " + shortSha + ". Push a commit to trigger CI.",
+            List.of(),
+            List.of()
+        );
+      }
+
+      // Calculate totals
+      int passed = 0;
+      int failed = 0;
+      int skipped = 0;
+      int pending = 0;
+      List<String> failedNames = new ArrayList<>();
+      List<String> skippedNames = new ArrayList<>();
+      List<String> pendingNames = new ArrayList<>();
+
+      for (var item : items) {
+        String c = item.conclusion() != null ? item.conclusion().toLowerCase() : "";
+        String s = item.status() != null ? item.status().toLowerCase() : "";
+
+        if ("success".equals(c) || "neutral".equals(c)) {
+          passed++;
+        } else if ("failure".equals(c) || "timed_out".equals(c) || "action_required".equals(c) || "cancelled".equals(c)) {
+          failed++;
+          failedNames.add(item.name());
+        } else if ("skipped".equals(c)) {
+          skipped++;
+          skippedNames.add(item.name());
+        } else if ("in_progress".equals(s) || "queued".equals(s) || "waiting".equals(s) || "requested".equals(s) || c.isBlank()) {
+          pending++;
+          pendingNames.add(item.name());
+        } else {
+          failed++;
+          failedNames.add(item.name());
+        }
+      }
+
+      String overall;
+      String failureReason = null;
+      if (failed > 0) {
+        overall = "FAILURE";
+        failureReason = failed + " check(s) failed: " + String.join(", ", failedNames) + (skipped > 0 ? " (" + skipped + " skipped)" : "");
+      } else if (skipped > 0) {
+        overall = "SKIPPED";
+        failureReason = skipped + " check(s) skipped: " + String.join(", ", skippedNames);
+      } else if (pending > 0) {
+        overall = "PENDING";
+        failureReason = pending + " check(s) in progress: " + String.join(", ", pendingNames);
+      } else if (passed == items.size() && items.size() > 0) {
+        overall = "SUCCESS";
+        failureReason = null;
+      } else {
+        overall = "UNAVAILABLE";
+        failureReason = "No conclusive check runs found.";
+      }
+
+      return new CiDtos.GitHubChecksSummary(
+          overall,
+          items.size(),
+          passed,
+          failed,
+          skipped,
+          pending,
+          failureReason,
+          items,
+          workflowRuns
+      );
+
+    } catch (HttpClientErrorException.Forbidden e) {
+      log.warn("GitHub API Forbidden (Rate limit or permissions): {}", e.getMessage());
+      String msg = e.getResponseBodyAsString();
+      if (msg != null && msg.toLowerCase().contains("rate limit")) {
+        return new CiDtos.GitHubChecksSummary(
+            "GITHUB_RATE_LIMIT",
+            0, 0, 0, 0, 0,
+            "GitHub REST API rate limit reached for repository " + owner + "/" + repo + ". Please set GITHUB_TOKEN for higher rate limits.",
+            List.of(),
+            List.of()
+        );
+      }
+      return new CiDtos.GitHubChecksSummary(
+          "GITHUB_AUTH_ERROR",
+          0, 0, 0, 0, 0,
+          "GitHub API access forbidden: " + e.getMessage(),
+          List.of(),
+          List.of()
+      );
+    } catch (HttpClientErrorException.Unauthorized e) {
+      log.warn("GitHub API Unauthorized: {}", e.getMessage());
+      return new CiDtos.GitHubChecksSummary(
+          "GITHUB_AUTH_ERROR",
+          0, 0, 0, 0, 0,
+          "GitHub API authentication token is invalid or expired.",
+          List.of(),
+          List.of()
+      );
+    } catch (Exception e) {
+      log.error("Failed fetching GitHub Actions for commit {}: {}", commitSha, e.getMessage());
+      return new CiDtos.GitHubChecksSummary(
+          "UNAVAILABLE",
+          0, 0, 0, 0, 0,
+          "Failed to connect to GitHub Actions API: " + e.getMessage(),
+          List.of(),
+          List.of()
+      );
+    }
+  }
+
+  private List<CiDtos.GitHubWorkflowRunItem> fetchWorkflowRuns(String commitSha) {
+    List<CiDtos.GitHubWorkflowRunItem> list = new ArrayList<>();
+    try {
+      String url = "https://api.github.com/repos/" + owner + "/" + repo + "/actions/runs?head_sha=" + commitSha + "&per_page=50";
+      ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        JsonNode root = mapper.readTree(resp.getBody());
+        JsonNode runs = root.path("workflow_runs");
+        if (runs.isArray()) {
+          for (JsonNode wr : runs) {
+            long id = wr.path("id").asLong();
+            String name = wr.path("name").asText("Workflow");
+            String status = wr.path("status").asText("completed");
+            String conclusion = wr.path("conclusion").isNull() ? null : wr.path("conclusion").asText();
+            String event = wr.path("event").asText("push");
+            String htmlUrl = wr.path("html_url").asText("");
+            int runNumber = wr.path("run_number").asInt(1);
+            String createdAt = wr.path("created_at").asText("");
+            list.add(new CiDtos.GitHubWorkflowRunItem(id, name, status, conclusion, event, htmlUrl, runNumber, createdAt));
+          }
         }
       }
     } catch (Exception e) {
-      log.debug("Failed fetching check-runs from GitHub: {}", e.getMessage());
+      log.debug("Failed fetching workflow runs: {}", e.getMessage());
     }
+    return list;
+  }
 
-    return new CiDtos.GitHubChecksSummary("UNAVAILABLE", 0, 0, 0, 0, 0, "No GitHub Actions workflow check runs found for commit " + (commitSha.length() > 7 ? commitSha.substring(0, 7) : commitSha), List.of());
+  private List<CiDtos.GitHubCheckItem> fetchWorkflowRunJobs(long runId, String workflowName) {
+    List<CiDtos.GitHubCheckItem> items = new ArrayList<>();
+    try {
+      String url = "https://api.github.com/repos/" + owner + "/" + repo + "/actions/runs/" + runId + "/jobs?per_page=100";
+      ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        JsonNode root = mapper.readTree(resp.getBody());
+        JsonNode jobs = root.path("jobs");
+        if (jobs.isArray()) {
+          for (JsonNode j : jobs) {
+            String name = j.path("name").asText("Job");
+            String status = j.path("status").asText("completed");
+            String conclusion = j.path("conclusion").isNull() ? null : j.path("conclusion").asText();
+            String htmlUrl = j.path("html_url").asText("");
+
+            List<CiDtos.GitHubCheckStep> steps = new ArrayList<>();
+            String failureStepName = null;
+            JsonNode stepsNode = j.path("steps");
+            if (stepsNode.isArray()) {
+              for (JsonNode st : stepsNode) {
+                String stepName = st.path("name").asText();
+                String stepStatus = st.path("status").asText();
+                String stepConclusion = st.path("conclusion").asText();
+                int num = st.path("number").asInt();
+                steps.add(new CiDtos.GitHubCheckStep(stepName, stepStatus, stepConclusion, num));
+                if ("failure".equalsIgnoreCase(stepConclusion) && failureStepName == null) {
+                  failureStepName = stepName;
+                }
+              }
+            }
+
+            String errorSnippet = null;
+            if (failureStepName != null) {
+              errorSnippet = "Failed on step: \"" + failureStepName + "\" (exit code 1)";
+            }
+
+            items.add(new CiDtos.GitHubCheckItem(
+                name,
+                workflowName,
+                name,
+                status,
+                conclusion != null ? conclusion : status,
+                failureStepName != null ? ("Failed at step: " + failureStepName) : (conclusion != null ? conclusion : status),
+                errorSnippet,
+                htmlUrl,
+                null,
+                steps
+            ));
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.debug("Failed fetching jobs for run {}: {}", runId, e.getMessage());
+    }
+    return items;
+  }
+
+  private String fetchCheckRunFailureSnippet(long checkRunId, String text, String summary) {
+    if (summary != null && !summary.isBlank() && summary.length() > 5) return summary.trim();
+    if (text != null && !text.isBlank() && text.length() > 5) return text.trim();
+
+    try {
+      String url = "https://api.github.com/repos/" + owner + "/" + repo + "/check-runs/" + checkRunId + "/annotations?per_page=10";
+      ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+        JsonNode root = mapper.readTree(resp.getBody());
+        if (root.isArray()) {
+          for (JsonNode a : root) {
+            String level = a.path("annotation_level").asText("");
+            String msg = a.path("message").asText("");
+            String title = a.path("title").asText("");
+            if ("failure".equalsIgnoreCase(level) && !msg.isBlank()) {
+              return !title.isBlank() ? (title + ": " + msg) : msg;
+            }
+          }
+        }
+      }
+    } catch (Exception ignored) {}
+
+    return "Process completed with exit code 1. Check build logs on GitHub.";
+  }
+
+  private String normalizeWorkflowName(String checkName) {
+    if (checkName == null) return "CI Pipeline";
+    String lower = checkName.toLowerCase();
+    if (lower.contains("backend")) return "Backend CI";
+    if (lower.contains("frontend")) return "Frontend CI";
+    if (lower.contains("docker")) return "Docker Build";
+    if (lower.contains("policy") || lower.contains("compliance")) return "PolicyMesh";
+    if (lower.contains("status")) return "PolicyMesh";
+    return "GitHub Actions";
   }
 
   private HttpEntity<Void> buildEntity() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("Accept", "application/vnd.github+json");
     headers.set("User-Agent", "PolicyMesh-CI-Checker/1.0");
-    if (!token.isBlank()) {
+    if (token != null && !token.isBlank()) {
       headers.set("Authorization", "Bearer " + token);
     }
     return new HttpEntity<>(headers);
   }
 }
+

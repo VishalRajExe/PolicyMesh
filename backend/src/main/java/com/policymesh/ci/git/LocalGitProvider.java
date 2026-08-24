@@ -209,7 +209,7 @@ public class LocalGitProvider implements GitProvider {
 
   @Override
   public CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha) {
-    return new CiDtos.GitHubChecksSummary("LOCAL_ENVIRONMENT", 0, 0, 0, null, List.of());
+    return new CiDtos.GitHubChecksSummary("LOCAL_ENVIRONMENT", 0, 0, 0, 0, 0, null, List.of(), List.of());
   }
 
   private boolean isCommitOnBranch(String commitSha, String branch) {
