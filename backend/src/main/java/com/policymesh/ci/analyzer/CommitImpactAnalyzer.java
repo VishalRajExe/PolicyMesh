@@ -69,18 +69,19 @@ public class CommitImpactAnalyzer {
   private record FlowSpec(String source, String destination, List<String> dataClasses, String filePath) {}
 
   public AnalysisResult analyze(CommitInfo commit) {
-    int totalFiles = commit.changedFiles() != null ? commit.changedFiles().size() : 1;
+    int totalFiles = commit.changedFiles() != null && !commit.changedFiles().isEmpty()
+        ? commit.changedFiles().size()
+        : 1;
     String fullSha = commit.fullSha();
 
-    // 1. Check graph baseline from database (runtime state)
-    GraphModels.CheckResult baseline = graphAnalyzer.validate();
-    List<GraphModels.Violation> baseViolations = baseline.violations();
-
-    // 2. Resolve service -> region map from commit configuration or database fallback
+    // 1. Resolve service -> region map from commit configuration and database
     Map<String, String> serviceRegions = resolveServicesAtCommit(fullSha);
 
-    // 3. Load active compiled policies
+    // 2. Load active compiled policies from workspace / commit
     List<CompiledPolicy> compiledPolicies = loadCompiledPolicies(fullSha);
+
+    // 3. Resolve all data flows configured at this specific commit tree
+    List<FlowSpec> flowsToCheck = resolveDataFlowsAtCommit(commit);
 
     List<CiDtos.ViolationDetail> richViolations = new ArrayList<>();
     Set<String> seenViolations = new HashSet<>();
@@ -98,18 +99,84 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 4. If database graph has active violations, include them first
-    if (baseViolations != null && !baseViolations.isEmpty()) {
-      for (GraphModels.Violation v : baseViolations) {
+    // 4. Evaluate each data flow at this commit using the zero-trust policy engine
+    for (FlowSpec flow : flowsToCheck) {
+      String src = flow.source();
+      String dst = flow.destination();
+      String srcRegion = serviceRegions.getOrDefault(src, "EU");
+      String dstRegion = serviceRegions.getOrDefault(dst, "EU");
+
+      for (String dataClass : flow.dataClasses()) {
+        flowsChecked++;
+        var eval = PolicyRuleEvaluator.evaluate(
+            PolicyRuleEvaluator.applicable(compiledPolicies, srcRegion),
+            srcRegion,
+            dstRegion,
+            dataClass
+        );
+
+        String decisionName = eval.decision() != null ? eval.decision().name() : "ALLOW";
+        if ("DENY".equals(decisionName) || "REROUTE".equals(decisionName)) {
+          String key = src + "->" + dst + ":" + dataClass;
+          if (seenViolations.add(key)) {
+            String policyCode = eval.policyId() != null ? eval.policyId() : "EU-PII-001";
+            String policyName = resolvePolicyName(policyCode);
+            String reason = eval.reason() != null
+                ? eval.reason()
+                : ("Destination region " + dstRegion + " is denied by policy " + policyCode);
+            String whatChanged = "+ Proposed data flow: " + src + " (" + srcRegion + ") → " + dst + " (" + dstRegion + ") [" + dataClass + "]";
+            String howFix = "1. Reroute the data flow to a compliant service in " + srcRegion + ".\n"
+                + "2. Mask or tokenize sensitive '" + dataClass + "' data before cross-border transfer.\n"
+                + "3. Update governance policy '" + policyCode + "' only when legitimately authorized.";
+
+            List<String> visualFlow = List.of(
+                "Commit: " + commit.shortSha(),
+                "File: " + (flow.filePath() != null ? flow.filePath() : primaryChangedFile),
+                src + " [" + srcRegion + "]",
+                dst + " [" + dstRegion + "]",
+                "Data: " + dataClass,
+                "Policy: " + policyCode,
+                "DENY",
+                "MERGE BLOCKED"
+            );
+
+            CiDtos.BeforeAfterFlow beforeAfter = new CiDtos.BeforeAfterFlow(
+                new CiDtos.FlowState(src + " [" + srcRegion + "]", "payments-api [" + srcRegion + "]", "ALLOW"),
+                new CiDtos.FlowState(src + " [" + srcRegion + "]", dst + " [" + dstRegion + "]", "DENY")
+            );
+
+            richViolations.add(new CiDtos.ViolationDetail(
+                src,
+                srcRegion,
+                dst,
+                dstRegion,
+                dataClass,
+                policyCode,
+                policyName,
+                reason,
+                whatChanged,
+                howFix,
+                visualFlow,
+                beforeAfter
+            ));
+          }
+        }
+      }
+    }
+
+    // 5. Also evaluate graph baseline from database (captures runtime UI / API topology tests)
+    GraphModels.CheckResult baseline = graphAnalyzer.validate();
+    if (baseline.violations() != null) {
+      for (GraphModels.Violation v : baseline.violations()) {
         String key = v.sourceService() + "->" + v.destinationService() + ":" + v.dataClass();
         if (seenViolations.add(key)) {
+          flowsChecked++;
           String policyCode = v.policyCode() != null ? v.policyCode() : "EU-PII-001";
           String policyName = resolvePolicyName(policyCode);
           String reason = v.reason() != null ? v.reason() : ("Destination region " + v.destinationRegion() + " is not permitted for " + v.dataClass() + " under active policy " + policyCode);
           String whatChanged = "+ Proposed data flow: " + v.sourceService() + " (" + v.sourceRegion() + ") → " + v.destinationService() + " (" + v.destinationRegion() + ") [" + v.dataClass() + "]";
           String howFix = "1. Reroute the data flow to a compliant service in " + v.sourceRegion() + ".\n"
-              + "2. Mask or tokenize sensitive '" + v.dataClass() + "' data before cross-border transfer.\n"
-              + "3. Update governance policy '" + policyCode + "' only when legitimately authorized.";
+              + "2. Mask or tokenize sensitive '" + v.dataClass() + "' data before cross-border transfer.";
 
           List<String> visualFlow = List.of(
               "Commit: " + commit.shortSha(),
@@ -145,72 +212,6 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 5. If commit explicitly modified a data flow JSON file, analyze commit's file contents
-    List<FlowSpec> flowsToCheck = resolveChangedDataFlowsAtCommit(commit);
-    if (!flowsToCheck.isEmpty()) {
-      for (FlowSpec flow : flowsToCheck) {
-        String src = flow.source();
-        String dst = flow.destination();
-        String srcRegion = serviceRegions.getOrDefault(src, "EU");
-        String dstRegion = serviceRegions.getOrDefault(dst, "EU");
-
-        for (String dataClass : flow.dataClasses()) {
-          flowsChecked++;
-          var eval = PolicyRuleEvaluator.evaluate(
-              PolicyRuleEvaluator.applicable(compiledPolicies, srcRegion),
-              srcRegion,
-              dstRegion,
-              dataClass
-          );
-
-          String decisionName = eval.decision() != null ? eval.decision().name() : "ALLOW";
-          if ("DENY".equals(decisionName) || "REROUTE".equals(decisionName)) {
-            String key = src + "->" + dst + ":" + dataClass;
-            if (seenViolations.add(key)) {
-              String policyCode = eval.policyId() != null ? eval.policyId() : "EU-PII-001";
-              String policyName = resolvePolicyName(policyCode);
-              String reason = eval.reason() != null ? eval.reason() : ("Destination region " + dstRegion + " is denied by policy " + policyCode);
-              String whatChanged = "+ Proposed data flow: " + src + " (" + srcRegion + ") → " + dst + " (" + dstRegion + ") [" + dataClass + "]";
-              String howFix = "1. Reroute the data flow to a compliant service in " + srcRegion + ".\n"
-                  + "2. Mask or tokenize sensitive '" + dataClass + "' data before cross-border transfer.\n"
-                  + "3. Update governance policy '" + policyCode + "' only when legitimately authorized.";
-
-              List<String> visualFlow = List.of(
-                  "Commit: " + commit.shortSha(),
-                  "File: " + (flow.filePath() != null ? flow.filePath() : primaryChangedFile),
-                  src + " [" + srcRegion + "]",
-                  dst + " [" + dstRegion + "]",
-                  "Data: " + dataClass,
-                  "Policy: " + policyCode,
-                  "DENY",
-                  "MERGE BLOCKED"
-              );
-
-              CiDtos.BeforeAfterFlow beforeAfter = new CiDtos.BeforeAfterFlow(
-                  new CiDtos.FlowState(src + " [" + srcRegion + "]", "payments-api [" + srcRegion + "]", "ALLOW"),
-                  new CiDtos.FlowState(src + " [" + srcRegion + "]", dst + " [" + dstRegion + "]", "DENY")
-              );
-
-              richViolations.add(new CiDtos.ViolationDetail(
-                  src,
-                  srcRegion,
-                  dst,
-                  dstRegion,
-                  dataClass,
-                  policyCode,
-                  policyName,
-                  reason,
-                  whatChanged,
-                  howFix,
-                  visualFlow,
-                  beforeAfter
-              ));
-            }
-          }
-        }
-      }
-    }
-
     int totalChecked = Math.max(Math.max(flowsChecked, baseline.checkedEdges()), 1);
     int failedFlows = richViolations.size();
     int passedFlows = Math.max(0, totalChecked - failedFlows);
@@ -227,15 +228,7 @@ public class CommitImpactAnalyzer {
   private Map<String, String> resolveServicesAtCommit(String commitSha) {
     Map<String, String> serviceRegions = new LinkedHashMap<>();
 
-    // 1. Check database services first
-    for (ServiceNode sn : serviceNodeRepository.findAll()) {
-      if (sn.getName() != null && sn.getRegion() != null) {
-        serviceRegions.put(sn.getName(), sn.getRegion());
-      }
-    }
-    if (!serviceRegions.isEmpty()) return serviceRegions;
-
-    // 2. Try reading services.json at commit
+    // 1. Try reading services.json at the exact commit from git
     List<String> serviceCandidates = List.of("examples/services/services.json", "examples/services.json", "services.json");
     for (String path : serviceCandidates) {
       String json = gitProvider.getFileContentAtCommit(commitSha, path);
@@ -259,28 +252,47 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    serviceRegions.put("web-app", "EU");
-    serviceRegions.put("orders-api", "EU");
-    serviceRegions.put("payments-api", "EU");
-    serviceRegions.put("analytics-api", "US");
-    serviceRegions.put("customer-db", "EU");
+    // 2. Database services fallback
+    for (ServiceNode sn : serviceNodeRepository.findAll()) {
+      if (sn.getName() != null && sn.getRegion() != null) {
+        serviceRegions.put(sn.getName(), sn.getRegion());
+      }
+    }
+
+    if (serviceRegions.isEmpty()) {
+      serviceRegions.put("web-app", "EU");
+      serviceRegions.put("orders-api", "EU");
+      serviceRegions.put("payments-api", "EU");
+      serviceRegions.put("analytics-api", "US");
+      serviceRegions.put("customer-db", "EU");
+    }
 
     return serviceRegions;
   }
 
-  private List<FlowSpec> resolveChangedDataFlowsAtCommit(CommitInfo commit) {
+  private List<FlowSpec> resolveDataFlowsAtCommit(CommitInfo commit) {
     List<FlowSpec> flows = new ArrayList<>();
     String commitSha = commit.fullSha();
 
+    Set<String> flowPaths = new LinkedHashSet<>();
+
+    // 1. Always evaluate the primary CI dataflow configuration file at this commit tree
+    flowPaths.add("examples/dataflows/valid-flow.json");
+
+    // 2. Add any additional data flow files changed in this specific commit
     if (commit.changedFiles() != null) {
       for (ChangedFile f : commit.changedFiles()) {
         String p = f.path().toLowerCase();
-        if (p.endsWith(".json") && (p.contains("dataflow") || p.contains("flow") || p.contains("blocked"))) {
-          String json = gitProvider.getFileContentAtCommit(commitSha, f.path());
-          if (json != null && !json.isBlank()) {
-            parseFlowsFromJson(json, f.path(), flows);
-          }
+        if (p.endsWith(".json") && (p.contains("dataflow") || p.contains("flow") || p.contains("service-graph"))) {
+          flowPaths.add(f.path());
         }
+      }
+    }
+
+    for (String path : flowPaths) {
+      String json = gitProvider.getFileContentAtCommit(commitSha, path);
+      if (json != null && !json.isBlank()) {
+        parseFlowsFromJson(json, path, flows);
       }
     }
 
