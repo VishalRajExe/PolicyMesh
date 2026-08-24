@@ -66,6 +66,7 @@ export default function CiCheck() {
   const [branchesLoading, setBranchesLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearingHistory, setClearingHistory] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [result, setResult] = useState(null);
@@ -107,15 +108,19 @@ export default function CiCheck() {
     }
   }
 
-  async function handleClearHistory() {
+  function handleClearHistory() {
+    setConfirmClearOpen(true);
+  }
+
+  async function executeClearHistory() {
     if (clearingHistory) return;
-    if (!window.confirm("Are you sure you want to clear all pipeline scans history?")) return;
     setClearingHistory(true);
     try {
       await ciApi.clearAllScans();
       setHistory([]);
       setHistoryTotal(0);
       setHistoryPage(1);
+      setConfirmClearOpen(false);
     } catch (err) {
       console.error("Failed to clear scan history:", err);
     } finally {
@@ -558,6 +563,46 @@ export default function CiCheck() {
           </div>
         </Modal>
       )}
+
+      {/* Clear History Confirmation Modal */}
+      <Modal
+        isOpen={confirmClearOpen}
+        onClose={() => setConfirmClearOpen(false)}
+        title="Clear Pipeline Scan History"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-[var(--color-bad-light)] border border-[var(--color-bad)]/20 text-xs">
+            <AlertTriangle size={20} className="text-[var(--color-bad)] shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-[var(--color-text)]">Permanently clear all scan records?</p>
+              <p className="text-[var(--color-text-dim)] leading-relaxed">
+                This will delete all <strong className="text-[var(--color-text)]">{historyTotal}</strong> historical pipeline scan records from the database. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--color-border)]/50">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setConfirmClearOpen(false)}
+              disabled={clearingHistory}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              icon={Trash2}
+              loading={clearingHistory}
+              onClick={executeClearHistory}
+            >
+              Clear All Scans
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
