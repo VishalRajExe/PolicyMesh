@@ -44,4 +44,14 @@ public class CiController {
   public CiDtos.Response one(@PathVariable long id) {
     return service.one(id);
   }
+
+  @org.springframework.web.bind.annotation.DeleteMapping("/scans")
+  public void clearAll() {
+    service.clearAllScans();
+  }
+
+  @org.springframework.web.bind.annotation.DeleteMapping("/scans/{id}")
+  public void deleteOne(@PathVariable long id) {
+    service.deleteScan(id);
+  }
 }

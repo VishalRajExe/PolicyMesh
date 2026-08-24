@@ -30,6 +30,7 @@ import {
   Server,
   Box,
   SkipForward,
+  Trash2,
 } from "lucide-react";
 import Topbar from "../components/layout/Topbar";
 import SearchableCombobox from "../components/ui/SearchableCombobox";
@@ -65,6 +66,7 @@ export default function CiCheck() {
   const [branchesLoading, setBranchesLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [result, setResult] = useState(null);
   const [invalidError, setInvalidError] = useState(null);
@@ -102,6 +104,31 @@ export default function CiCheck() {
       }
     } catch {
       // Ignored
+    }
+  }
+
+  async function handleClearHistory() {
+    if (clearingHistory) return;
+    if (!window.confirm("Are you sure you want to clear all pipeline scans history?")) return;
+    setClearingHistory(true);
+    try {
+      await ciApi.clearAllScans();
+      setHistory([]);
+      setHistoryTotal(0);
+      setHistoryPage(1);
+    } catch (err) {
+      console.error("Failed to clear scan history:", err);
+    } finally {
+      setClearingHistory(false);
+    }
+  }
+
+  async function handleDeleteScan(id) {
+    try {
+      await ciApi.deleteScan(id);
+      loadHistory(historyPage);
+    } catch (err) {
+      console.error("Failed to delete scan:", err);
     }
   }
 
@@ -318,10 +345,24 @@ export default function CiCheck() {
           {/* Historical Scans */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-bold text-xs text-[var(--color-text)]">Recent Pipeline Scans</h4>
-              <span className="text-[10px] text-[var(--color-text-faint)] font-mono">
-                {historyTotal} total
-              </span>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-xs text-[var(--color-text)]">Recent Pipeline Scans</h4>
+                <span className="text-[10px] text-[var(--color-text-faint)] font-mono">
+                  {historyTotal} total
+                </span>
+              </div>
+              {historyTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  disabled={clearingHistory}
+                  className="text-xs text-[var(--color-text-faint)] hover:text-[var(--color-bad)] flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-[var(--color-bad-light)] cursor-pointer"
+                  title="Clear all scan history"
+                >
+                  <Trash2 size={12} />
+                  <span>{clearingHistory ? "Clearing..." : "Clear All"}</span>
+                </button>
+              )}
             </div>
 
             {history.length === 0 ? (
@@ -338,28 +379,40 @@ export default function CiCheck() {
                       (h.violationCount === 0 && (!h.violations || h.violations.length === 0)));
 
                   return (
-                    <button
+                    <div
                       key={h.id || idx}
-                      type="button"
-                      onClick={() => setSelectedScan(h)}
-                      className="w-full text-left py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-[var(--color-surface-2)]/60 px-2 rounded-lg transition-colors"
+                      className="group flex items-center justify-between gap-2 hover:bg-[var(--color-surface-2)]/60 px-2 rounded-lg transition-colors"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
-                          <span className="text-[var(--color-text-faint)] font-mono">@</span>
-                          <span className="text-[var(--color-text-dim)] font-mono">{h.commitShortSha || h.commitHash?.slice(0, 7)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedScan(h)}
+                        className="min-w-0 flex-1 text-left py-2.5 flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[var(--color-text)] truncate">{h.branch}</span>
+                            <span className="text-[var(--color-text-faint)] font-mono">@</span>
+                            <span className="text-[var(--color-text-dim)] font-mono">{h.commitShortSha || h.commitHash?.slice(0, 7)}</span>
+                          </div>
+                          {h.commitMessage && (
+                            <p className="text-[11px] text-[var(--color-text-faint)] truncate mt-0.5">
+                              {h.commitMessage}
+                            </p>
+                          )}
                         </div>
-                        {h.commitMessage && (
-                          <p className="text-[11px] text-[var(--color-text-faint)] truncate mt-0.5">
-                            {h.commitMessage}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant={hPassed ? "good" : "bad"} size="sm">
-                        {hPassed ? "PASS" : "BLOCKED"}
-                      </Badge>
-                    </button>
+                        <Badge variant={hPassed ? "good" : "bad"} size="sm">
+                          {hPassed ? "PASS" : "BLOCKED"}
+                        </Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteScan(h.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-faint)] hover:text-[var(--color-bad)] rounded transition-opacity"
+                        title="Delete this scan"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   );
                 })}
               </div>

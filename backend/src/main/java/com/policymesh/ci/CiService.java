@@ -160,6 +160,16 @@ public class CiService {
     return toResponse(scan);
   }
 
+  @Transactional
+  public void clearAllScans() {
+    scans.deleteAll();
+  }
+
+  @Transactional
+  public void deleteScan(long id) {
+    scans.deleteById(id);
+  }
+
   private CiDtos.Response toResponse(CIScan s) {
     List<CiDtos.ViolationDetail> violations = fromJson(s.getViolationsJson(), new TypeReference<List<CiDtos.ViolationDetail>>() {});
     List<ChangedFile> files = fromJson(s.getChangedFilesJson(), new TypeReference<List<ChangedFile>>() {});
