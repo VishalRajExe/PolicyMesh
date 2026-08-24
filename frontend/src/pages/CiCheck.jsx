@@ -13,6 +13,8 @@ import {
   HelpCircle,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ArrowRight,
   ArrowDown,
   Layers,
@@ -253,6 +255,13 @@ export default function CiCheck() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => handleSetHash("3db3718")}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
+                    >
+                      3db3718
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleSetHash("c82a4c0")}
                       className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] border border-[var(--color-border)]"
                     >
@@ -271,7 +280,7 @@ export default function CiCheck() {
                 <input
                   value={form.commitHash}
                   onChange={(e) => handleSetHash(e.target.value)}
-                  placeholder="e.g. HEAD, c82a4c0, f73a470"
+                  placeholder="e.g. HEAD, 3db3718, c82a4c0, f73a470"
                   className={`field-input text-xs font-mono ${
                     isHashInvalid ? "border-[var(--color-bad)] ring-1 ring-[var(--color-bad)]" : ""
                   }`}
@@ -507,6 +516,8 @@ export default function CiCheck() {
  * 3. Final Aggregate Merge Gate
  */
 function ScanResultView({ result, isModal = false }) {
+  const [showGithubRuns, setShowGithubRuns] = useState(false);
+
   const isPolicyPassed =
     result.passed === true ||
     result.result === "PASS" ||
@@ -554,39 +565,147 @@ function ScanResultView({ result, isModal = false }) {
     <div className="space-y-4 animate-in fade-in">
       {/* 1. AGGREGATE FINAL MERGE DECISION BANNER */}
       <div
-        className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 shadow-xs ${
+        className={`p-4 rounded-xl border flex flex-col gap-3 shadow-xs ${
           isMergeAllowed
             ? "bg-[var(--color-good-light)] border-[var(--color-good)]/30"
             : "bg-[var(--color-bad-light)] border-[var(--color-bad)]/30"
         }`}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
-              isMergeAllowed ? "icon-box-green" : "icon-box-red"
-            }`}
-          >
-            {isMergeAllowed ? <ShieldCheck size={24} /> : <ShieldAlert size={24} />}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[var(--color-text)]">
-                Final Merge Decision: {finalDecision.decision}
-              </h3>
-              <Badge variant={isMergeAllowed ? "good" : "bad"} dot size="sm">
-                {finalDecision.decision}
-              </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs shrink-0 ${
+                isMergeAllowed ? "icon-box-green" : "icon-box-red"
+              }`}
+            >
+              {isMergeAllowed ? <ShieldCheck size={24} /> : <ShieldAlert size={24} />}
             </div>
-            <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
-              Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
-              <strong className="text-[var(--color-text)]">{result.commitShortSha || result.commitHash?.slice(0, 7)}</strong>
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-[var(--color-text)]">
+                  Final Merge Decision: {finalDecision.decision}
+                </h3>
+                <Badge variant={isMergeAllowed ? "good" : "bad"} dot size="sm">
+                  {finalDecision.decision}
+                </Badge>
+              </div>
+              <p className="text-xs text-[var(--color-text-dim)] font-mono mt-0.5">
+                Branch: <strong className="text-[var(--color-text)]">{result.branch}</strong> • Commit:{" "}
+                <strong className="text-[var(--color-text)]">{result.commitShortSha || result.commitHash?.slice(0, 7)}</strong>
+              </p>
+            </div>
+          </div>
+          <div className="text-right text-xs text-[var(--color-text-dim)] max-w-sm">
+            <p className="font-medium text-[var(--color-text)] leading-snug">{finalDecision.summaryReason}</p>
           </div>
         </div>
-        <div className="text-right text-xs text-[var(--color-text-dim)] max-w-sm">
-          <p className="font-medium text-[var(--color-text)] leading-snug">{finalDecision.summaryReason}</p>
-        </div>
+
+        {/* Option right after merge block to view GitHub Actions Workflow Runs */}
+        {githubChecks.checks && githubChecks.checks.length > 0 && (
+          <div className="w-full flex items-center justify-between pt-2.5 border-t border-[var(--color-border)]/40 mt-1">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-[var(--color-text)]">GitHub Actions CI:</span>
+              <span className="text-[11px] text-[var(--color-text-dim)]">
+                <span className="text-[var(--color-good)] font-medium">{githubChecks.passedChecks || 0} passed</span>
+                {githubChecks.failedChecks > 0 && (
+                  <span className="text-[var(--color-bad)] font-medium"> • {githubChecks.failedChecks} failed</span>
+                )}
+                {githubChecks.skippedChecks > 0 && (
+                  <span className="text-[var(--color-warn)] font-medium"> • {githubChecks.skippedChecks} skipped</span>
+                )}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowGithubRuns(!showGithubRuns)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text)] flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Server size={13} className="text-[var(--color-brand)]" />
+              <span>{showGithubRuns ? "Hide Workflow Runs" : `View Workflow Runs (${githubChecks.checks.length})`}</span>
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${showGithubRuns ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Expandable GitHub Actions Workflow Runs (opens right under the Merge Decision) */}
+      {showGithubRuns && githubChecks.checks && githubChecks.checks.length > 0 && (
+        <div className="card p-4 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200 border-l-4 border-l-[var(--color-brand)]">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-xs text-[var(--color-text)] flex items-center gap-1.5">
+              <Server size={14} className="text-[var(--color-brand)]" />
+              GitHub Actions Workflow Runs ({githubChecks.checks.length})
+            </h4>
+            <div className="flex items-center gap-2 text-[10px] font-mono">
+              <span className="text-[var(--color-good)] font-semibold">{githubChecks.passedChecks || 0} passed</span>
+              <span>•</span>
+              <span className="text-[var(--color-bad)] font-semibold">{githubChecks.failedChecks || 0} failed</span>
+              {githubChecks.skippedChecks > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="text-[var(--color-warn)] font-semibold">{githubChecks.skippedChecks} skipped</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="divide-y divide-[var(--color-border)]/40 border border-[var(--color-border)] rounded-lg overflow-hidden text-xs">
+            {githubChecks.checks.map((c, idx) => {
+              const conclusion = (c.conclusion || c.status || "").toLowerCase();
+              const isSuccess = conclusion === "success" || conclusion === "neutral";
+              const isFailed =
+                conclusion === "failure" ||
+                conclusion === "timed_out" ||
+                conclusion === "action_required" ||
+                conclusion === "cancelled";
+              const isSkipped = conclusion === "skipped";
+
+              const badgeVar = isSuccess ? "good" : isFailed ? "bad" : isSkipped ? "warn" : "brand";
+
+              return (
+                <div key={idx} className="p-2.5 flex items-center justify-between gap-3 bg-[var(--color-surface)] hover:bg-[var(--color-surface-2)]/40 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isSuccess ? (
+                      <CheckCircle2 size={14} className="text-[var(--color-good)] shrink-0" />
+                    ) : isFailed ? (
+                      <XCircle size={14} className="text-[var(--color-bad)] shrink-0" />
+                    ) : isSkipped ? (
+                      <SkipForward size={14} className="text-[var(--color-warn)] shrink-0" />
+                    ) : (
+                      <Loader2 size={14} className="text-[var(--color-brand)] animate-spin shrink-0" />
+                    )}
+                    <span className="font-semibold text-[var(--color-text)] truncate">{c.name}</span>
+                    {c.details && c.details !== conclusion && (
+                      <span className="text-[11px] text-[var(--color-text-faint)] truncate font-mono">
+                        ({c.details})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={badgeVar} size="sm">
+                      {isSkipped ? "SKIPPED" : isFailed ? "FAILED" : isSuccess ? "PASSED" : (c.conclusion || c.status)}
+                    </Badge>
+                    {c.url && (
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--color-text-faint)] hover:text-[var(--color-brand)] transition-colors p-1"
+                        title="View job details on GitHub"
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 2. THREE INDEPENDENT GATES STATUS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -635,13 +754,24 @@ function ScanResultView({ result, isModal = false }) {
               {githubBadgeLabel}
             </Badge>
           </div>
-          <p className="text-[11px] text-[var(--color-text-dim)]">
-            {githubChecks.failureReason
-              ? githubChecks.failureReason
-              : githubChecks.overallStatus === "SUCCESS"
-              ? "All automated test suites & build workflows verified on GitHub."
-              : "GitHub verification status unavailable for this commit."}
-          </p>
+          <div className="flex items-center justify-between text-[11px]">
+            <p className="text-[var(--color-text-dim)] truncate">
+              {githubChecks.failureReason
+                ? githubChecks.failureReason
+                : githubChecks.overallStatus === "SUCCESS"
+                ? "All automated test suites & build workflows verified on GitHub."
+                : "GitHub verification status unavailable for this commit."}
+            </p>
+            {githubChecks.checks && githubChecks.checks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowGithubRuns(!showGithubRuns)}
+                className="text-[11px] font-semibold text-[var(--color-brand)] hover:underline shrink-0 ml-2 cursor-pointer"
+              >
+                {showGithubRuns ? "Hide" : "Details"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -721,79 +851,7 @@ function ScanResultView({ result, isModal = false }) {
         )}
       </div>
 
-      {/* 4. Live GitHub Actions Checks Breakdown */}
-      {githubChecks.checks && githubChecks.checks.length > 0 && (
-        <div className="card p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs text-[var(--color-text)] flex items-center gap-1.5">
-              <Server size={14} />
-              GitHub Actions Workflow Runs ({githubChecks.checks.length})
-            </h4>
-            <div className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="text-[var(--color-good)]">{githubChecks.passedChecks || 0} passed</span>
-              <span>•</span>
-              <span className="text-[var(--color-bad)]">{githubChecks.failedChecks || 0} failed</span>
-              {githubChecks.skippedChecks > 0 && (
-                <>
-                  <span>•</span>
-                  <span className="text-[var(--color-warn)]">{githubChecks.skippedChecks} skipped</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="divide-y divide-[var(--color-border)]/40 border border-[var(--color-border)] rounded-lg overflow-hidden text-xs">
-            {githubChecks.checks.map((c, idx) => {
-              const conclusion = (c.conclusion || c.status || "").toLowerCase();
-              const isSuccess = conclusion === "success" || conclusion === "neutral";
-              const isFailed = conclusion === "failure" || conclusion === "timed_out" || conclusion === "action_required" || conclusion === "cancelled";
-              const isSkipped = conclusion === "skipped";
-
-              const badgeVar = isSuccess ? "good" : isFailed ? "bad" : isSkipped ? "warn" : "brand";
-
-              return (
-                <div key={idx} className="p-2.5 flex items-center justify-between gap-3 bg-[var(--color-surface)]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isSuccess ? (
-                      <CheckCircle2 size={14} className="text-[var(--color-good)] shrink-0" />
-                    ) : isFailed ? (
-                      <XCircle size={14} className="text-[var(--color-bad)] shrink-0" />
-                    ) : isSkipped ? (
-                      <SkipForward size={14} className="text-[var(--color-warn)] shrink-0" />
-                    ) : (
-                      <Loader2 size={14} className="text-[var(--color-brand)] animate-spin shrink-0" />
-                    )}
-                    <span className="font-semibold text-[var(--color-text)] truncate">{c.name}</span>
-                    {c.details && c.details !== conclusion && (
-                      <span className="text-[11px] text-[var(--color-text-faint)] truncate font-mono">
-                        ({c.details})
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={badgeVar} size="sm">
-                      {isSkipped ? "SKIPPED" : isFailed ? "FAILED" : isSuccess ? "PASSED" : (c.conclusion || c.status)}
-                    </Badge>
-                    {c.url && (
-                      <a
-                        href={c.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[var(--color-text-faint)] hover:text-[var(--color-brand)] transition-colors p-1"
-                        title="View job on GitHub"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 5. Policy Violations Breakdown (If BLOCKED) */}
+      {/* 4. Policy Violations Breakdown (If BLOCKED) */}
       {!isPolicyPassed && result.violations && result.violations.length > 0 && (
         <div className="space-y-3">
           <h4 className="font-bold text-xs text-[var(--color-bad)] flex items-center gap-1.5">
