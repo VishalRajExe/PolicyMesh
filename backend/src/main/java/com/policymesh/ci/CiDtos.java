@@ -73,10 +73,12 @@ public final class CiDtos {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record GitHubChecksSummary(
-      String overallStatus, // SUCCESS, FAILURE, PENDING, NONE
+      String overallStatus, // SUCCESS, FAILURE, SKIPPED, PENDING, UNAVAILABLE, LOCAL_SYNTHETIC
       int totalChecks,
       int passedChecks,
       int failedChecks,
+      int skippedChecks,
+      int pendingChecks,
       String failureReason,
       List<GitHubCheckItem> checks
   ) {}

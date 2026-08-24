@@ -28,13 +28,13 @@ public class GitHubProvider implements GitProvider {
   private final String token;
 
   public GitHubProvider(
-      @Value("${github.owner:${GITHUB_OWNER:}}") String owner,
-      @Value("${github.repository:${GITHUB_REPOSITORY:}}") String repo,
+      @Value("${github.owner:${GITHUB_OWNER:VishalRajExe}}") String owner,
+      @Value("${github.repository:${GITHUB_REPOSITORY:PolicyMesh}}") String repo,
       @Value("${github.token:${GITHUB_TOKEN:}}") String token,
       ObjectMapper mapper
   ) {
-    this.owner = owner != null ? owner.trim() : "";
-    this.repo = repo != null ? repo.trim() : "";
+    this.owner = owner != null ? owner.trim() : "VishalRajExe";
+    this.repo = repo != null ? repo.trim() : "PolicyMesh";
     this.token = token != null ? token.trim() : "";
     this.mapper = mapper;
     this.restTemplate = new RestTemplate();
@@ -187,7 +187,7 @@ public class GitHubProvider implements GitProvider {
   @Override
   public CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha) {
     if (!isConfigured() || commitSha == null || commitSha.isBlank()) {
-      return new CiDtos.GitHubChecksSummary("NONE", 0, 0, 0, null, List.of());
+      return new CiDtos.GitHubChecksSummary("UNAVAILABLE", 0, 0, 0, 0, 0, "GitHub credentials not configured.", List.of());
     }
 
     try {
@@ -200,7 +200,11 @@ public class GitHubProvider implements GitProvider {
           List<CiDtos.GitHubCheckItem> items = new ArrayList<>();
           int passed = 0;
           int failed = 0;
-          String firstFailure = null;
+          int skipped = 0;
+          int pending = 0;
+          List<String> failedNames = new ArrayList<>();
+          List<String> skippedNames = new ArrayList<>();
+          List<String> pendingNames = new ArrayList<>();
 
           for (JsonNode cr : checkRuns) {
             String name = cr.path("name").asText("Check");
@@ -211,27 +215,51 @@ public class GitHubProvider implements GitProvider {
             String summary = cr.path("output").path("summary").asText("");
             String details = !title.isBlank() ? title : (!summary.isBlank() ? summary : conclusion);
 
-            if ("success".equalsIgnoreCase(conclusion) || "neutral".equalsIgnoreCase(conclusion) || "skipped".equalsIgnoreCase(conclusion)) {
+            if ("success".equalsIgnoreCase(conclusion) || "neutral".equalsIgnoreCase(conclusion)) {
               passed++;
-            } else if ("failure".equalsIgnoreCase(conclusion) || "timed_out".equalsIgnoreCase(conclusion) || "action_required".equalsIgnoreCase(conclusion)) {
+            } else if ("failure".equalsIgnoreCase(conclusion) || "timed_out".equalsIgnoreCase(conclusion) || "action_required".equalsIgnoreCase(conclusion) || "cancelled".equalsIgnoreCase(conclusion)) {
               failed++;
-              if (firstFailure == null) {
-                firstFailure = name + " (" + (details != null ? details : "failed") + ")";
-              }
+              failedNames.add(name);
+            } else if ("skipped".equalsIgnoreCase(conclusion)) {
+              skipped++;
+              skippedNames.add(name);
+            } else if ("in_progress".equalsIgnoreCase(status) || "queued".equalsIgnoreCase(status) || "waiting".equalsIgnoreCase(status) || conclusion == null) {
+              pending++;
+              pendingNames.add(name);
+            } else {
+              failed++;
+              failedNames.add(name);
             }
 
-            items.add(new CiDtos.GitHubCheckItem(name, status, conclusion, details, htmlUrl));
+            items.add(new CiDtos.GitHubCheckItem(name, status, conclusion != null ? conclusion : status, details, htmlUrl));
           }
 
-          String overall = failed > 0 ? "FAILURE" : (passed == items.size() ? "SUCCESS" : "PENDING");
-          return new CiDtos.GitHubChecksSummary(overall, items.size(), passed, failed, firstFailure, items);
+          String overall;
+          String failureReason = null;
+          if (failed > 0) {
+            overall = "FAILURE";
+            failureReason = failed + " check(s) failed: " + String.join(", ", failedNames) + (skipped > 0 ? " (" + skipped + " skipped)" : "");
+          } else if (skipped > 0) {
+            overall = "SKIPPED";
+            failureReason = skipped + " required check(s) skipped: " + String.join(", ", skippedNames);
+          } else if (pending > 0) {
+            overall = "PENDING";
+            failureReason = pending + " check(s) in progress: " + String.join(", ", pendingNames);
+          } else if (passed == items.size() && items.size() > 0) {
+            overall = "SUCCESS";
+          } else {
+            overall = "UNAVAILABLE";
+            failureReason = "No conclusive check runs found.";
+          }
+
+          return new CiDtos.GitHubChecksSummary(overall, items.size(), passed, failed, skipped, pending, failureReason, items);
         }
       }
     } catch (Exception e) {
       log.debug("Failed fetching check-runs from GitHub: {}", e.getMessage());
     }
 
-    return new CiDtos.GitHubChecksSummary("NONE", 0, 0, 0, null, List.of());
+    return new CiDtos.GitHubChecksSummary("UNAVAILABLE", 0, 0, 0, 0, 0, "No GitHub Actions workflow check runs found for commit " + (commitSha.length() > 7 ? commitSha.substring(0, 7) : commitSha), List.of());
   }
 
   private HttpEntity<Void> buildEntity() {
