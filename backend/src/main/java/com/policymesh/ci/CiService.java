@@ -50,14 +50,41 @@ public class CiService {
     // 2. Perform deep impact analysis and active policy evaluation
     CommitImpactAnalyzer.AnalysisResult analysis = impactAnalyzer.analyze(commit);
 
-    boolean passed = analysis.failedFlows() == 0 && analysis.violations().isEmpty();
-    String status = passed ? "PASS" : "FAIL";
+    // 3. Fetch real GitHub Actions workflow check runs for this exact commit
+    CiDtos.GitHubChecksSummary githubChecks = gitProvider.getGitHubChecks(commit.fullSha());
 
-    // 3. Persist scan result
+    boolean policyPassed = analysis.failedFlows() == 0 && analysis.violations().isEmpty();
+    String policyStatus = policyPassed ? "PASS" : "FAIL";
+
+    boolean githubPassed = !"FAILURE".equalsIgnoreCase(githubChecks.overallStatus());
+    boolean mergeAllowed = policyPassed && githubPassed;
+    String mergeDecisionStr = mergeAllowed ? "MERGE ALLOWED" : "MERGE BLOCKED";
+
+    String summaryReason;
+    if (!policyPassed && !githubPassed) {
+      summaryReason = "Policy violation detected and GitHub Actions checks failed (" + (githubChecks.failureReason() != null ? githubChecks.failureReason() : "Build tests failed") + ").";
+    } else if (!policyPassed) {
+      var v = analysis.violations().get(0);
+      summaryReason = "Policy violation detected: " + v.policyCode() + " (" + v.reason() + ").";
+    } else if (!githubPassed) {
+      summaryReason = "GitHub Actions checks failed: " + (githubChecks.failureReason() != null ? githubChecks.failureReason() : "Backend build & tests failed.");
+    } else {
+      summaryReason = "All zero-trust residency policies satisfied and all required CI checks passed.";
+    }
+
+    CiDtos.FinalMergeDecision finalDecision = new CiDtos.FinalMergeDecision(
+        mergeAllowed,
+        mergeDecisionStr,
+        summaryReason,
+        policyPassed ? "PASSED" : "BLOCKED",
+        githubChecks.overallStatus()
+    );
+
+    // 4. Persist scan result
     CIScan scan = new CIScan();
     scan.setBranch(branch);
     scan.setCommitHash(commit.fullSha());
-    scan.setStatus(status);
+    scan.setStatus(policyStatus);
     scan.setViolationCount(analysis.violations().size());
     scan.setCommitMessage(commit.message());
     scan.setAuthor(commit.authorName());
@@ -70,7 +97,7 @@ public class CiService {
     scan.complete();
     scan = scans.save(scan);
 
-    // 4. Publish telemetry event for asynchronous alerts and audit pipelines
+    // 5. Publish telemetry event for asynchronous alerts and audit pipelines
     Map<String, Object> payload = new HashMap<>();
     payload.put("scanId", scan.getId());
     payload.put("result", scan.getStatus());
@@ -87,7 +114,11 @@ public class CiService {
         analysis.flowsChecked(),
         analysis.passedFlows(),
         analysis.failedFlows(),
-        analysis.violations()
+        analysis.impactType(),
+        analysis.impactSummary(),
+        analysis.violations(),
+        githubChecks,
+        finalDecision
     );
   }
 
@@ -123,6 +154,17 @@ public class CiService {
         files
     );
 
+    boolean passed = "PASS".equalsIgnoreCase(s.getStatus()) || "PASSED".equalsIgnoreCase(s.getStatus());
+    CiDtos.FinalMergeDecision finalDecision = new CiDtos.FinalMergeDecision(
+        passed,
+        passed ? "MERGE ALLOWED" : "MERGE BLOCKED",
+        passed ? "All zero-trust residency policies satisfied." : (violations.size() + " policy violation(s) detected."),
+        passed ? "PASSED" : "BLOCKED",
+        "RECORDED"
+    );
+
+    CiDtos.GitHubChecksSummary githubSummary = new CiDtos.GitHubChecksSummary("RECORDED", 0, 0, 0, null, List.of());
+
     return CiDtos.from(
         s,
         commit,
@@ -130,7 +172,11 @@ public class CiService {
         s.getFlowsChecked() > 0 ? s.getFlowsChecked() : Math.max(1, violations.size()),
         s.getPassedFlows(),
         s.getFailedFlows() > 0 ? s.getFailedFlows() : violations.size(),
-        violations
+        "TOPOLOGY_SCAN",
+        "Historical pipeline scan record.",
+        violations,
+        githubSummary,
+        finalDecision
     );
   }
 

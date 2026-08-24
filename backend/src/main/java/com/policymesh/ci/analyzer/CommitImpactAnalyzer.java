@@ -63,6 +63,8 @@ public class CommitImpactAnalyzer {
       int flowsChecked,
       int passedFlows,
       int failedFlows,
+      String impactType,
+      String impactSummary,
       List<CiDtos.ViolationDetail> violations
   ) {}
 
@@ -74,13 +76,44 @@ public class CommitImpactAnalyzer {
         : 1;
     String fullSha = commit.fullSha();
 
-    // 1. Resolve service -> region map from commit configuration and database
+    // 1. Classify commit impact type
+    boolean hasPolicyChange = false;
+    boolean hasTopologyChange = false;
+    boolean isMerge = commit.message() != null && commit.message().toLowerCase().startsWith("merge");
+
+    if (commit.changedFiles() != null) {
+      for (ChangedFile f : commit.changedFiles()) {
+        if (f.category() == ChangedFileCategory.POLICY) {
+          hasPolicyChange = true;
+        } else if (f.category() == ChangedFileCategory.DATAFLOW || f.category() == ChangedFileCategory.SERVICE) {
+          hasTopologyChange = true;
+        }
+      }
+    }
+
+    String impactType;
+    String impactSummary;
+    if (hasPolicyChange) {
+      impactType = "POLICY_CHANGE";
+      impactSummary = "Governance policy file modified in this commit. Re-evaluated affected service data flows.";
+    } else if (hasTopologyChange) {
+      impactType = "TOPOLOGY_CHANGE";
+      impactSummary = "Service graph data-flow topology modified in this commit.";
+    } else if (isMerge) {
+      impactType = "MERGE_COMMIT";
+      impactSummary = "Merge commit — evaluated merged branch tree topology against active residency policies.";
+    } else {
+      impactType = "CODE_ONLY";
+      impactSummary = "No compliance-impacting topology changes found in this commit.";
+    }
+
+    // 2. Resolve service -> region map from commit configuration and database
     Map<String, String> serviceRegions = resolveServicesAtCommit(fullSha);
 
-    // 2. Load active compiled policies from workspace / commit
+    // 3. Load active compiled policies from workspace / commit
     List<CompiledPolicy> compiledPolicies = loadCompiledPolicies(fullSha);
 
-    // 3. Resolve all data flows configured at this specific commit tree
+    // 4. Resolve all data flows configured at this specific commit tree
     List<FlowSpec> flowsToCheck = resolveDataFlowsAtCommit(commit);
 
     List<CiDtos.ViolationDetail> richViolations = new ArrayList<>();
@@ -99,7 +132,7 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 4. Evaluate each data flow at this commit using the zero-trust policy engine
+    // 5. Evaluate each data flow at this commit using the zero-trust policy engine
     for (FlowSpec flow : flowsToCheck) {
       String src = flow.source();
       String dst = flow.destination();
@@ -164,7 +197,7 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 5. Also evaluate graph baseline from database (captures runtime UI / API topology tests)
+    // 6. Also evaluate graph baseline from database (captures runtime UI / API topology tests)
     GraphModels.CheckResult baseline = graphAnalyzer.validate();
     if (baseline.violations() != null) {
       for (GraphModels.Violation v : baseline.violations()) {
@@ -221,6 +254,8 @@ public class CommitImpactAnalyzer {
         totalChecked,
         passedFlows,
         failedFlows,
+        impactType,
+        impactSummary,
         richViolations
     );
   }

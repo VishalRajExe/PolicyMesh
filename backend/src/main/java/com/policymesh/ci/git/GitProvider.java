@@ -1,5 +1,6 @@
 package com.policymesh.ci.git;
 
+import com.policymesh.ci.CiDtos;
 import java.util.List;
 
 public interface GitProvider {
@@ -20,6 +21,11 @@ public interface GitProvider {
    * Returns null if file does not exist at that commit.
    */
   String getFileContentAtCommit(String commitSha, String filePath);
+
+  /**
+   * Retrieves GitHub Actions check-runs and workflow run status for the given commit.
+   */
+  CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha);
 
   /** Provider identifier for telemetry/audit logs (e.g. "LOCAL_GIT", "GITHUB_REST"). */
   String getProviderName();

@@ -2,6 +2,7 @@ package com.policymesh.ci.git;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.policymesh.ci.CiDtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -181,6 +182,56 @@ public class GitHubProvider implements GitProvider {
         parentSha,
         changedFiles
     );
+  }
+
+  @Override
+  public CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha) {
+    if (!isConfigured() || commitSha == null || commitSha.isBlank()) {
+      return new CiDtos.GitHubChecksSummary("NONE", 0, 0, 0, null, List.of());
+    }
+
+    try {
+      String url = "https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + commitSha.trim() + "/check-runs";
+      ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, buildEntity(), String.class);
+      if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+        JsonNode root = mapper.readTree(response.getBody());
+        JsonNode checkRuns = root.path("check_runs");
+        if (checkRuns.isArray() && checkRuns.size() > 0) {
+          List<CiDtos.GitHubCheckItem> items = new ArrayList<>();
+          int passed = 0;
+          int failed = 0;
+          String firstFailure = null;
+
+          for (JsonNode cr : checkRuns) {
+            String name = cr.path("name").asText("Check");
+            String status = cr.path("status").asText("completed");
+            String conclusion = cr.path("conclusion").asText(null);
+            String htmlUrl = cr.path("html_url").asText("");
+            String title = cr.path("output").path("title").asText("");
+            String summary = cr.path("output").path("summary").asText("");
+            String details = !title.isBlank() ? title : (!summary.isBlank() ? summary : conclusion);
+
+            if ("success".equalsIgnoreCase(conclusion) || "neutral".equalsIgnoreCase(conclusion) || "skipped".equalsIgnoreCase(conclusion)) {
+              passed++;
+            } else if ("failure".equalsIgnoreCase(conclusion) || "timed_out".equalsIgnoreCase(conclusion) || "action_required".equalsIgnoreCase(conclusion)) {
+              failed++;
+              if (firstFailure == null) {
+                firstFailure = name + " (" + (details != null ? details : "failed") + ")";
+              }
+            }
+
+            items.add(new CiDtos.GitHubCheckItem(name, status, conclusion, details, htmlUrl));
+          }
+
+          String overall = failed > 0 ? "FAILURE" : (passed == items.size() ? "SUCCESS" : "PENDING");
+          return new CiDtos.GitHubChecksSummary(overall, items.size(), passed, failed, firstFailure, items);
+        }
+      }
+    } catch (Exception e) {
+      log.debug("Failed fetching check-runs from GitHub: {}", e.getMessage());
+    }
+
+    return new CiDtos.GitHubChecksSummary("NONE", 0, 0, 0, null, List.of());
   }
 
   private HttpEntity<Void> buildEntity() {

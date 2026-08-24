@@ -62,6 +62,34 @@ public final class CiDtos {
       BeforeAfterFlow beforeAfter
   ) {}
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record GitHubCheckItem(
+      String name,
+      String status,      // completed, in_progress, queued
+      String conclusion,  // success, failure, neutral, cancelled, skipped
+      String details,
+      String url
+  ) {}
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record GitHubChecksSummary(
+      String overallStatus, // SUCCESS, FAILURE, PENDING, NONE
+      int totalChecks,
+      int passedChecks,
+      int failedChecks,
+      String failureReason,
+      List<GitHubCheckItem> checks
+  ) {}
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record FinalMergeDecision(
+      boolean allowed,
+      String decision,      // MERGE ALLOWED, MERGE BLOCKED
+      String summaryReason,
+      String policyGateResult,
+      String githubGateResult
+  ) {}
+
   /** Comprehensive, explainable CI Check Result */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record Response(
@@ -82,9 +110,13 @@ public final class CiDtos {
       int passedFlows,
       int failedFlows,
       int violationCount,
+      String impactType,       // CODE_ONLY, TOPOLOGY_CHANGE, POLICY_CHANGE, MERGE_COMMIT
+      String impactSummary,    // e.g. "No compliance-impacting topology changes found in this commit."
       Instant startedAt,
       Instant completedAt,
       List<ViolationDetail> violations,
+      GitHubChecksSummary githubChecks,
+      FinalMergeDecision finalDecision,
       String humanReadable
   ) {}
 
@@ -95,7 +127,11 @@ public final class CiDtos {
       int flowsChecked,
       int passedFlows,
       int failedFlows,
-      List<ViolationDetail> violations
+      String impactType,
+      String impactSummary,
+      List<ViolationDetail> violations,
+      GitHubChecksSummary githubChecks,
+      FinalMergeDecision finalDecision
   ) {
     boolean passed = "PASS".equalsIgnoreCase(s.getStatus()) || "PASSED".equalsIgnoreCase(s.getStatus());
     String status = passed ? "PASSED" : "BLOCKED";
@@ -104,6 +140,10 @@ public final class CiDtos {
     List<ChangedFileDto> filesDto = commit.changedFiles() != null
         ? commit.changedFiles().stream().map(ChangedFileDto::from).toList()
         : List.of();
+
+    String human = passed
+        ? "PolicyMesh CI PASSED: 0 violation(s) on branch " + s.getBranch() + " @ " + commit.shortSha() + " (\"" + commit.message() + "\")"
+        : "PolicyMesh CI BLOCKED: " + violations.size() + " violation(s) on branch " + s.getBranch() + " @ " + commit.shortSha() + " (\"" + commit.message() + "\")";
 
     return new Response(
         s.getId(),
@@ -122,17 +162,15 @@ public final class CiDtos {
         flowsChecked,
         passedFlows,
         failedFlows,
-        s.getViolationCount(),
+        violations.size(),
+        impactType != null ? impactType : "TOPOLOGY_CHANGE",
+        impactSummary != null ? impactSummary : "Evaluated data flows against active zero-trust residency policies.",
         s.getStartedAt(),
         s.getCompletedAt(),
         violations,
-        humanSummary(s, commit, passed)
+        githubChecks,
+        finalDecision,
+        human
     );
-  }
-
-  static String humanSummary(CIScan s, CommitInfo commit, boolean passed) {
-    return "PolicyMesh CI " + (passed ? "PASSED" : "BLOCKED") + ": " + s.getViolationCount()
-        + " violation(s) on branch " + s.getBranch() + " @ " + commit.shortSha()
-        + " (\"" + commit.message() + "\")";
   }
 }

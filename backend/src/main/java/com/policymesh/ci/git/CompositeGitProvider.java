@@ -1,5 +1,6 @@
 package com.policymesh.ci.git;
 
+import com.policymesh.ci.CiDtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
@@ -80,5 +81,16 @@ public class CompositeGitProvider implements GitProvider {
       }
       throw e;
     }
+  }
+
+  @Override
+  public CiDtos.GitHubChecksSummary getGitHubChecks(String commitSha) {
+    if (gitHubProvider.isConfigured()) {
+      var checks = gitHubProvider.getGitHubChecks(commitSha);
+      if (checks != null && !"NONE".equals(checks.overallStatus())) {
+        return checks;
+      }
+    }
+    return localGitProvider.getGitHubChecks(commitSha);
   }
 }
