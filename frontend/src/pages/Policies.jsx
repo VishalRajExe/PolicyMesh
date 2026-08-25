@@ -29,6 +29,66 @@ import { useFormDraft } from "../hooks/useFormDraft";
 const JURISDICTIONS = ["EU", "US", "IN", "CN", "UK", "GLOBAL", "AP", "ME"];
 const DATA_CLASSES = ["PII", "PCI", "PHI", "NON_SENSITIVE", "UNKNOWN"];
 
+const SAMPLE_TEMPLATES = [
+  {
+    name: "EU PII Gate",
+    yaml: `policyCode: EU-PII-002
+name: Strict EU Cross-Border Residency
+jurisdiction: EU
+dataClass: PII
+allowedRegions:
+  - EU
+deniedRegions:
+  - US
+status: ACTIVE`,
+  },
+  {
+    name: "US Healthcare PHI",
+    yaml: `policyCode: US-PHI-001
+name: US HIPAA Healthcare PHI Guard
+jurisdiction: US
+dataClass: PHI
+allowedRegions:
+  - US
+deniedRegions:
+  - EU
+  - CN
+status: ACTIVE`,
+  },
+  {
+    name: "India Financial PCI",
+    yaml: `policyCode: IN-PCI-001
+name: India Payment Card Data Sovereignty
+jurisdiction: IN
+dataClass: PCI
+allowedRegions:
+  - IN
+deniedRegions:
+  - US
+  - EU
+status: ACTIVE`,
+  },
+  {
+    name: "Bulk Policy Bundle",
+    yaml: `policies:
+  - policyCode: GLOBAL-PII-001
+    name: Global PII Safe Haven Rule
+    jurisdiction: GLOBAL
+    dataClass: PII
+    allowedRegions: [EU, US, IN, UK]
+    deniedRegions: [CN]
+    status: ACTIVE
+
+  - policyCode: EU-PCI-001
+    name: EU Payment Card Data Sovereignty
+    jurisdiction: EU
+    dataClass: PCI
+    allowedRegions: [EU]
+    deniedRegions: [US, IN, CN]
+    status: ACTIVE`,
+  },
+];
+
 const EMPTY_FORM = {
   policyCode: "",
   name: "",
@@ -57,6 +117,7 @@ export default function Policies() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [yamlContent, setYamlContent] = useState("");
+  const [importError, setImportError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
 
@@ -71,7 +132,12 @@ export default function Policies() {
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "new") setShowCreateModal(true);
-    if (action === "import") setShowImportModal(true);
+    if (action === "import") {
+      setShowImportModal(true);
+      if (!yamlContent) {
+        setYamlContent(SAMPLE_TEMPLATES[0].yaml);
+      }
+    }
   }, [searchParams]);
 
   async function load() {
@@ -122,20 +188,40 @@ export default function Policies() {
   }
 
   async function handleImportYaml(e) {
-    e.preventDefault();
-    if (!yamlContent.trim()) return;
+    if (e) e.preventDefault();
+    const raw = yamlContent.trim();
+    if (!raw) {
+      setImportError("Please provide YAML content or select a sample template.");
+      return;
+    }
     setSubmitting(true);
-    setError(null);
+    setImportError(null);
     try {
-      await policiesApi.importYaml(yamlContent);
+      await policiesApi.importYaml(raw);
       setShowImportModal(false);
       setYamlContent("");
       await load();
     } catch (err) {
-      setError(err.message);
+      const detail = err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to import policy YAML.";
+      setImportError(detail);
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result;
+      if (typeof content === "string") {
+        setYamlContent(content);
+        setImportError(null);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   }
 
   async function handleDelete(id) {
@@ -519,28 +605,106 @@ export default function Policies() {
       {/* Import YAML Modal */}
       <Modal
         isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
+        onClose={() => {
+          setShowImportModal(false);
+          setImportError(null);
+        }}
         title="Import Policy YAML"
-        subtitle="Paste standard PolicyMesh declarative YAML specifications to register policies in bulk."
+        subtitle="Paste standard PolicyMesh declarative YAML specifications or load a template to register policies in bulk."
+        maxWidth="max-w-2xl"
       >
         <form onSubmit={handleImportYaml} className="space-y-4">
           <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-[var(--color-text)]">
+                Sample Policy Templates:
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-[var(--color-brand)] hover:underline cursor-pointer flex items-center gap-1 font-medium">
+                  <Upload size={12} /> Upload .yaml File
+                  <input
+                    type="file"
+                    accept=".yaml,.yml,.txt"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+                {yamlContent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYamlContent("");
+                      setImportError(null);
+                    }}
+                    className="text-xs text-[var(--color-text-faint)] hover:text-[var(--color-bad)] transition-colors cursor-pointer"
+                  >
+                    Clear Editor
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {SAMPLE_TEMPLATES.map((tmpl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setYamlContent(tmpl.yaml);
+                    setImportError(null);
+                  }}
+                  className="text-[11px] px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] text-[var(--color-text)] border border-[var(--color-border)] transition-colors cursor-pointer flex items-center gap-1 font-medium"
+                >
+                  <FileText size={11} className="text-[var(--color-brand)]" />
+                  {tmpl.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <textarea
-              rows={8}
+              rows={11}
               value={yamlContent}
-              onChange={(e) => setYamlContent(e.target.value)}
-              placeholder={`policyCode: EU-PII-002\nname: Strict EU Cross-Border Residency\njurisdiction: EU\ndataClass: PII\nallowedRegions:\n  - EU\ndeniedRegions:\n  - US\nstatus: ACTIVE`}
-              className="field-input text-xs font-mono resize-none leading-relaxed"
-              required
+              onChange={(e) => {
+                setYamlContent(e.target.value);
+                setImportError(null);
+              }}
+              placeholder="Paste declarative YAML policy definition here, or select a template above..."
+              className="field-input text-xs font-mono resize-none leading-relaxed w-full p-3"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="ghost" size="md" onClick={() => setShowImportModal(false)}>
+          {importError && (
+            <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 rounded-xl p-3 flex items-start gap-2 animate-in fade-in">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-semibold">YAML Validation Error:</span>
+                <p className="opacity-90 leading-relaxed">{importError}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]/50">
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => {
+                setShowImportModal(false);
+                setImportError(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button variant="primary" size="md" type="submit" loading={submitting} icon={Upload}>
-              Import Policy
+            <Button
+              variant="primary"
+              size="md"
+              type="submit"
+              loading={submitting}
+              disabled={!yamlContent.trim() || submitting}
+              icon={Upload}
+            >
+              {submitting ? "Importing Policy..." : "Import Policy"}
             </Button>
           </div>
         </form>

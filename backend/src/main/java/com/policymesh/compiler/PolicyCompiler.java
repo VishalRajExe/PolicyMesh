@@ -9,7 +9,10 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -17,71 +20,139 @@ import java.util.TreeSet;
 
 /**
  * Raw YAML -> parser -> validation -> CompiledPolicy.
- * Malformed YAML is a 400; a parsable policy that violates the DSL is a 422.
+ * Supports:
+ * - Traditional wrapped: `policy: { id, ... }`
+ * - Flat root: `{ policyCode/id, name, jurisdiction, dataClass, ... }`
+ * - Multi-policy list: `policies: [ ... ]` or list of YAML maps or multi-docs `---`
  */
 @Service
 public class PolicyCompiler {
 
   public CompiledPolicy compile(String content) {
+    List<CompiledPolicy> list = compileAll(content);
+    if (list.isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "No policy found in YAML specification");
+    }
+    return list.get(0);
+  }
+
+  public List<CompiledPolicy> compileAll(String content) {
     if (content == null || content.isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "Policy YAML content is required");
     }
     if (content.length() > 1_048_576) {
       throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "oversized-policy", "Policy YAML exceeds maximum allowed size of 1MB");
     }
-    Map<?, ?> policy = parse(content);
-    CompiledPolicy compiled = new CompiledPolicy(
-        required(policy, "id"),
-        required(policy, "name"),
-        PolicyVocabulary.canonicalRegion(required(policy, "jurisdiction")),
-        PolicyVocabulary.canonicalDataClass(required(policy, "dataClass")),
-        regionSet(policy.get("allowedRegions"), "allowedRegions"),
-        regionSet(policy.get("deniedRegions"), "deniedRegions"),
-        status(policy));
-    validate(compiled);
-    return compiled;
+
+    List<Map<?, ?>> policyMaps = parseAll(content);
+    if (policyMaps.isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "YAML does not contain valid policy definitions");
+    }
+
+    List<CompiledPolicy> result = new ArrayList<>();
+    for (Map<?, ?> policy : policyMaps) {
+      CompiledPolicy compiled = new CompiledPolicy(
+          required(policy, "id", "policyCode", "policy_code", "code", "policyId"),
+          required(policy, "name", "title", "description"),
+          PolicyVocabulary.canonicalRegion(required(policy, "jurisdiction", "region", "jurisdictionCode")),
+          PolicyVocabulary.canonicalDataClass(required(policy, "dataClass", "data_class", "dataclass", "class")),
+          regionSet(findValue(policy, "allowedRegions", "allowed_regions", "allowed"), "allowedRegions"),
+          regionSet(findValue(policy, "deniedRegions", "denied_regions", "denied", "blocked"), "deniedRegions"),
+          status(policy));
+      validate(compiled);
+      result.add(compiled);
+    }
+    return result;
   }
 
-  private Map<?, ?> parse(String content) {
-    Object parsed;
+  private List<Map<?, ?>> parseAll(String content) {
+    List<Map<?, ?>> list = new ArrayList<>();
     try {
       LoaderOptions loaderOptions = new LoaderOptions();
       loaderOptions.setCodePointLimit(1_048_576);
-      parsed = new Yaml(new SafeConstructor(loaderOptions)).load(content);
+      Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
+      
+      for (Object doc : yaml.loadAll(content)) {
+        if (doc instanceof Map<?, ?> root) {
+          if (root.get("policy") instanceof Map<?, ?> p) {
+            list.add(p);
+          } else if (root.get("policies") instanceof Collection<?> col) {
+            for (Object item : col) {
+              if (item instanceof Map<?, ?> itemMap) list.add(itemMap);
+            }
+          } else if (isPolicyMap(root)) {
+            list.add(root);
+          } else {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "YAML must contain a 'policy' object, 'policies' list, or root policy attributes");
+          }
+        } else if (doc instanceof Collection<?> col) {
+          for (Object item : col) {
+            if (item instanceof Map<?, ?> itemMap && isPolicyMap(itemMap)) {
+              list.add(itemMap);
+            }
+          }
+        } else if (doc != null) {
+          throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "YAML document must be a mapping or list of policy mappings");
+        }
+      }
+    } catch (ApiException ae) {
+      throw ae;
     } catch (Exception e) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "Malformed policy YAML: " + e.getMessage());
     }
-    if (!(parsed instanceof Map<?, ?> root) || !(root.get("policy") instanceof Map<?, ?> policy)) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "malformed-policy", "YAML must contain a top-level 'policy' object");
-    }
-    return policy;
+    return list;
   }
 
-  private String required(Map<?, ?> policy, String key) {
-    Object value = policy.get(key);
-    if (value == null || value.toString().isBlank()) {
-      throw ApiException.unprocessable("Policy field '" + key + "' is required");
+  private boolean isPolicyMap(Map<?, ?> map) {
+    return map.containsKey("id") ||
+           map.containsKey("policyCode") ||
+           map.containsKey("policy_code") ||
+           map.containsKey("jurisdiction") ||
+           map.containsKey("dataClass") ||
+           map.containsKey("allowedRegions");
+  }
+
+  private String required(Map<?, ?> policy, String... candidateKeys) {
+    Object val = findValue(policy, candidateKeys);
+    if (val == null || val.toString().isBlank()) {
+      throw ApiException.unprocessable("Policy field '" + candidateKeys[0] + "' is required");
     }
-    return value.toString().trim();
+    return val.toString().trim();
+  }
+
+  private Object findValue(Map<?, ?> map, String... candidateKeys) {
+    for (String key : candidateKeys) {
+      if (map.containsKey(key) && map.get(key) != null) {
+        return map.get(key);
+      }
+    }
+    return null;
   }
 
   private Set<String> regionSet(Object value, String field) {
-    if (value == null) return new TreeSet<>();
-    if (!(value instanceof Collection<?> collection)) {
-      throw ApiException.unprocessable("Policy field '" + field + "' must be a list of regions");
-    }
     TreeSet<String> regions = new TreeSet<>();
-    for (Object item : collection) {
-      if (item == null || item.toString().isBlank()) {
-        throw ApiException.unprocessable("Policy field '" + field + "' contains a blank region");
+    if (value == null) return regions;
+
+    if (value instanceof Collection<?> collection) {
+      for (Object item : collection) {
+        if (item == null || item.toString().isBlank()) {
+          throw ApiException.unprocessable("Policy field '" + field + "' contains a blank region");
+        }
+        regions.add(PolicyVocabulary.canonicalRegion(item.toString()));
       }
-      regions.add(PolicyVocabulary.canonicalRegion(item.toString()));
+    } else if (value instanceof String str) {
+      Arrays.stream(str.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .forEach(s -> regions.add(PolicyVocabulary.canonicalRegion(s)));
+    } else {
+      throw ApiException.unprocessable("Policy field '" + field + "' must be a list of regions");
     }
     return regions;
   }
 
   private PolicyStatus status(Map<?, ?> policy) {
-    Object value = policy.get("status");
+    Object value = findValue(policy, "status", "state");
     if (value == null) return PolicyStatus.ACTIVE;
     try {
       return PolicyStatus.valueOf(value.toString().trim().toUpperCase(Locale.ROOT));

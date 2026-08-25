@@ -132,4 +132,51 @@ class PolicyCompilerTest {
         .isInstanceOf(ApiException.class)
         .satisfies(e -> assertThat(((ApiException) e).status().value()).isEqualTo(422));
   }
+
+  @Test
+  void compilesFlatYamlWithoutPolicyWrapper() {
+    String flatYaml = """
+        policyCode: EU-PII-002
+        name: Strict EU Cross-Border Residency
+        jurisdiction: EU
+        dataClass: PII
+        allowedRegions:
+          - EU
+        deniedRegions:
+          - US
+        status: ACTIVE
+        """;
+    CompiledPolicy compiled = compiler.compile(flatYaml);
+    assertThat(compiled.policyCode()).isEqualTo("EU-PII-002");
+    assertThat(compiled.name()).isEqualTo("Strict EU Cross-Border Residency");
+    assertThat(compiled.jurisdiction()).isEqualTo("EU");
+    assertThat(compiled.dataClass()).isEqualTo("PII");
+    assertThat(compiled.allowedRegions()).containsExactly("EU");
+    assertThat(compiled.deniedRegions()).containsExactly("US");
+    assertThat(compiled.status()).isEqualTo(PolicyStatus.ACTIVE);
+  }
+
+  @Test
+  void compilesMultiPolicyBundle() {
+    String bundleYaml = """
+        policies:
+          - policyCode: GLOBAL-PII-001
+            name: Global Rule
+            jurisdiction: GLOBAL
+            dataClass: PII
+            allowedRegions: EU, US
+            deniedRegions: CN
+          - policyCode: EU-PCI-001
+            name: EU Payment Rule
+            jurisdiction: EU
+            dataClass: PCI
+            allowedRegions: [EU]
+            deniedRegions: [US]
+        """;
+    var list = compiler.compileAll(bundleYaml);
+    assertThat(list).hasSize(2);
+    assertThat(list.get(0).policyCode()).isEqualTo("GLOBAL-PII-001");
+    assertThat(list.get(0).allowedRegions()).containsExactlyInAnyOrder("EU", "US");
+    assertThat(list.get(1).policyCode()).isEqualTo("EU-PCI-001");
+  }
 }

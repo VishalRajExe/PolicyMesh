@@ -66,6 +66,26 @@ public class PolicyService {
     return PolicyDtos.from(p);
   }
 
+  public java.util.List<PolicyDtos.Response> importYaml(String yaml) {
+    var compiledList = compiler.compileAll(yaml);
+    java.util.List<PolicyDtos.Response> results = new java.util.ArrayList<>();
+    for (var compiled : compiledList) {
+      Policy p = repo.findByPolicyCodeIgnoreCase(compiled.policyCode())
+          .orElseGet(Policy::new);
+      p.setPolicyCode(compiled.policyCode());
+      p.setName(compiled.name());
+      p.setJurisdiction(compiled.jurisdiction());
+      p.setDataClass(compiled.dataClass());
+      p.setAllowedRegions(compiled.allowedRegions());
+      p.setDeniedRegions(compiled.deniedRegions());
+      p.setStatus(compiled.status() != null ? compiled.status() : PolicyStatus.ACTIVE);
+      p = repo.save(p);
+      changed(p);
+      results.add(PolicyDtos.from(p));
+    }
+    return results;
+  }
+
   public PolicyDtos.Response update(long id, PolicyDtos.Request r) {
     Normalized n = normalize(r);
     Policy p = entity(id);

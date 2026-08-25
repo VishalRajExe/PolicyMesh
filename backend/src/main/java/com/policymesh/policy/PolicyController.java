@@ -33,7 +33,7 @@ public class PolicyController {
 
   @PostMapping(value = "/yaml", consumes = {"application/json", "text/plain", "application/x-yaml", "*/*"})
   @ResponseStatus(HttpStatus.CREATED)
-  public PolicyDtos.Response createFromYaml(@RequestBody String body) {
+  public Object createFromYaml(@RequestBody String body) {
     String yaml = body;
     if (body != null && body.trim().startsWith("{")) {
       try {
@@ -43,7 +43,8 @@ public class PolicyController {
         }
       } catch (Exception ignored) {}
     }
-    return service.createFromYaml(yaml);
+    var list = service.importYaml(yaml);
+    return list.size() == 1 ? list.get(0) : list;
   }
 
   @PutMapping("/{id}")
