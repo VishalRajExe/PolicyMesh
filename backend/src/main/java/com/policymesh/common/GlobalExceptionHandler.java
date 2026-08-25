@@ -62,6 +62,11 @@ public class GlobalExceptionHandler {
     return problem(HttpStatus.NOT_FOUND, "not-found", "Not Found", "No such endpoint: " + req.getRequestURI(), req, null);
   }
 
+  @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+  public ProblemDetail methodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
+    return problem(HttpStatus.METHOD_NOT_ALLOWED, "method-not-allowed", "Method Not Allowed", ex.getMessage(), req, null);
+  }
+
   @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
   public ProblemDetail mediaType(HttpMediaTypeNotSupportedException ex, HttpServletRequest req) {
     return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported-media-type", "Unsupported Media Type", ex.getMessage(), req, null);

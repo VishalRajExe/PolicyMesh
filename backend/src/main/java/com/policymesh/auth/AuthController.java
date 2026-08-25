@@ -42,6 +42,9 @@ public class AuthController {
     user.setEmail(email);
     user.setPasswordHash(encoder.encode(request.password()));
     user.setRole(request.role() != null ? request.role() : Role.ENGINEER);
+    user.setName(request.name());
+    user.setStatus("ACTIVE");
+    user.setEnabled(true);
     user = users.save(user);
     return new AuthDtos.Registered(user.getId(), user.getEmail(), user.getRole().name());
   }

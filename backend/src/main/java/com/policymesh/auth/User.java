@@ -32,6 +32,12 @@ public class User {
   @Column(nullable = false, length = 50)
   private String status = "ACTIVE";
 
+  @Column(name = "enabled", nullable = false)
+  private Boolean enabled = true;
+
+  @Column(name = "name")
+  private String name;
+
   @Column(nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
@@ -42,6 +48,8 @@ public class User {
   protected void onCreate() {
     if (createdAt == null) createdAt = Instant.now();
     if (updatedAt == null) updatedAt = Instant.now();
+    if (enabled == null) enabled = true;
+    if (status == null) status = "ACTIVE";
   }
 
   @jakarta.persistence.PreUpdate
@@ -56,6 +64,7 @@ public class User {
     this.passwordHash = passwordHash;
     this.role = role != null ? role : Role.ENGINEER;
     this.status = "ACTIVE";
+    this.enabled = true;
     this.createdAt = Instant.now();
     this.updatedAt = Instant.now();
   }
@@ -80,4 +89,10 @@ public class User {
 
   public Instant getUpdatedAt() { return updatedAt; }
   public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+  public Boolean isEnabled() { return enabled != null ? enabled : true; }
+  public void setEnabled(Boolean enabled) { this.enabled = enabled != null ? enabled : true; }
+
+  public String getName() { return name; }
+  public void setName(String name) { this.name = name; }
 }

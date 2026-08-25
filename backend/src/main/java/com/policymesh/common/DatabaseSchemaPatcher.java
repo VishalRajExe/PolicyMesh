@@ -21,15 +21,42 @@ public class DatabaseSchemaPatcher {
   @PostConstruct
   public void patchSchema() {
     try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-      // Add updated_at column to users table if missing
+      // 1. Patch 'updated_at' column
       try {
-        stmt.execute("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        log.info("Successfully patched 'users' table with 'updated_at' column.");
+        stmt.execute("ALTER TABLE users ADD COLUMN updated_at DATETIME(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)");
+        log.info("Patched 'users' table with 'updated_at' column.");
       } catch (Exception e) {
-        log.debug("Column 'updated_at' may already exist or table users not created yet: {}", e.getMessage());
+        log.debug("Column 'updated_at' patch skipped: {}", e.getMessage());
       }
 
-      // Ensure role column has sufficient length
+      // 2. Patch 'enabled' column with DEFAULT TRUE
+      try {
+        stmt.execute("ALTER TABLE users ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE");
+        log.info("Patched 'users' table with 'enabled' column.");
+      } catch (Exception e) {
+        try {
+          stmt.execute("ALTER TABLE users MODIFY COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE");
+        } catch (Exception ignored) {}
+      }
+
+      // 3. Patch 'name' column
+      try {
+        stmt.execute("ALTER TABLE users ADD COLUMN name VARCHAR(255) NULL");
+        log.info("Patched 'users' table with 'name' column.");
+      } catch (Exception e) {
+        log.debug("Column 'name' patch skipped: {}", e.getMessage());
+      }
+
+      // 4. Ensure 'status' column default
+      try {
+        stmt.execute("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'");
+      } catch (Exception e) {
+        try {
+          stmt.execute("ALTER TABLE users MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'");
+        } catch (Exception ignored) {}
+      }
+
+      // 5. Ensure 'role' column has sufficient length and default
       try {
         stmt.execute("ALTER TABLE users MODIFY COLUMN role VARCHAR(64) NOT NULL DEFAULT 'ENGINEER'");
       } catch (Exception e) {

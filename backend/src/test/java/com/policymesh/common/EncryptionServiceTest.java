@@ -37,9 +37,11 @@ class EncryptionServiceTest {
     String token = "gho_sensitive_token";
     String encrypted = encryptionService.encrypt(token);
 
-    // Tamper with payload
-    char modifiedChar = encrypted.charAt(encrypted.length() - 2) == 'A' ? 'B' : 'A';
-    String tampered = encrypted.substring(0, encrypted.length() - 2) + modifiedChar + encrypted.substring(encrypted.length() - 1);
+    // Tamper with payload in the middle of ciphertext
+    char[] chars = encrypted.toCharArray();
+    int idx = chars.length / 2;
+    chars[idx] = (chars[idx] == 'A') ? 'B' : 'A';
+    String tampered = new String(chars);
 
     assertThatThrownBy(() -> encryptionService.decrypt(tampered))
         .isInstanceOf(RuntimeException.class);
