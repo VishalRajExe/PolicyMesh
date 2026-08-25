@@ -17,6 +17,7 @@ import Reports from "./pages/Reports";
 import UsersRoles from "./pages/UsersRoles";
 import Settings from "./pages/Settings";
 import SystemStatus from "./pages/SystemStatus";
+import GitHubScans from "./pages/GitHubScans";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/lineage" element={<ProtectedRoute><Lineage /></ProtectedRoute>} />
             <Route path="/ai-classification" element={<ProtectedRoute><AiClassification /></ProtectedRoute>} />
             <Route path="/ci-check" element={<ProtectedRoute><CiCheck /></ProtectedRoute>} />
+            <Route path="/github" element={<ProtectedRoute><GitHubScans /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/system" element={<ProtectedRoute><SystemStatus /></ProtectedRoute>} />

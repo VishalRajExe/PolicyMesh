@@ -18,6 +18,7 @@ import {
   Server,
   User,
   ExternalLink,
+  GitPullRequest,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { to: "/reports", label: "Reports", icon: ClipboardList },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/ci-check", label: "CI Check", icon: CheckSquare },
+  { to: "/github", label: "GitHub Scans", icon: GitPullRequest },
   { to: "/system", label: "System Status", icon: Server },
   { to: "/users-roles", label: "Users & Roles", icon: Users },
   { to: "/settings", label: "Settings", icon: Settings },
