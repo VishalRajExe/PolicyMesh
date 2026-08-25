@@ -81,10 +81,10 @@ export default function Alerts() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 pb-12">
         {/* Controls & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 max-w-xl">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full sm:max-w-xl">
             {denyCount > 0 && (
               <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[var(--color-bad-light)] border border-[var(--color-bad)]/30 text-[var(--color-bad-text)] shrink-0 shadow-2xs">
                 <ShieldAlert size={14} className="text-[var(--color-bad)]" />
@@ -100,7 +100,7 @@ export default function Alerts() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search..."
+                placeholder="Search alerts..."
                 className="field-input field-input-search !pl-9 text-xs"
               />
               {search && (
@@ -116,7 +116,7 @@ export default function Alerts() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[var(--color-surface-2)] p-1 rounded-xl border border-[var(--color-border)]">
+          <div className="flex items-center gap-1.5 bg-[var(--color-surface-2)] p-1 rounded-xl border border-[var(--color-border)] self-start sm:self-auto">
             {[
               { id: "ALL", label: "All Events" },
               { id: "DENY", label: "Blocked" },

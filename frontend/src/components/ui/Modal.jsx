@@ -43,10 +43,10 @@ export function Modal({
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidth} card bg-[var(--color-surface)] p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto`}
+        className={`relative w-full ${maxWidth} card bg-[var(--color-surface)] p-4 sm:p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-start justify-between gap-4 mb-4 sm:mb-5">
           <div>
             <h3 className="text-base font-semibold text-[var(--color-text)]">{title}</h3>
             {subtitle && (

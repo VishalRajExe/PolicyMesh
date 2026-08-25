@@ -267,17 +267,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div>
-      {/* Top Header */}
-      <Topbar
-        title={`Welcome back, ${roleName} 👋`}
-        subtitle="Here's what's happening with your data governance today."
-        actions={topbarActions}
-      />
+    <div className="min-h-full flex flex-col bg-[var(--color-bg)]">
+      <Topbar alertCount={alerts.length} />
 
-      <div className="px-6 lg:px-8 py-6 space-y-6 pb-12">
-        {/* Row 1: 5 KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        {/* Row 1: 5 KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
           <StatCard
             icon={FileText}
             color="purple"
@@ -320,8 +315,8 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Row 2: 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Row 2: 3-Column Layout (stacked on mobile/tablet) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {/* Policy Status Overview */}
           <DashboardCard title="Policy Status Overview">
             <DonutStat
@@ -363,8 +358,8 @@ export default function Dashboard() {
           </DashboardCard>
         </div>
 
-        {/* Row 3: 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Row 3: 3-Column Layout (stacked on mobile/tablet) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {/* Top Data Flows by Volume */}
           <DashboardCard
             title="Top Data Flows by Volume"

@@ -1,19 +1,20 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
+import { LayoutProvider, useLayout } from "../../context/LayoutContext";
 
-export default function AppShell({ children }) {
+function AppShellContent({ children }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mobileNavOpen, closeMobileNav } = useLayout();
 
   return (
     <div className="h-screen w-screen flex bg-[var(--color-bg)] overflow-hidden">
-      {/* Sidebar */}
+      {/* Sidebar (Desktop permanent + Mobile slide-in drawer) */}
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={closeMobileNav}
       />
 
       {/* Main Content Area + Footer */}
@@ -24,5 +25,13 @@ export default function AppShell({ children }) {
         <StatusBar />
       </div>
     </div>
+  );
+}
+
+export default function AppShell({ children }) {
+  return (
+    <LayoutProvider>
+      <AppShellContent>{children}</AppShellContent>
+    </LayoutProvider>
   );
 }

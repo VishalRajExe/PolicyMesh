@@ -107,10 +107,10 @@ export default function Lineage() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 pb-12">
         {/* Verification Banner & Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full sm:max-w-2xl">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
@@ -120,7 +120,7 @@ export default function Lineage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search..."
+                placeholder="Search lineage records..."
                 className="field-input field-input-search !pl-9 text-xs"
               />
               {search && (
@@ -142,7 +142,7 @@ export default function Lineage() {
                 setFilter(e.target.value);
                 setPage(1);
               }}
-              className="field-input py-1.5 text-xs w-32"
+              className="field-input py-1.5 text-xs w-full sm:w-32"
             >
               <option value="ALL">All Decisions</option>
               <option value="ALLOW">ALLOW</option>

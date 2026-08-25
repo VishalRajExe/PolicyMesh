@@ -19,6 +19,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import GlobalSearchModal from "./GlobalSearchModal";
 import Button from "../ui/Button";
+import { useLayout } from "../../context/LayoutContext";
 
 export default function Topbar({
   title,
@@ -29,8 +30,11 @@ export default function Topbar({
 }) {
   const { user, logout } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
+  const { openMobileNav } = useLayout();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleMobileMenu = onMobileMenuToggle || openMobileNav;
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -80,25 +84,25 @@ export default function Topbar({
 
   return (
     <>
-      <header className="flex items-center justify-between gap-4 px-6 lg:px-8 py-4.5 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0 select-none">
+      <header className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4.5 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0 select-none">
         {/* Left: Mobile Menu Trigger + Title / Subtitle */}
-        <div className="flex items-center gap-3 min-w-0">
-          {onMobileMenuToggle && (
-            <button
-              type="button"
-              onClick={onMobileMenuToggle}
-              className="lg:hidden p-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] focus-ring"
-            >
-              <Menu size={18} />
-            </button>
-          )}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={handleMobileMenu}
+            className="lg:hidden p-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] focus-ring shrink-0"
+            title="Open navigation menu"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={18} />
+          </button>
 
           <div className="min-w-0">
-            <h1 className="text-lg lg:text-xl font-bold tracking-tight text-[var(--color-text)] truncate">
+            <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight text-[var(--color-text)] truncate">
               {displayTitle}
             </h1>
             {displaySubtitle && (
-              <p className="text-xs text-[var(--color-text-dim)] mt-0.5 truncate hidden sm:block">
+              <p className="text-xs text-[var(--color-text-dim)] mt-0.5 truncate hidden md:block">
                 {displaySubtitle}
               </p>
             )}

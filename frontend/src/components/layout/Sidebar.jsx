@@ -52,28 +52,42 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const content = (
     <div className="flex flex-col h-full bg-[var(--color-surface)] border-r border-[var(--color-border)] select-none">
       {/* Brand Logo & Tagline */}
-      <div className="flex items-center gap-3 px-5 h-18 border-b border-[var(--color-border)] shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm p-1">
-          <img
-            src="/logo.png"
-            alt="PolicyMesh Logo"
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              if (e.currentTarget.nextElementSibling) {
-                e.currentTarget.nextElementSibling.style.display = "flex";
-              }
-            }}
-          />
-          <div style={{ display: "none" }} className="w-full h-full items-center justify-center text-[var(--color-brand)]">
-            <Shield size={20} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+      <div className="flex items-center justify-between px-5 h-18 border-b border-[var(--color-border)] shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-[var(--color-brand-light)] border border-[var(--color-brand)]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm p-1">
+            <img
+              src="/logo.png"
+              alt="PolicyMesh Logo"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                if (e.currentTarget.nextElementSibling) {
+                  e.currentTarget.nextElementSibling.style.display = "flex";
+                }
+              }}
+            />
+            <div style={{ display: "none" }} className="w-full h-full items-center justify-center text-[var(--color-brand)]">
+              <Shield size={20} className="fill-[var(--color-brand)]/20 stroke-[var(--color-brand)]" />
+            </div>
           </div>
+          {!collapsed && (
+            <div className="leading-tight min-w-0">
+              <p className="font-bold text-sm tracking-tight text-[var(--color-text)]">PolicyMesh</p>
+              <p className="text-[11px] text-[var(--color-text-faint)] font-medium">Govern. Enforce. Trust.</p>
+            </div>
+          )}
         </div>
-        {!collapsed && (
-          <div className="leading-tight min-w-0">
-            <p className="font-bold text-sm tracking-tight text-[var(--color-text)]">PolicyMesh</p>
-            <p className="text-[11px] text-[var(--color-text-faint)] font-medium">Govern. Enforce. Trust.</p>
-          </div>
+
+        {/* Mobile Close Button (only visible on mobile drawer) */}
+        {mobileOpen && (
+          <button
+            type="button"
+            onClick={onMobileClose}
+            className="lg:hidden p-1.5 rounded-lg text-[var(--color-text-faint)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)] transition-colors focus-ring"
+            title="Close menu"
+          >
+            <ChevronLeft size={18} />
+          </button>
         )}
       </div>
 

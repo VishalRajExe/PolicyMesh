@@ -127,7 +127,7 @@ export default function Reports() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-6 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-12">
         {/* Error notification */}
         {error && (
           <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/20 rounded-xl p-3 flex items-center justify-between">
@@ -142,7 +142,7 @@ export default function Reports() {
         )}
 
         {/* 4 Executive KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {/* Card 1: Compliance Score */}
           <div className="card p-4.5">
             <div className="flex items-center justify-between gap-2">

@@ -169,7 +169,7 @@ export default function GitHubScans() {
         }
       />
 
-      <div className="px-6 space-y-6 max-w-7xl">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-7xl pb-12">
         {/* Status Alerts */}
         {message && (
           <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs flex items-center justify-between gap-2">
@@ -208,7 +208,7 @@ export default function GitHubScans() {
         )}
 
         {/* Top Overview KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           <div className="card p-4 space-y-1">
             <p className="text-[11px] font-semibold text-[var(--color-text-faint)] uppercase tracking-wider">GitHub Connection</p>
             <div className="flex items-center justify-between">

@@ -164,9 +164,9 @@ export default function UsersRoles() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 pb-12">
         {/* Navigation Tabs */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <Tabs
             tabs={[
               { id: "directory", label: "User Directory", icon: Users, count: users.length },
@@ -180,8 +180,8 @@ export default function UsersRoles() {
         {activeTab === "directory" ? (
           <div className="space-y-4">
             {/* Filter Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 flex-1 max-w-2xl">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full sm:max-w-2xl">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
                   <input
@@ -190,7 +190,7 @@ export default function UsersRoles() {
                       setSearch(e.target.value);
                       setPage(1);
                     }}
-                    placeholder="Search..."
+                    placeholder="Search users..."
                     className="field-input field-input-search !pl-9 text-xs"
                   />
                   {search && (
@@ -205,39 +205,50 @@ export default function UsersRoles() {
                   )}
                 </div>
 
-                <select
-                  value={roleFilter}
-                  onChange={(e) => {
-                    setRoleFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="field-input py-1.5 text-xs w-36"
-                >
-                  <option value="ALL">All Roles</option>
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="field-input py-1.5 text-xs flex-1 sm:w-36"
+                  >
+                    <option value="ALL">All Roles</option>
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="field-input py-1.5 text-xs w-32"
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="DISABLED">Disabled</option>
-                </select>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="field-input py-1.5 text-xs flex-1 sm:w-32"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="DISABLED">Disabled</option>
+                  </select>
+                </div>
               </div>
 
-              <span className="text-xs text-[var(--color-text-faint)] font-mono">
-                {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
-              </span>
+              <div className="flex items-center justify-between sm:justify-end gap-3">
+                {isAdmin && (
+                  <div className="block sm:hidden flex-1">
+                    <Button variant="primary" size="sm" icon={Plus} className="w-full justify-center" onClick={() => setShowCreateModal(true)}>
+                      Add User
+                    </Button>
+                  </div>
+                )}
+                <span className="text-xs text-[var(--color-text-faint)] font-mono self-center">
+                  {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
+                </span>
+              </div>
             </div>
 
             {/* Table Card */}

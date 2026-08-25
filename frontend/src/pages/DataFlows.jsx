@@ -235,7 +235,7 @@ export default function DataFlows() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 pb-12">
         {/* Toast feedback */}
         {toast && (
           <div
@@ -268,9 +268,9 @@ export default function DataFlows() {
           </div>
         )}
 
-        {/* Filter Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 flex-1 max-w-2xl">
+        {/* Filter Controls Bar (stacked on mobile, inline on desktop) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full sm:max-w-2xl">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
@@ -280,7 +280,7 @@ export default function DataFlows() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search..."
+                placeholder="Search data flows..."
                 className="field-input field-input-search !pl-9 text-xs"
               />
               {search && (
@@ -295,52 +295,80 @@ export default function DataFlows() {
               )}
             </div>
 
-            {/* Data Class Filter */}
-            <select
-              value={dataClassFilter}
-              onChange={(e) => {
-                setDataClassFilter(e.target.value);
-                setPage(1);
-              }}
-              className="field-input py-1.5 text-xs w-36"
-            >
-              <option value="ALL">All Data Classes</option>
-              {DATA_CLASSES.map((dc) => (
-                <option key={dc} value={dc}>
-                  {dc}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {/* Data Class Filter */}
+              <select
+                value={dataClassFilter}
+                onChange={(e) => {
+                  setDataClassFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="field-input py-1.5 text-xs flex-1 sm:w-36"
+              >
+                <option value="ALL">All Data Classes</option>
+                {DATA_CLASSES.map((dc) => (
+                  <option key={dc} value={dc}>
+                    {dc}
+                  </option>
+                ))}
+              </select>
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-              className="field-input py-1.5 text-xs w-32"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="COMPLIANT">Compliant</option>
-              <option value="VIOLATION">Violation</option>
-            </select>
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="field-input py-1.5 text-xs flex-1 sm:w-32"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="COMPLIANT">Compliant</option>
+                <option value="VIOLATION">Violation</option>
+              </select>
+            </div>
           </div>
 
-          {/* Violations Badge */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-faint)] font-mono">
-              Total Violations Found:
-            </span>
-            <span
-              className={`text-xs font-bold px-2.5 py-0.5 rounded-lg border font-mono ${
-                totalViolationsCount > 0
-                  ? "bg-[var(--color-bad-light)] text-[var(--color-bad-text)] border-[var(--color-bad)]/30"
-                  : "bg-[var(--color-good-light)] text-[var(--color-good-text)] border-[var(--color-good)]/30"
-              }`}
-            >
-              {totalViolationsCount}
-            </span>
+          {/* Violations Badge & Mobile Actions */}
+          <div className="flex items-center justify-between sm:justify-end gap-3">
+            <div className="flex sm:hidden items-center gap-2 flex-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={validating ? Loader2 : RefreshCw}
+                className="flex-1 justify-center"
+                onClick={() => runValidation(true)}
+                disabled={validating}
+              >
+                Re-evaluate
+              </Button>
+              {canWrite && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Plus}
+                  className="flex-1 justify-center"
+                  onClick={() => setShowModal(true)}
+                >
+                  Add Flow
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs text-[var(--color-text-faint)] font-mono hidden sm:inline">
+                Violations:
+              </span>
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded-lg border font-mono ${
+                  totalViolationsCount > 0
+                    ? "bg-[var(--color-bad-light)] text-[var(--color-bad-text)] border-[var(--color-bad)]/30"
+                    : "bg-[var(--color-good-light)] text-[var(--color-good-text)] border-[var(--color-good)]/30"
+                }`}
+              >
+                {totalViolationsCount} {totalViolationsCount === 1 ? "violation" : "violations"}
+              </span>
+            </div>
           </div>
         </div>
 

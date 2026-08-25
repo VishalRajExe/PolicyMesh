@@ -125,7 +125,7 @@ export default function SystemStatus() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-6 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-12">
         {/* Overall Status Banner */}
         <div className="card p-5 border-l-4 border-l-[var(--color-good)] bg-emerald-500/5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">

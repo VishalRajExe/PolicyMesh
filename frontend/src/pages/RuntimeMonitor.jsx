@@ -190,7 +190,7 @@ export default function RuntimeMonitor() {
         subtitle="Execute live zero-trust policy enforcement evaluations against compiled AST rules."
       />
 
-      <div className="px-6 lg:px-8 py-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 grid grid-cols-1 xl:grid-cols-5 gap-4 sm:gap-6 pb-12">
         {/* Left Column: Form & Result Card */}
         <div className="xl:col-span-2 space-y-4">
           <div className="card p-5">

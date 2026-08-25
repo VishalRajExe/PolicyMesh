@@ -223,7 +223,7 @@ export default function CiCheck() {
         subtitle="Shift-left security scanner evaluating pull requests and commits against policy ASTs before merge."
       />
 
-      <div className="px-6 lg:px-8 py-6 grid grid-cols-1 xl:grid-cols-5 gap-6 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 grid grid-cols-1 xl:grid-cols-5 gap-4 sm:gap-6 pb-12">
         {/* Left Column: Form Trigger & Recent Scans */}
         <div className="xl:col-span-2 space-y-4">
           <div className="card p-5">

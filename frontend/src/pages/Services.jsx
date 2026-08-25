@@ -173,7 +173,7 @@ export default function Services() {
         actions={topActions}
       />
 
-      <div className="px-6 lg:px-8 py-6 space-y-4 pb-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 pb-12">
         {/* Error notification */}
         {error && (
           <div className="text-xs text-[var(--color-bad)] bg-[var(--color-bad-light)] border border-[var(--color-bad)]/20 rounded-xl p-3 flex items-center justify-between">
@@ -187,9 +187,9 @@ export default function Services() {
           </div>
         )}
 
-        {/* Filter Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 flex-1 max-w-2xl">
+        {/* Filter Controls Bar (stacked on mobile, inline on desktop) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full sm:max-w-2xl">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
@@ -199,7 +199,7 @@ export default function Services() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search..."
+                placeholder="Search services..."
                 className="field-input field-input-search !pl-9 text-xs"
               />
               {search && (
@@ -214,44 +214,55 @@ export default function Services() {
               )}
             </div>
 
-            {/* Region Filter */}
-            <select
-              value={regionFilter}
-              onChange={(e) => {
-                setRegionFilter(e.target.value);
-                setPage(1);
-              }}
-              className="field-input py-1.5 text-xs w-32"
-            >
-              <option value="ALL">All Regions</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {/* Region Filter */}
+              <select
+                value={regionFilter}
+                onChange={(e) => {
+                  setRegionFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="field-input py-1.5 text-xs flex-1 sm:w-32"
+              >
+                <option value="ALL">All Regions</option>
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
 
-            {/* Environment Filter */}
-            <select
-              value={envFilter}
-              onChange={(e) => {
-                setEnvFilter(e.target.value);
-                setPage(1);
-              }}
-              className="field-input py-1.5 text-xs w-36"
-            >
-              <option value="ALL">All Environments</option>
-              {ENVIRONMENTS.map((env) => (
-                <option key={env} value={env}>
-                  {env}
-                </option>
-              ))}
-            </select>
+              {/* Environment Filter */}
+              <select
+                value={envFilter}
+                onChange={(e) => {
+                  setEnvFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="field-input py-1.5 text-xs flex-1 sm:w-36"
+              >
+                <option value="ALL">All Environments</option>
+                {ENVIRONMENTS.map((env) => (
+                  <option key={env} value={env}>
+                    {env}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <span className="text-xs text-[var(--color-text-faint)] font-mono">
-            {filteredServices.length} {filteredServices.length === 1 ? "service" : "services"}
-          </span>
+          <div className="flex items-center justify-between sm:justify-end gap-3">
+            {canWrite && (
+              <div className="block sm:hidden flex-1">
+                <Button variant="primary" size="sm" icon={Plus} className="w-full justify-center" onClick={openCreate}>
+                  Add Service
+                </Button>
+              </div>
+            )}
+            <span className="text-xs text-[var(--color-text-faint)] font-mono self-center">
+              {filteredServices.length} {filteredServices.length === 1 ? "service" : "services"}
+            </span>
+          </div>
         </div>
 
         {/* Table Card */}
