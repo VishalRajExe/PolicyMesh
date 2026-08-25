@@ -63,7 +63,8 @@ public class SecurityConfig {
             .authenticationEntryPoint((req, res, ex) -> problem(res, HttpStatus.UNAUTHORIZED, "Authentication required: provide a valid bearer token", req))
             .accessDeniedHandler((req, res, ex) -> problem(res, HttpStatus.FORBIDDEN, "Access denied: your role is not permitted to perform this action", req)))
         .authorizeHttpRequests(a -> a
-            .requestMatchers("/api/v1/auth/**", "/health", "/actuator/**", "/api/webhooks/**", "/api/v1/webhooks/**", "/api/v1/github/callback").permitAll()
+            .requestMatchers(org.springframework.http.HttpMethod.GET, "/health", "/").permitAll()
+            .requestMatchers("/api/v1/auth/**", "/health", "/", "/actuator/**", "/api/webhooks/**", "/api/v1/webhooks/**", "/api/v1/github/callback").permitAll()
             .requestMatchers("/api/v1/users/roles").authenticated()
             .requestMatchers("GET", "/api/v1/users/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
             .requestMatchers("POST", "/api/v1/users/**").hasRole("ADMIN")
