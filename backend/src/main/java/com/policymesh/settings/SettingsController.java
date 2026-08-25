@@ -115,7 +115,7 @@ public class SettingsController {
       var resp = client.get().uri("/health").retrieve().toBodilessEntity();
       if (resp.getStatusCode().is2xxSuccessful()) {
         aiStatus = "HEALTHY";
-        aiDetails = "Remote FastAPI service connected at " + aiServiceUrl + " (" + aiMode + " mode)";
+        aiDetails = "Remote FastAPI service connected (" + aiMode + " mode)";
       }
     } catch (Exception ignored) {}
 

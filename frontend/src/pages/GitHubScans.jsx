@@ -351,7 +351,7 @@ export default function GitHubScans() {
                   <div className="p-2.5 rounded-lg bg-black/40 border border-amber-500/20 font-mono text-[10px] text-amber-100 space-y-1">
                     <div>GITHUB_CLIENT_ID=&lt;your_github_client_id&gt;</div>
                     <div>GITHUB_CLIENT_SECRET=&lt;your_github_client_secret&gt;</div>
-                    <div>GITHUB_REDIRECT_URI=https://policymesh-komp.onrender.com/api/v1/github/callback</div>
+                    <div>GITHUB_REDIRECT_URI=&lt;your_backend_url&gt;/api/v1/github/callback</div>
                   </div>
                   <div className="pt-1">
                     <a

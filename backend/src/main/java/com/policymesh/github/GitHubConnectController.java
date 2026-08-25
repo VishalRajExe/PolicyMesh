@@ -53,8 +53,8 @@ public class GitHubConnectController {
       MonitoredRepositoryRepository monitoredRepository,
       UserRepository userRepository,
       @Value("${app.frontend.url:${FRONTEND_URL:http://localhost:5173}}") String frontendUrl,
-      @Value("${github.webhook.url:${GITHUB_WEBHOOK_URL:https://policymesh-komp.onrender.com/api/webhooks/github}}") String webhookUrl,
-      @Value("${github.webhook.secret:${GITHUB_WEBHOOK_SECRET:policymesh_webhook_secret_2026_secure}}") String webhookSecret
+      @Value("${github.webhook.url:${GITHUB_WEBHOOK_URL:}}") String webhookUrl,
+      @Value("${github.webhook.secret:${GITHUB_WEBHOOK_SECRET:}}") String webhookSecret
   ) {
     this.gitHubClient = gitHubClient;
     this.stateManager = stateManager;
@@ -63,7 +63,7 @@ public class GitHubConnectController {
     this.monitoredRepository = monitoredRepository;
     this.userRepository = userRepository;
     this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
-    this.webhookUrl = webhookUrl != null ? webhookUrl.trim() : "https://policymesh-komp.onrender.com/api/webhooks/github";
+    this.webhookUrl = webhookUrl != null ? webhookUrl.trim() : "";
     this.webhookSecret = webhookSecret != null ? webhookSecret.trim() : "";
   }
 
