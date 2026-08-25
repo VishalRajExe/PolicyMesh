@@ -35,14 +35,14 @@ public class SecurityConfig {
   PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 
   @Bean
-  CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}") String origins) {
+  CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,https://*.vercel.app}") String origins) {
     CorsConfiguration config = new CorsConfiguration();
     List<String> originList = Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-    config.setAllowedOrigins(originList);
+    config.setAllowedOriginPatterns(originList);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
     config.setExposedHeaders(List.of("Location"));
-    // Never allow credentials with wildcard origin
+    // Never allow credentials with bare wildcard origin "*"
     config.setAllowCredentials(!originList.contains("*"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
@@ -63,7 +63,7 @@ public class SecurityConfig {
             .authenticationEntryPoint((req, res, ex) -> problem(res, HttpStatus.UNAUTHORIZED, "Authentication required: provide a valid bearer token", req))
             .accessDeniedHandler((req, res, ex) -> problem(res, HttpStatus.FORBIDDEN, "Access denied: your role is not permitted to perform this action", req)))
         .authorizeHttpRequests(a -> a
-            .requestMatchers("/api/v1/auth/**", "/actuator/health").permitAll()
+            .requestMatchers("/api/v1/auth/**", "/health", "/actuator/**").permitAll()
             .requestMatchers("/api/v1/users/roles").authenticated()
             .requestMatchers("GET", "/api/v1/users/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
             .requestMatchers("POST", "/api/v1/users/**").hasRole("ADMIN")

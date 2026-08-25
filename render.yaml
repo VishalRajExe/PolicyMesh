@@ -1,0 +1,77 @@
+services:
+  # ── PolicyMesh Spring Boot Backend API ──────────────────────────────────────
+  - type: web
+    name: policymesh-backend
+    runtime: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_USE_SSL
+        value: "true"
+      - key: DB_SSL_MODE
+        value: PREFERRED
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: "86400000"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://*.vercel.app,http://localhost:5173"
+      - key: GITHUB_OWNER
+        value: "VishalRajExe"
+      - key: GITHUB_REPOSITORY
+        value: "PolicyMesh"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: AI_SERVICE_MODE
+        value: "remote"
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: policymesh-ai-service
+          property: host
+      - key: POLICYMESH_REDIS_ENABLED
+        value: "false"
+      - key: POLICYMESH_KAFKA_ENABLED
+        value: "false"
+      - key: POLICYMESH_DEMO_SEED
+        value: "false"
+      - key: POLICYMESH_DEMO_SEED_ENDPOINT
+        value: "true"
+
+  # ── PolicyMesh Python AI Classification Service ──────────────────────────────
+  - type: web
+    name: policymesh-ai-service
+    runtime: docker
+    dockerContext: ai-service
+    dockerfilePath: ai-service/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: mock
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: gpt-4o-mini
+      - key: ALLOWED_ORIGINS
+        value: "*"

@@ -1,9 +1,21 @@
 import axios from "axios";
 
-// Base URL for the PolicyMesh backend. Configure via .env (VITE_API_BASE_URL)
-// so the same build can point at localhost during development and a real
-// host in production. See design.md for the full wiring explanation.
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+// Base URL for the PolicyMesh backend. Configure via .env (VITE_API_BASE_URL or VITE_API_URL)
+// so the same build can point at localhost during development and Render in production.
+function resolveApiBaseUrl() {
+  const configured =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:8080/api/v1";
+
+  const trimmed = configured.trim().replace(/\/+$/, "");
+  if (trimmed.endsWith("/api/v1")) {
+    return trimmed;
+  }
+  return `${trimmed}/api/v1`;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

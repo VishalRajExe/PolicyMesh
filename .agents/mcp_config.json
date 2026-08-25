@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "aiven": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.aiven.live/mcp"
+      ],
+      "env": {},
+      "url": "https://mcp.aiven.live/mcp",
+      "httpUrl": "https://mcp.aiven.live/mcp",
+      "serverUrl": "https://mcp.aiven.live/mcp",
+      "oauth": {
+        "oauthScopes": [
+          "projects",
+          "services",
+          "accounts:read"
+        ]
+      }
+    }
+  }
+}
