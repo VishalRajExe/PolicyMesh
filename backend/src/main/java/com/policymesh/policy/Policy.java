@@ -1,12 +1,17 @@
 package com.policymesh.policy;
 import jakarta.persistence.*; import java.time.Instant; import java.util.*;
-@Entity @Table(name="policies",uniqueConstraints=@UniqueConstraint(columnNames="policyCode"),indexes=@Index(name="idx_policy_data_class",columnList="dataClass"))
+@Entity
+@Table(
+    name = "policies",
+    uniqueConstraints = @UniqueConstraint(columnNames = "policy_code"),
+    indexes = @Index(name = "idx_policy_data_class", columnList = "data_class")
+)
 public class Policy {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false)
+  @Column(name = "policy_code", nullable = false)
   private String policyCode;
 
   @Column(nullable = false)
@@ -15,7 +20,7 @@ public class Policy {
   @Column(nullable = false)
   private String jurisdiction;
 
-  @Column(nullable = false)
+  @Column(name = "data_class", nullable = false)
   private String dataClass;
 
   @ElementCollection(fetch = FetchType.EAGER)
@@ -35,10 +40,10 @@ public class Policy {
   @Column(nullable = false)
   private int version = 1;
 
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
-  @Column(nullable = false)
+  @Column(name = "updated_at", nullable = false)
   private Instant updatedAt = Instant.now();
 
   @PreUpdate
