@@ -10,8 +10,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import org.springframework.scheduling.annotation.EnableAsync;
+
 import java.util.Arrays;
 
+@EnableAsync
 @SpringBootApplication
 public class PolicyMeshApplication {
 

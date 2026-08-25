@@ -35,6 +35,16 @@ public class User {
   @Column(nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
+  public User() {}
+
+  public User(String email, String passwordHash, Role role) {
+    this.email = email;
+    this.passwordHash = passwordHash;
+    this.role = role != null ? role : Role.ENGINEER;
+    this.status = "ACTIVE";
+    this.createdAt = Instant.now();
+  }
+
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
 

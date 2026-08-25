@@ -8,4 +8,6 @@ import java.util.List;
 public interface CIScanRepository extends JpaRepository<CIScan, Long> {
   List<CIScan> findTop20ByOrderByStartedAtDesc();
   Page<CIScan> findAllByOrderByStartedAtDesc(Pageable pageable);
+  List<CIScan> findByCommitHashIgnoreCaseOrderByStartedAtDesc(String commitHash);
+  List<CIScan> findByCommitHashStartingWithIgnoreCaseOrderByStartedAtDesc(String prefix);
 }

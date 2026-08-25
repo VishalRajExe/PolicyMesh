@@ -23,7 +23,8 @@ import ActivityList from "../components/dashboard/ActivityList";
 import Button from "../components/ui/Button";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useAuth } from "../context/AuthContext";
-import { policiesApi, servicesApi, auditApi, aiApi } from "../api";
+import { policiesApi, servicesApi, auditApi, aiApi, githubApi } from "../api";
+import { GitCommit, GitPullRequest, ArrowRight, ShieldX } from "lucide-react";
 
 function toTitleCase(value) {
   return value
@@ -227,22 +228,32 @@ export default function Dashboard() {
   const [decisions, setDecisions] = useState([]);
   const [services, setServices] = useState([]);
   const [aiClassifications, setAiClassifications] = useState([]);
+  const [recentCommits, setRecentCommits] = useState([]);
+  const [webhookDeliveries, setWebhookDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   async function loadAllData() {
     setLoading(true);
     try {
-      const [pol, dec, svc, ai] = await Promise.allSettled([
+      const [pol, dec, svc, ai, cms, dlv] = await Promise.allSettled([
         policiesApi.list(),
         auditApi.recent(150),
         servicesApi.list(),
         aiApi.list(),
+        githubApi.listCommits(0, 6),
+        githubApi.listDeliveries(0, 6),
       ]);
 
       if (pol.status === "fulfilled") setPolicies(Array.isArray(pol.value) ? pol.value : []);
       if (dec.status === "fulfilled") setDecisions(Array.isArray(dec.value) ? dec.value : []);
       if (svc.status === "fulfilled") setServices(Array.isArray(svc.value) ? svc.value : []);
       if (ai.status === "fulfilled") setAiClassifications(Array.isArray(ai.value) ? ai.value : []);
+      if (cms.status === "fulfilled" && cms.value?.content) {
+        setRecentCommits(cms.value.content);
+      }
+      if (dlv.status === "fulfilled" && dlv.value?.content) {
+        setWebhookDeliveries(dlv.value.content);
+      }
     } finally {
       setLoading(false);
     }
@@ -342,6 +353,90 @@ export default function Dashboard() {
             delta="↑ 6%"
             trend="up"
           />
+        </div>
+
+        {/* GitHub Webhook Push & CI Gate Live Activity */}
+        <div className="card p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--color-border)]/50 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text)]">
+                <GitBranch size={16} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-2">
+                  Automated GitHub Push & CI Compliance Scans
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    Live Webhook Active
+                  </span>
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  Push events received via GitHub Webhook and evaluated against active data residency policies.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/ci-check")}
+                className="text-xs text-[var(--color-brand)] hover:underline font-medium flex items-center gap-1 cursor-pointer"
+              >
+                CI Compliance Gate <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+
+          {recentCommits.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recentCommits.slice(0, 6).map((c, i) => {
+                const isPassed = c.status === "PASS" || c.status === "PASSED";
+                const isAllowed = c.finalDecision?.mergeAllowed ?? isPassed;
+                const shortSha = c.commitHash ? (c.commitHash.length > 7 ? c.commitHash.slice(0, 7) : c.commitHash) : "HEAD";
+
+                return (
+                  <div
+                    key={c.id || i}
+                    onClick={() => navigate("/ci-check")}
+                    className="p-3.5 rounded-xl bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border)]/60 transition-all cursor-pointer space-y-2.5 group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-[var(--color-text)]">
+                        <GitCommit size={13} className="text-[var(--color-brand)]" />
+                        <span>{shortSha}</span>
+                        <span className="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-faint)]">
+                          {c.branch || "main"}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          isAllowed
+                            ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                        }`}
+                      >
+                        {isAllowed ? "MERGE ALLOWED" : "MERGE BLOCKED"}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[var(--color-text)] line-clamp-1 group-hover:text-[var(--color-brand)] transition-colors font-medium">
+                      {c.commitMessage || `Commit @ ${shortSha}`}
+                    </p>
+
+                    <div className="flex items-center justify-between text-[11px] text-[var(--color-text-faint)] pt-1 border-t border-[var(--color-border)]/40">
+                      <span>{c.author || "Developer"}</span>
+                      <span>{relativeTime(c.startedAt)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-6 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)]/40 text-center space-y-1">
+              <GitCommit size={24} className="mx-auto text-[var(--color-text-faint)]" />
+              <p className="text-xs font-semibold text-[var(--color-text)]">Awaiting GitHub Push Events</p>
+              <p className="text-xs text-[var(--color-text-muted)] max-w-md mx-auto">
+                Push commits to your GitHub repository to trigger instant cryptographic webhook analysis and compliance decisions.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Row 2: 3-Column Layout */}

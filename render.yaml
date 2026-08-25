@@ -40,6 +40,16 @@ services:
         value: "PolicyMesh"
       - key: GITHUB_TOKEN
         sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
       - key: AI_SERVICE_MODE
         value: "remote"
       - key: AI_SERVICE_URL
