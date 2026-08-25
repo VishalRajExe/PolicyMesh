@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { dashboardApi, auditApi } from "../api";
 
-// Fallback numbers mirror the reference design so the dashboard still looks
-// right the moment you open it, before/without a live backend connection.
+// Real empty baseline for newly registered users before data flows are registered.
 const FALLBACK_SUMMARY = {
-  complianceScore: 92,
-  totalPolicies: 24,
-  totalServices: 18,
-  allowedTransfers: 1212,
-  blockedTransfers: 36,
-  activeViolations: 5,
+  complianceScore: 100,
+  totalPolicies: 0,
+  totalServices: 0,
+  allowedTransfers: 0,
+  blockedTransfers: 0,
+  activeViolations: 0,
   recentDecisions: [],
 };
 

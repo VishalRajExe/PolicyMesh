@@ -20,21 +20,38 @@ public record ChangedFile(
   public static ChangedFileCategory categorize(String path) {
     if (path == null) return ChangedFileCategory.CODE;
     String lower = path.toLowerCase().replace('\\', '/');
-    if (lower.contains("policy") || lower.contains("policies/") || lower.endsWith(".rego") || (lower.endsWith(".yaml") && !lower.contains(".github/")) || (lower.endsWith(".yml") && !lower.contains(".github/"))) {
+
+    // 1. Source code files (.java, .py, .js, .jsx, etc.) are always CODE
+    if (lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".js") || lower.endsWith(".jsx") ||
+        lower.endsWith(".ts") || lower.endsWith(".tsx") || lower.endsWith(".go") || lower.endsWith(".rs") ||
+        lower.endsWith(".c") || lower.endsWith(".cpp") || lower.endsWith(".html") || lower.endsWith(".css")) {
+      return ChangedFileCategory.CODE;
+    }
+
+    // 2. Policy governance definitions (YAML or Rego files in policies/ directory or policy configs)
+    if (lower.startsWith("policies/") || lower.contains("/policies/") || lower.endsWith(".rego") ||
+        ((lower.endsWith(".yaml") || lower.endsWith(".yml")) && !lower.contains(".github/") && (lower.contains("policy") || lower.contains("policies")))) {
       return ChangedFileCategory.POLICY;
     }
-    if (lower.contains("dataflow") || lower.contains("dataflows/") || lower.contains("flow") || lower.contains("flows.json")) {
+
+    // 3. Topology & Data flow definitions
+    if (lower.contains("dataflow") || lower.contains("dataflows/") || lower.endsWith("flow.json") || lower.endsWith("flows.json")) {
       return ChangedFileCategory.DATAFLOW;
     }
-    if (lower.contains("service") || lower.contains("services/") || lower.contains("services.json") || lower.contains("topology")) {
+    if (lower.contains("service-graph") || lower.endsWith("services.json") || lower.contains("topology.json")) {
       return ChangedFileCategory.SERVICE;
     }
-    if (lower.endsWith(".md") || lower.contains("docs/") || lower.endsWith(".txt") || lower.contains("license")) {
+
+    // 4. Documentation
+    if (lower.endsWith(".md") || lower.startsWith("docs/") || lower.contains("/docs/") || lower.endsWith(".txt") || lower.contains("license")) {
       return ChangedFileCategory.DOCUMENTATION;
     }
-    if (lower.endsWith(".json") || lower.endsWith(".yaml") || lower.endsWith(".yml") || lower.endsWith(".properties") || lower.contains("config") || lower.contains(".github/")) {
+
+    // 5. Config / Migration files
+    if (lower.endsWith(".json") || lower.endsWith(".yaml") || lower.endsWith(".yml") || lower.endsWith(".properties") || lower.endsWith(".sql") || lower.contains(".github/")) {
       return ChangedFileCategory.CONFIG;
     }
+
     return ChangedFileCategory.CODE;
   }
 }

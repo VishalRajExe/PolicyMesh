@@ -46,9 +46,9 @@ function relativeTime(ts) {
 }
 
 function formatComplianceScore(score) {
-  if (score == null) return "92%";
+  if (score == null) return "100%";
   const num = typeof score === "number" ? score : parseFloat(score);
-  if (isNaN(num)) return "92%";
+  if (isNaN(num)) return "100%";
   const pct = num <= 1 ? num * 100 : num;
   return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
 }
@@ -78,22 +78,7 @@ function buildDecisionChart(decisions) {
     else map[key].blocked++;
   }
 
-  // If decisions array is sparse in dev, provide baseline distribution
-  const chartItems = Object.values(map);
-  const totalDecs = chartItems.reduce((acc, c) => acc + c.allowed + c.blocked, 0);
-  if (totalDecs === 0) {
-    return [
-      { day: "Mon", allowed: 65, blocked: 18 },
-      { day: "Tue", allowed: 120, blocked: 45 },
-      { day: "Wed", allowed: 98, blocked: 32 },
-      { day: "Thu", allowed: 130, blocked: 52 },
-      { day: "Fri", allowed: 185, blocked: 68 },
-      { day: "Sat", allowed: 110, blocked: 48 },
-      { day: "Sun", allowed: 160, blocked: 74 },
-    ];
-  }
-
-  return chartItems;
+  return Object.values(map);
 }
 
 function buildPolicyDonut(policies) {
@@ -104,19 +89,26 @@ function buildPolicyDonut(policies) {
     else counts.INACTIVE++;
   }
 
-  const total = policies.length || (counts.ACTIVE + counts.DRAFT + counts.UNDER_REVIEW + counts.INACTIVE) || 24;
-  const activeCount = counts.ACTIVE || 18;
-  const draftCount = counts.DRAFT || 4;
-  const reviewCount = counts.UNDER_REVIEW || 2;
-  const inactiveCount = counts.INACTIVE || 0;
+  const total = policies.length;
+  if (total === 0) {
+    return {
+      total: 0,
+      slices: [
+        { name: "Active", value: 0, pct: 0, color: "#10b981" },
+        { name: "Draft", value: 0, pct: 0, color: "#3b82f6" },
+        { name: "Under Review", value: 0, pct: 0, color: "#f97316" },
+        { name: "Inactive", value: 0, pct: 0, color: "#9ca3af" },
+      ],
+    };
+  }
 
   return {
-    total: policies.length || (activeCount + draftCount + reviewCount + inactiveCount),
+    total,
     slices: [
-      { name: "Active", value: activeCount, pct: Math.round((activeCount / total) * 100), color: "#10b981" },
-      { name: "Draft", value: draftCount, pct: Math.round((draftCount / total) * 100), color: "#3b82f6" },
-      { name: "Under Review", value: reviewCount, pct: Math.round((reviewCount / total) * 100), color: "#f97316" },
-      { name: "Inactive", value: inactiveCount, pct: Math.round((inactiveCount / total) * 100), color: "#9ca3af" },
+      { name: "Active", value: counts.ACTIVE, pct: Math.round((counts.ACTIVE / total) * 100), color: "#10b981" },
+      { name: "Draft", value: counts.DRAFT, pct: Math.round((counts.DRAFT / total) * 100), color: "#3b82f6" },
+      { name: "Under Review", value: counts.UNDER_REVIEW, pct: Math.round((counts.UNDER_REVIEW / total) * 100), color: "#f97316" },
+      { name: "Inactive", value: counts.INACTIVE, pct: Math.round((counts.INACTIVE / total) * 100), color: "#9ca3af" },
     ],
   };
 }
@@ -132,22 +124,29 @@ function buildAiDonut(aiList) {
     else rejected++;
   }
 
-  const total = aiList.length || 320;
-  const classCount = approved || 210;
-  const pendCount = pending || 80;
-  const unclassCount = rejected || 30;
+  const total = aiList.length;
+  if (total === 0) {
+    return {
+      total: 0,
+      slices: [
+        { name: "Classified", value: 0, pct: 0, color: "#10b981" },
+        { name: "Pending Review", value: 0, pct: 0, color: "#3b82f6" },
+        { name: "Unclassified", value: 0, pct: 0, color: "#f97316" },
+      ],
+    };
+  }
 
   return {
-    total: aiList.length || (classCount + pendCount + unclassCount),
+    total,
     slices: [
-      { name: "Classified", value: classCount, pct: Math.round((classCount / total) * 100), color: "#10b981" },
-      { name: "Pending Review", value: pendCount, pct: Math.round((pendCount / total) * 100), color: "#3b82f6" },
-      { name: "Unclassified", value: unclassCount, pct: Math.round((unclassCount / total) * 100), color: "#f97316" },
+      { name: "Classified", value: approved, pct: Math.round((approved / total) * 100), color: "#10b981" },
+      { name: "Pending Review", value: pending, pct: Math.round((pending / total) * 100), color: "#3b82f6" },
+      { name: "Unclassified", value: rejected, pct: Math.round((rejected / total) * 100), color: "#f97316" },
     ],
   };
 }
 
-function buildTopFlows(decisions, services) {
+function buildTopFlows(decisions) {
   const counts = {};
   for (const d of decisions) {
     if (!d.sourceService || !d.destinationService) continue;
@@ -155,29 +154,17 @@ function buildTopFlows(decisions, services) {
     counts[key] = (counts[key] || 0) + 1;
   }
 
-  const items = Object.entries(counts)
+  return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([key, count]) => {
       const [source, destination] = key.split("→");
       return { source, destination, count };
     });
-
-  if (items.length === 0) {
-    return [
-      { source: "orders-api", destination: "analytics-db", count: 312 },
-      { source: "web-app", destination: "user-db", count: 256 },
-      { source: "payment-svc", destination: "fraud-check", count: 198 },
-      { source: "mobile-app", destination: "log-service", count: 134 },
-      { source: "crm", destination: "data-warehouse", count: 128 },
-    ];
-  }
-
-  return items;
 }
 
 function buildAlerts(decisions) {
-  const denies = decisions
+  return decisions
     .filter((d) => d.decision === "DENY")
     .slice(0, 4)
     .map((d) => ({
@@ -186,37 +173,15 @@ function buildAlerts(decisions) {
       source: d.policyId || "Runtime Enforcement",
       time: relativeTime(d.createdAt),
     }));
-
-  if (denies.length === 0) {
-    return [
-      { severity: "High", message: "Blocked data flow: PII from EU to US", source: "Runtime Enforcement", time: "2m ago" },
-      { severity: "Medium", message: 'Policy "EU PII Policy" requires review', source: "Policy Engine", time: "1h ago" },
-      { severity: "Medium", message: "AI classification pending approval", source: "AI Service", time: "3h ago" },
-      { severity: "Low", message: 'New service "billing-api" registered', source: "Service Registry", time: "5h ago" },
-    ];
-  }
-
-  return denies;
 }
 
 function mapActivity(decisions) {
-  const items = decisions.slice(0, 4).map((d) => ({
+  return decisions.slice(0, 4).map((d) => ({
     type: d.decision === "ALLOW" ? "flow" : "approval",
     message: `Data flow ${d.decision === "ALLOW" ? "allowed" : "blocked"}: ${d.sourceService} → ${d.destinationService}`,
     actor: d.decision === "ALLOW" ? "Runtime Engine" : "Policy Enforcement",
     time: relativeTime(d.createdAt),
   }));
-
-  if (items.length === 0) {
-    return [
-      { type: "policy", message: 'Policy "India PII Policy" activated', actor: "Admin", time: "10m ago" },
-      { type: "flow", message: "Data flow allowed: US → EU", actor: "Runtime Engine", time: "25m ago" },
-      { type: "user", message: 'User "engineer1" created', actor: "Admin", time: "1h ago" },
-      { type: "approval", message: "AI classification approved for 15 fields", actor: "Compliance Officer", time: "2h ago" },
-    ];
-  }
-
-  return items;
 }
 
 export default function Dashboard() {
@@ -268,15 +233,15 @@ export default function Dashboard() {
   const policyDonut = buildPolicyDonut(policies);
   const aiDonut = buildAiDonut(aiClassifications);
   const flowChartData = buildDecisionChart(decisions);
-  const topFlows = buildTopFlows(decisions, services);
+  const topFlows = buildTopFlows(decisions);
   const alerts = buildAlerts(decisions);
   const activity = mapActivity(decisions);
 
-  const totalPoliciesCount = policies.length || summary?.totalPolicies || 24;
-  const activePoliciesCount = policies.filter((p) => p.status === "ACTIVE").length || summary?.activePolicies || 18;
-  const flowsCheckedCount = (summary?.allowedTransfers || 0) + (summary?.blockedTransfers || 0) || 1248;
-  const blockedFlowsCount = decisions.filter((d) => d.decision === "DENY").length || summary?.blockedTransfers || 36;
-  const complianceScore = formatComplianceScore(summary?.complianceScore);
+  const totalPoliciesCount = policies.length > 0 ? policies.length : (summary?.totalPolicies || 0);
+  const activePoliciesCount = policies.length > 0 ? policies.filter((p) => p.status === "ACTIVE").length : (summary?.activePolicies || 0);
+  const flowsCheckedCount = decisions.length > 0 ? decisions.length : ((summary?.allowedTransfers || 0) + (summary?.blockedTransfers || 0));
+  const blockedFlowsCount = decisions.length > 0 ? decisions.filter((d) => d.decision === "DENY").length : (summary?.blockedTransfers || 0);
+  const complianceScore = flowsCheckedCount === 0 ? "100%" : `${Math.round(((flowsCheckedCount - blockedFlowsCount) / flowsCheckedCount) * 100)}%`;
 
   const roleName = user?.role ? toTitleCase(user.role) : "Compliance Officer";
 

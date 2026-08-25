@@ -1,0 +1,10 @@
+testCase:
+  id: TC-EU-005
+  name: EU PCI to US
+  policy: EU-PCI-001
+
+  sourceRegion: EU
+  destinationRegion: US
+  dataClass: PCI
+
+  expectedDecision: DENY

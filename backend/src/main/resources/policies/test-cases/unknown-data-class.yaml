@@ -1,0 +1,14 @@
+testCase:
+  id: TC-UNKNOWN-001
+  name: Unknown data class from EU to US
+  policy: null
+
+  sourceRegion: EU
+  destinationRegion: US
+  dataClass: UNKNOWN
+
+  expectedDecision: DENY
+
+  expectedBehavior: >
+    No active policy exists for UNKNOWN data class.
+    System uses conservative default of DENY.

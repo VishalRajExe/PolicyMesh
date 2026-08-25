@@ -82,7 +82,7 @@ public class GitHubConnectController {
     String redirectUriEncoded = URLEncoder.encode(gitHubClient.getRedirectUri(), StandardCharsets.UTF_8);
 
     String authUrl = String.format(
-        "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user,repo&state=%s",
+        "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user,repo&state=%s&prompt=consent",
         gitHubClient.getClientId(),
         redirectUriEncoded,
         state

@@ -1,0 +1,28 @@
+policy:
+  id: EU-PERSONAL-001
+  name: EU Personal Data Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: EU
+  dataClass: PII
+
+  description: >
+    Broader personal-data policy for EU-origin data.
+    This policy enforces a restriction that personal data originating
+    in the EU should not flow to regions without an adequacy
+    arrangement, except where a specific exception is documented.
+    This is a technical demonstration policy and is not legal advice.
+
+  allowedRegions:
+    - EU
+
+  deniedRegions:
+    - US
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

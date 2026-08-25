@@ -1,0 +1,26 @@
+policy:
+  id: IN-PII-001
+  name: India PII Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: INDIA
+  dataClass: PII
+
+  description: >
+    Demonstration policy requiring India-origin PII
+    to remain within the India region. This is a technical
+    demonstration policy and is not legal advice.
+
+  allowedRegions:
+    - IN
+
+  deniedRegions:
+    - US
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

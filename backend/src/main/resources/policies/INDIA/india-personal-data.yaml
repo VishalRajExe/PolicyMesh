@@ -1,0 +1,27 @@
+policy:
+  id: IN-PERSONAL-001
+  name: India Personal Data Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: INDIA
+  dataClass: PII
+
+  description: >
+    Broader personal-data policy for India-origin data.
+    Enforces that personal data originating in India remains
+    within approved regions. This is a technical demonstration
+    policy and is not legal advice.
+
+  allowedRegions:
+    - IN
+
+  deniedRegions:
+    - US
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

@@ -1,0 +1,28 @@
+scenario:
+  id: EX-MULTI-001
+  name: EU PII to US matches multiple policies
+
+  source:
+    service: orders-api
+    region: EU
+
+  destination:
+    service: analytics-api
+    region: US
+
+  dataClasses:
+    - PII
+
+  expectedDecision: DENY
+
+  expectedPolicy:
+    - EU-PII-001
+    - GLOBAL-SENSITIVE-001
+
+  expectedReason: >
+    Two active policies match this data flow:
+    EU-PII-001 (regional, EU jurisdiction) and
+    GLOBAL-SENSITIVE-001 (global jurisdiction).
+    Both deny the flow to US.
+    Per PolicyMesh precedence rules, if ANY applicable
+    policy returns DENY, the overall decision is DENY.

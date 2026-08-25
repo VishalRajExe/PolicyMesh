@@ -1,0 +1,13 @@
+policy:
+  id: EU-PCI-001
+  name: EU PCI-DSS Protection
+  jurisdiction: EU
+  dataClass: PCI
+
+  allowedRegions:
+    - EU
+
+  deniedRegions:
+    - US
+    - CN
+    - IN

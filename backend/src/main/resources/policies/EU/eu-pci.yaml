@@ -1,0 +1,27 @@
+policy:
+  id: EU-PCI-001
+  name: EU PCI-DSS Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: EU
+  dataClass: PCI
+
+  description: >
+    Payment card data originating in the EU must only be
+    transmitted to explicitly approved regions. This policy
+    enforces technical controls consistent with PCI-DSS scope.
+    This is a technical demonstration policy and is not legal advice.
+
+  allowedRegions:
+    - EU
+
+  deniedRegions:
+    - US
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

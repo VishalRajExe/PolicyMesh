@@ -1,0 +1,24 @@
+scenario:
+  id: EX-DENY-001
+  name: EU PII sent to US
+
+  source:
+    service: orders-api
+    region: EU
+
+  destination:
+    service: analytics-api
+    region: US
+
+  dataClasses:
+    - PII
+
+  expectedDecision: DENY
+
+  expectedPolicy:
+    - EU-PII-001
+
+  expectedReason: >
+    EU PII cannot be transferred to the US under the configured
+    PolicyMesh technical policy. Policy EU-PII-001 lists US in
+    deniedRegions.

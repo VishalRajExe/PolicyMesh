@@ -396,7 +396,22 @@ public class CommitImpactAnalyzer {
       }
     }
 
-    // 2. Database policies fallback
+    // 2. Classpath embedded policies fallback (packaged in JAR for Docker / Render)
+    if (list.isEmpty()) {
+      try {
+        org.springframework.core.io.support.PathMatchingResourcePatternResolver resolver =
+            new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        org.springframework.core.io.Resource[] resources = resolver.getResources("classpath*:policies/**/*.yaml");
+        for (org.springframework.core.io.Resource r : resources) {
+          try {
+            String content = new String(r.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            list.add(compiler.compile(content));
+          } catch (Exception ignored) {}
+        }
+      } catch (Exception ignored) {}
+    }
+
+    // 3. Database policies fallback
     if (list.isEmpty()) {
       for (Policy p : policyRepository.findAll()) {
         try {

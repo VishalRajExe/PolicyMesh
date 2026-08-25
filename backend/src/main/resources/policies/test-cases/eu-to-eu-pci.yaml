@@ -1,0 +1,10 @@
+testCase:
+  id: TC-EU-004
+  name: EU PCI to EU
+  policy: EU-PCI-001
+
+  sourceRegion: EU
+  destinationRegion: EU
+  dataClass: PCI
+
+  expectedDecision: ALLOW

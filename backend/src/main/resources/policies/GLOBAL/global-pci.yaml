@@ -1,0 +1,29 @@
+policy:
+  id: GLOBAL-PCI-001
+  name: Global PCI Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: GLOBAL
+  dataClass: PCI
+
+  description: >
+    Sensitive payment data should only be sent to explicitly
+    approved regions regardless of source jurisdiction.
+    This policy applies globally and supersedes per-region
+    policies when it is more restrictive.
+    This is a technical demonstration policy.
+
+  allowedRegions:
+    - EU
+    - US
+    - IN
+
+  deniedRegions:
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

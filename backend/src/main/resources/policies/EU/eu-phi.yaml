@@ -1,0 +1,27 @@
+policy:
+  id: EU-PHI-001
+  name: EU Protected Health Information
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: EU
+  dataClass: PHI
+
+  description: >
+    Health-related personal data originating in the EU must remain
+    within approved EU regions. This policy demonstrates that
+    PolicyMesh can enforce region restrictions for PHI data classes.
+    This is a technical demonstration policy and is not legal advice.
+
+  allowedRegions:
+    - EU
+
+  deniedRegions:
+    - US
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY

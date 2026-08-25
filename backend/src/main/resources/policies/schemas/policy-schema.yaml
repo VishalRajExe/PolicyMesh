@@ -1,0 +1,183 @@
+# PolicyMesh Policy Schema
+# -----------------------
+# Defines the required and optional fields for every policy YAML file.
+# The CI checker, policy compiler, and runtime engine validate against this schema.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: PolicyMesh Policy Schema
+description: >
+  Formal schema for PolicyMesh declarative policy files.
+  Every policy must conform to this structure.
+
+type: object
+required:
+  - policy
+
+properties:
+  policy:
+    type: object
+    required:
+      - id
+      - name
+      - version
+      - status
+      - jurisdiction
+      - dataClass
+      - description
+      - allowedRegions
+      - deniedRegions
+      - enforcement
+      - defaultDecision
+
+    properties:
+
+      # --- Required Fields ---
+
+      id:
+        type: string
+        description: >
+          Unique human-readable policy identifier.
+          Convention: <REGION>-<DATA_CLASS>-<NUMBER>
+          Examples: EU-PII-001, IN-PII-001, GLOBAL-PCI-001
+        pattern: "^[A-Z]+-[A-Z_]+-[0-9]{3}$"
+
+      name:
+        type: string
+        description: >
+          Human-readable policy name (e.g., "EU PII Protection").
+
+      version:
+        type: integer
+        minimum: 1
+        description: >
+          Semantic version integer. Increment when the policy
+          meaning changes significantly. Do not silently overwrite.
+
+      status:
+        type: string
+        enum:
+          - ACTIVE
+          - INACTIVE
+          - DRAFT
+        description: >
+          ACTIVE policies are enforced by CI and runtime.
+          INACTIVE and DRAFT policies exist for documentation
+          but do not affect enforcement decisions.
+
+      jurisdiction:
+        type: string
+        description: >
+          The governing jurisdiction for this policy.
+          Use canonical region identifiers: EU, US, INDIA, CN, GLOBAL.
+
+      dataClass:
+        type: string
+        enum:
+          - PII
+          - PCI
+          - PHI
+          - NON_SENSITIVE
+          - UNKNOWN
+        description: >
+          Data classification this policy applies to.
+          Must match PolicyMesh data classification vocabulary.
+
+      description:
+        type: string
+        description: >
+          Free-text explanation of what this policy enforces.
+          Should include technical scope and a legal disclaimer
+          where applicable.
+
+      allowedRegions:
+        type: array
+        items:
+          type: string
+        minItems: 1
+        description: >
+          List of region identifiers where data of this class
+          may be sent or stored.
+
+      deniedRegions:
+        type: array
+        items:
+          type: string
+        minItems: 0
+        description: >
+          List of region identifiers where data of this class
+          must NOT be sent or stored.
+
+      enforcement:
+        type: object
+        required:
+          - ci
+          - runtime
+        properties:
+          ci:
+            type: boolean
+            description: >
+              If true, this policy is checked during CI
+              pipeline static analysis.
+          runtime:
+            type: boolean
+            description: >
+              If true, this policy is enforced at runtime
+              by the PolicyMesh engine.
+
+      defaultDecision:
+        type: string
+        enum:
+          - ALLOW
+          - DENY
+          - REROUTE
+        description: >
+          Default decision when no specific rule matches.
+          For sensitive data, use DENY as the conservative default.
+
+      # --- Optional Fields ---
+
+      effectiveFrom:
+        type: string
+        format: date
+        description: >
+          ISO 8601 date when this policy becomes effective.
+          If omitted, the policy is effective immediately.
+
+      effectiveTo:
+        type: string
+        format: date
+        description: >
+          ISO 8601 date when this policy expires.
+          If omitted, the policy has no expiration.
+
+      priority:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        description: >
+          Evaluation priority (1 = highest).
+          When multiple policies apply, higher-priority policies
+          are evaluated first. Default: 100.
+
+      tags:
+        type: array
+        items:
+          type: string
+        description: >
+          Freeform tags for filtering and organization
+          (e.g., ["gdpr", "demonstration", "payment"]).
+
+      exceptions:
+        type: array
+        items:
+          type: object
+          properties:
+            region:
+              type: string
+            reason:
+              type: string
+            approvedBy:
+              type: string
+        description: >
+          Explicit exceptions to the default policy rules.
+          Each exception must specify a region, reason, and approver.

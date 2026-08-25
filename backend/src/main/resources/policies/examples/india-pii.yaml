@@ -1,0 +1,13 @@
+policy:
+  id: INDIA-PII-001
+  name: India PII Protection
+  jurisdiction: IN
+  dataClass: PII
+
+  allowedRegions:
+    - IN
+    - SG
+
+  deniedRegions:
+    - US
+    - CN

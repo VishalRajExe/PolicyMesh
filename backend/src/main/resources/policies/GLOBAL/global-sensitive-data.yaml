@@ -1,0 +1,29 @@
+policy:
+  id: GLOBAL-SENSITIVE-001
+  name: Global Sensitive Data Protection
+  version: 1
+  status: ACTIVE
+
+  jurisdiction: GLOBAL
+  dataClass: PII
+
+  description: >
+    Baseline policy for sensitive personal data that applies
+    regardless of source jurisdiction. Denies transfers to
+    high-risk regions. Regional policies may impose
+    additional restrictions.
+    This is a technical demonstration policy.
+
+  allowedRegions:
+    - EU
+    - US
+    - IN
+
+  deniedRegions:
+    - CN
+
+  enforcement:
+    ci: true
+    runtime: true
+
+  defaultDecision: DENY
