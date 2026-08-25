@@ -1,22 +1,27 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="PolicyMesh Logo" width="130" height="130" />
-  
-  # PolicyMesh
-  
-  ### *Policy-as-Code Platform for Cross-Border Data Residency & Zero-Trust Governance*
+  <img src="docs/images/logo.png" alt="PolicyMesh Logo" width="120" height="120" />
 
-  [![Java 21](https://img.shields.io/badge/Java-21-orange.svg?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
-  [![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen.svg?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-  [![React](https://img.shields.io/badge/React-19-blue.svg?logo=react&logoColor=white)](https://react.dev/)
-  [![Vite](https://img.shields.io/badge/Vite-5-purple.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
-  [![MySQL 8](https://img.shields.io/badge/MySQL-8.0-blue.svg?logo=mysql&logoColor=white)](https://www.mysql.com/)
-  [![Redis](https://img.shields.io/badge/Redis-Alpine-red.svg?logo=redis&logoColor=white)](https://redis.io/)
+  # PolicyMesh
+
+  ### *Policy-as-Code Platform for Cross-Border Data Residency, Zero-Trust Runtime Governance & CI/CD Guardrails*
+
+  **Govern. Enforce. Trust.**
+
+  [![Java 21](https://img.shields.io/badge/Java-21%20LTS-orange.svg?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
+  [![Spring Boot 3.3.5](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+  [![React 19](https://img.shields.io/badge/React-19-blue.svg?logo=react&logoColor=white)](https://react.dev/)
+  [![Vite 8](https://img.shields.io/badge/Vite-8.2-purple.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.11+-teal.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-  [![Docker Compose](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+  [![MySQL 8](https://img.shields.io/badge/MySQL-8.0%20(Aiven%20Cloud)-blue.svg?logo=mysql&logoColor=white)](https://www.mysql.com/)
+  [![Tests Passing](https://img.shields.io/badge/Backend%20Tests-108%20Passing-success.svg?logo=checkmarx&logoColor=white)](https://github.com/VishalRajExe/PolicyMesh)
+  [![CI Checker Tests](https://img.shields.io/badge/CI%20Checker%20Tests-65%20Passing-success.svg?logo=githubactions&logoColor=white)](https://github.com/VishalRajExe/PolicyMesh)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
   <p align="center">
-    <b>Declare once in YAML • Enforce in CI/CD & Runtime • Verify with Cryptographic SHA-256 Lineage</b>
+    <a href="https://policymesh.vercel.app"><b>🌐 Live Web App</b></a> •
+    <a href="https://policymesh-komp.onrender.com/health"><b>⚡ Public Health Endpoint</b></a> •
+    <a href="#-rest-api-reference"><b>📡 API Reference</b></a> •
+    <a href="#-quick-start-guide"><b>🚀 Quick Start</b></a>
   </p>
 </div>
 
@@ -24,238 +29,339 @@
 
 ## 📌 Table of Contents
 
-- [Overview](#-overview)
-- [Why PolicyMesh?](#-why-policymesh)
-- [System Architecture](#-system-architecture)
-- [Dual-Lifecycle Enforcement Flow](#-dual-lifecycle-enforcement-flow)
-- [Key Features](#-key-features)
-- [Tech Stack](#-tech-stack)
-- [Project Directory Structure](#-project-directory-structure)
-- [Quick Start Guide](#-quick-start-guide)
-  - [Option A: Full Docker Compose Launch (Recommended)](#option-a-full-docker-compose-launch-recommended)
-  - [Option B: Local Hybrid Development](#option-b-local-hybrid-development)
-- [Interactive Web UI Walkthrough](#-interactive-web-ui-walkthrough)
-- [REST API Reference](#-rest-api-reference)
-- [Standalone CI/CD Checker](#-standalone-cicd-checker)
-- [Cryptographic Lineage Ledger](#-cryptographic-lineage-ledger)
-- [Security & Compliance](#-security--compliance)
-- [License](#-license)
+1. [What is PolicyMesh?](#1-what-is-policymesh)
+2. [The Problem](#2-the-problem)
+3. [The Solution](#3-the-solution)
+4. [Why Policy-as-Code?](#4-why-policy-as-code)
+5. [System Architecture](#5-system-architecture)
+6. [Dual-Lifecycle Enforcement Flow](#6-dual-lifecycle-enforcement-flow)
+7. [Core Features & Modules](#7-core-features--modules)
+8. [GitHub Integration & Webhook Flow](#8-github-integration--webhook-flow)
+9. [AI Sensitivity Classifier & Human-in-the-Loop Review](#9-ai-sensitivity-classifier--human-in-the-loop-review)
+10. [Cryptographic Lineage Ledger](#10-cryptographic-lineage-ledger)
+11. [Security Hardening & Penetration-Resistance](#11-security-hardening--penetration-resistance)
+12. [Tech Stack](#12-tech-stack)
+13. [Project Directory Structure](#13-project-directory-structure)
+14. [Quick Start Guide](#14-quick-start-guide)
+15. [Production Deployment Architecture](#15-production-deployment-architecture)
+16. [REST API Reference](#16-rest-api-reference)
+17. [Standalone CI/CD Checker CLI](#17-standalone-cicd-checker-cli)
+18. [Roadmap](#18-roadmap)
+19. [License & Credits](#19-license--credits)
 
 ---
 
-## 📖 Overview
+## 1. What is PolicyMesh?
 
-**PolicyMesh** is a comprehensive, production-grade **Policy-as-Code (PaC)** platform engineered for cross-border data residency, sovereign data isolation, and jurisdictional compliance (GDPR, HIPAA, DPDPA, PCI-DSS).
+**PolicyMesh** is a modern **Policy-as-Code (PaC) data governance and residency enforcement platform**. It empowers organizations to declaratively define how sensitive customer records, financial transactions, and healthcare data move between microservices and across sovereign geographical regions.
 
-In modern microservice meshes, preventing sensitive data from illegally traversing geographical borders (e.g., transferring EU personal customer records to unauthorized US or third-party servers) is notoriously difficult.
+```text
+               EU Customer PII Data Transfer
+               =============================
 
-PolicyMesh solves this by unifying governance into a **single declarative YAML policy** compiled into Abstract Syntax Trees (AST) that enforce compliance across **two critical lifecycle stages**:
+    orders-api [Region: EU]  ───▶  payments-api [Region: EU]
+    ✅ ALLOWED (Within approved sovereign boundary)
 
-1. **Shift-Left CI/CD Pre-Merge Gate:** Automatically scans code and service topology pull requests to block disallowed data flow edges *before* deployment.
-2. **Zero-Trust Runtime Enforcement Gateway:** Evaluates live microservice-to-microservice transfer requests with sub-millisecond AST evaluation, returning `ALLOW`, `DENY`, or `REROUTE`.
-3. **Cryptographic Lineage Audit Ledger:** Every single decision is sealed in an immutable **SHA-256 hash-chained write-ahead ledger**, producing legally verifiable, tamper-evident compliance proof.
+    orders-api [Region: EU]  ───▶  analytics-api [Region: US]
+    🚫 BLOCKED (Disallowed cross-border transfer under GDPR / EU-PII-001)
+```
+
+PolicyMesh compiles human-readable YAML residency rules into high-speed Abstract Syntax Trees (ASTs), continuously evaluating traffic both **before code merges** in CI/CD pipelines and **in real-time** across live service meshes.
 
 ---
 
-## 💡 Why PolicyMesh?
+## 2. The Problem
+
+Modern cloud platforms span multiple cloud regions, third-party APIs, and distributed microservices. While a cross-service payload transfer might execute without a single technical error, it frequently creates severe legal violations:
+
+- **Data Sovereignty & Residency Breaches:** Regulations like **GDPR** (EU), **DPDPA** (India), **HIPAA** (US), and **CCPA** strictly restrict where citizen data can be stored, transmitted, or analyzed.
+- **Architectural Drift:** Engineers frequently add new microservice integrations or dependencies in code without realizing that a downstream database or caching layer resides in an unauthorized region.
+- **Audit Deficits:** Traditional logging captures transaction IDs but lacks cryptographic, tamper-evident proof required by compliance auditors to demonstrate that policy enforcement was consistently applied.
+
+---
+
+## 3. The Solution
+
+**Define once in YAML. Enforce everywhere across the lifecycle.**
+
+PolicyMesh unifies governance across **Build**, **Runtime**, and **Audit**:
 
 ```mermaid
-mindmap
-  root((PolicyMesh))
-    Unified Governance
-      Single YAML DSL
-      No Fragmented Configs
-      Auto AST Compilation
-    Shift-Left CI Gate
-      Pre-Merge PR Scans
-      Fails Build on Violation
-      Zero Runtime Surprise
-    Runtime Zero-Trust
-      Sub-millisecond AST Check
-      Redis L2 Cache
-      ALLOW / DENY / REROUTE
-    Audit & Compliance
-      SHA-256 Chained Blocks
-      Tamper-Evident Ledger
-      GDPR / HIPAA / PCI-DSS
-    AI-Powered Tagging
-      FastAPI ML Classifier
-      Heuristic + LLM Tagging
-      Human-in-the-Loop Review
+flowchart TD
+    YAML["📄 Declarative Policy YAML\n(e.g., EU-PII-001)"] --> Parser["🔍 Safe YAML Parser & AST Compiler"]
+    Parser --> Engine["⚡ Policy Evaluation Engine"]
+    
+    Engine --> CI["1. CI/CD Pre-Merge Gate\n(GitHub Actions / Webhooks / CLI)"]
+    Engine --> Runtime["2. Zero-Trust Runtime Gateway\n(Live Service Check: ALLOW / DENY)"]
+    Engine --> Lineage["3. Cryptographic Lineage Ledger\n(SHA-256 Hash Chain Proof)"]
+    
+    CI -->|Exit Code 0 / 1| GHPull["GitHub Pull Request Check"]
+    Runtime -->|Decision & Reroute| Mesh["Microservice Traffic"]
+    Lineage -->|Tamper-Evident Evidence| AuditReport["Auditor Compliance Report"]
 ```
 
 ---
 
-## 🏛️ System Architecture
+## 4. Why Policy-as-Code?
 
-PolicyMesh operates as a distributed, high-performance architecture connecting declarative policies, compiled engines, an AI classification service, and a responsive web dashboard.
+Treating data governance as code allows compliance teams and engineers to version, test, peer-review, and automate rules using Git workflows:
+
+```yaml
+policyCode: EU-PII-001
+name: EU PII Data Residency & Sovereign Isolation
+jurisdiction: EU
+dataClass: PII
+version: 1.0.0
+
+allowedRegions:
+  - EU
+  - EU_WEST
+  - EU_CENTRAL
+
+deniedRegions:
+  - US
+  - US_EAST
+  - CN
+  - APAC
+
+maxClassificationLevel: RESTRICTED
+fallbackAction: BLOCK
+status: ACTIVE
+```
+
+- **Declarative & Version Controlled:** Track changes with Git commits and PR reviews.
+- **Deterministic:** Zero ambiguity in enforcement decisions.
+- **Safe Parsing:** Compiled via SnakeYAML `SafeConstructor` with 1MB resource limits.
+
+---
+
+## 5. System Architecture
+
+PolicyMesh is built as a cloud-native, decoupled distributed architecture:
 
 ```mermaid
 flowchart TB
-    subgraph Governance["1. Policy Declaration & AI Tagging"]
-        YAML["Declarative Policy (YAML)\ne.g. EU-PII-001"] --> Compiler["Policy Compiler & AST Engine"]
-        AI["AI Sensitivity Classifier (FastAPI)\nPII / PCI / PHI Tagging"] -.->|Auto-Tags Fields| Schema["Data Schema & Catalog"]
+    subgraph Client["Client Tier"]
+        Browser["🖥️ React 19 Frontend\n(Vercel SPA • Dark Theme • Mobile Responsive)"]
     end
 
-    subgraph Core["2. PolicyMesh Core Engine"]
-        Compiler --> ASTCache["In-Memory AST Rule Tree\n& Redis L2 Cache"]
-        GraphEngine["Service Graph Engine\nTopological Path Validator"]
-        LineageLedger["Cryptographic Lineage Engine\nSHA-256 Hash Chaining"]
+    subgraph BackendTier["Render Service 1: Core Governance Engine"]
+        SpringBoot["☕ Spring Boot 3.3.5 Backend (Java 21 LTS)\n• REST API Gateway\n• Policy AST Compiler\n• Shift-Left CI/CD Runner\n• SHA-256 Cryptographic Ledger\n• Rate Limiter & Security Filter"]
     end
 
-    subgraph CI["3. Shift-Left CI/CD Gate"]
-        PR["Pull Request / Commit"] --> CICLI["CI Checker (Java 21 CLI / Actions)"]
-        CICLI -->|Validates Topologies| GraphEngine
-        CICLI -->|Exit 0 / 1| GHA["GitHub Actions CI Gate"]
+    subgraph AITier["Render Service 2: PolicyMesh AI Service"]
+        FastAPI["🐍 Python 3.11+ / FastAPI Microservice\n• Field Sensitivity Classifier (PII, PCI, PHI)\n• Heuristic Rules + LLM Engine\n• Confidence Score Generator"]
     end
 
-    subgraph Runtime["4. Live Zero-Trust Gateway"]
-        ServiceReq["Service Data Request\norders-api -> analytics-api"] --> EnforceAPI["Enforcement Gateway\nPOST /api/v1/enforce/check"]
-        EnforceAPI -->|Fast Match| ASTCache
-        EnforceAPI -->|Record Decision| LineageLedger
-        EnforceAPI --> Decision["Decision: ALLOW / DENY / REROUTE"]
+    subgraph DataTier["Data & Integration Layer"]
+        MySQL[("🗄️ Aiven Managed MySQL 8.0\n• Policies, Services & Nodes\n• Users & RBAC\n• Lineage Ledger Blocks")]
+        Redis[("⚡ Redis Cache\n• AST Fast-Path Cache\n• Session & Limit Store")]
+        GitHubAPI["🐙 GitHub REST API & Webhooks\n• OAuth 2.0 Authorization\n• Branch & Commit Scans\n• Webhook HMAC Verification"]
     end
 
-    subgraph Persistence["5. Storage Layer"]
-        MySQL[(MySQL 8.0\nSource of Truth)]
-        Redis[(Redis Alpine\nPolicy & Session Cache)]
-        LineageLedger --> MySQL
-        ASTCache <--> Redis
-    end
-
-    subgraph Web["6. Frontend Dashboard"]
-        ReactUI["PolicyMesh Dashboard (React 19 + Vite)\nSearchable Comboboxes • Topology Canvas • Audit Replay"]
-        ReactUI <-->|REST API / JWT| EnforceAPI
-    end
-
-    classDef brand fill:#6366f1,stroke:#4338ca,stroke-width:2px,color:#fff;
-    classDef success fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
-    classDef warn fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
-    classDef db fill:#0ea5e9,stroke:#0369a1,stroke-width:2px,color:#fff;
-
-    class Compiler,ASTCache,GraphEngine,LineageLedger brand;
-    class Decision,GHA success;
-    class MySQL,Redis db;
-    class YAML,AI,PR warn;
+    Browser <-->|HTTPS / REST / JWT| SpringBoot
+    SpringBoot <-->|Internal HTTP / API Key| FastAPI
+    SpringBoot <-->|JDBC / TLS| MySQL
+    SpringBoot <-->|Lettuce / TLS| Redis
+    SpringBoot <-->|REST & HMAC| GitHubAPI
 ```
 
 ---
 
-## 🔄 Dual-Lifecycle Enforcement Flow
+## 6. Dual-Lifecycle Enforcement Flow
 
-PolicyMesh guarantees that non-compliant data flows cannot enter production at build-time, while securing live communication at runtime.
+### Stage 1: Shift-Left CI/CD Pre-Merge Gate
+1. Developer opens a Pull Request modifying microservice architecture or data flows.
+2. GitHub Webhook or GitHub Action triggers PolicyMesh CI Check (`POST /api/v1/ci/check`).
+3. PolicyMesh resolves the commit tree, parses the proposed data graph, and evaluates active policies.
+4. If a cross-border or disallowed edge is detected, the check **fails closed** and blocks merge.
+
+### Stage 2: Zero-Trust Runtime Gateway
+1. Service `orders-api` attempts to send customer records to `analytics-api`.
+2. Interceptor sends an enforcement query to `POST /api/v1/enforce/check`.
+3. In-memory AST engine verifies source region, destination region, and sensitivity tags in $< 1\text{ ms}$.
+4. Decision (`ALLOW`, `DENY`, or `REROUTE`) is generated and immutably recorded in the SHA-256 lineage ledger.
+
+---
+
+## 7. Core Features & Modules
+
+| Module | Status | Description |
+|---|---|---|
+| **📊 Real-Time Dashboard** | ✅ Production | Compliance health score, active violation counters, decision breakdown charts, and service topology metrics. |
+| **🌐 Service Graph Topology** | ✅ Production | Interactive node-and-edge visualizer mapping service locations, environments, and data flow pipelines. |
+| **📜 Policy Manager** | ✅ Production | Visual and raw YAML editor for data residency policies with AST compilation and schema validation. |
+| **⚡ Runtime Monitor** | ✅ Production | Zero-trust sandbox with searchable comboboxes to test and simulate live service-to-service transfers. |
+| **🐙 GitHub Integration** | ✅ Production | Connect repositories via OAuth, list branches/commits, run CI checks, and verify HMAC SHA-256 webhooks. |
+| **🤖 AI Schema Classifier** | ✅ Production | Automated classification of database fields (`PII`, `PCI`, `PHI`, `FINANCIAL`) with human review workflows. |
+| **🔗 Lineage Explorer** | ✅ Production | Blockchain-inspired SHA-256 hash-chained ledger with 1-click cryptographic integrity verification. |
+| **📄 Compliance Reports** | ✅ Production | Generate compliance audit reports and export complete historical data to CSV. |
+| **📱 Mobile Responsive UI** | ✅ Production | Optimized responsive layout with mobile drawer and bottom navigation bar on handheld screens. |
+| **🔐 Role-Based Access (RBAC)** | ✅ Production | Granular roles (`ADMIN`, `COMPLIANCE_OFFICER`, `ENGINEER`, `VIEWER`) enforced server-side. |
+
+---
+
+## 8. GitHub Integration & Webhook Flow
+
+PolicyMesh connects with GitHub repositories without storing personal tokens on the client:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Dev as Engineer / PR
-    participant CI as CI Checker Gate
-    participant Compiler as Policy AST Compiler
-    participant Runtime as Runtime Gateway
-    participant Ledger as SHA-256 Lineage Ledger
-    participant DB as MySQL Database
+    actor Dev as Developer / GitHub
+    participant Backend as PolicyMesh Backend
+    participant DB as Aiven MySQL (AES-GCM-256)
+    participant Engine as Policy Engine
 
-    rect rgb(20, 25, 45)
-        note over Dev,CI: Lifecycle Phase 1: Shift-Left CI/CD Gate (Pre-Merge)
-        Dev->>CI: Push Commit / Open PR (e.g., EU Service -> US Service)
-        CI->>Compiler: Parse YAML Policies & Compile AST
-        CI->>CI: Build Proposed Service Topology Graph
-        CI-->>Dev: ❌ ERROR: Violates Policy EU-PII-001 (Cross-Border Transfer Disallowed)
-        note right of Dev: PR blocked from merging into main branch
-    end
+    Note over Dev,Backend: 1. OAuth Authorization
+    Dev->>Backend: Authorize Repository via GitHub OAuth
+    Backend->>DB: Encrypt & Store Token (AES-GCM-256)
 
-    rect rgb(25, 40, 30)
-        note over Dev,DB: Lifecycle Phase 2: Zero-Trust Runtime Gateway (Live Traffic)
-        actor SvcA as orders-api (EU)
-        actor SvcB as payments-api (EU)
-        SvcA->>Runtime: POST /api/v1/enforce/check (PII transfer)
-        Runtime->>Compiler: Evaluate In-Memory AST Rules
-        Runtime->>Ledger: Append Decision Block (Hash Chaining)
-        Ledger->>DB: Store Lineage Record (PrevHash + CurrentHash + Timestamp)
-        Runtime-->>SvcA: ✅ ALLOW (Decision #12 • Ledger Hash: 6055a5...)
-        SvcA->>SvcB: Transfer Payload securely
-    end
+    Note over Dev,Engine: 2. Webhook Event Delivery
+    Dev->>Backend: POST /api/webhooks/github (X-Hub-Signature-256)
+    Backend->>Backend: Constant-time HMAC-SHA256 Verification
+    Backend->>Engine: Run Pre-Merge Compliance Scan
+    Backend-->>Dev: HTTP 200 OK {"status": "SUCCESS", "violations": 0}
 ```
 
----
-
-## ✨ Key Features
-
-| Feature | Description |
-|---|---|
-| **🛡️ Declarative Policy DSL** | Express complex multi-jurisdiction data-residency rules concisely in standard YAML. Supports allowed/denied regions, classification constraints, and fallback routing. |
-| **⚡ Sub-Millisecond AST Engine** | In-memory compiled Abstract Syntax Trees cached in Redis deliver ultra-low latency enforcement decisions for high-throughput service meshes. |
-| **🚦 Pre-Merge CI/CD Gate** | Standalone Java 21 CLI scanner runs in GitHub Actions or locally without a database, preventing architectural compliance drift. |
-| **🔗 Tamper-Evident Lineage** | Every policy decision is immutably appended to a cryptographic SHA-256 hash-chain with real-time verification (`/api/v1/lineage/verify`). |
-| **🤖 AI Schema Classifier** | Python FastAPI microservice that utilizes heuristics and LLMs to automatically classify field sensitivities (`PII`, `PCI`, `PHI`) with human-in-the-loop review. |
-| **🎨 Modern Glassmorphism UI** | React 19 + Vite frontend with clean searchable comboboxes, interactive data flow graph visualizer, and live decision auditor. |
-| **🔐 Enterprise RBAC & Security** | JWT authentication, BCrypt hashing, rate-limiting, and 4 granular roles: `ADMIN`, `COMPLIANCE_OFFICER`, `ENGINEER`, `VIEWER`. |
-| **💾 State Persistence & URL Sync** | Client-side debounced form draft preservation (`sessionStorage`) and bidirectional URL parameter syncing across navigation. |
+- **Encrypted at Rest:** GitHub access tokens are encrypted with **AES-GCM-256** using unique 12-byte initialization vectors.
+- **Webhook Security:** HMAC SHA-256 signature verification with `MessageDigest.isEqual(...)` constant-time checking to prevent timing attacks.
 
 ---
 
-## 💻 Tech Stack
+## 9. AI Sensitivity Classifier & Human-in-the-Loop Review
 
-| Layer | Technologies |
-|---|---|
-| **Backend Core** | Java 21 LTS · Spring Boot 3.2 · Spring Security (JWT) · Spring Data JPA · Flyway Migration |
-| **Frontend Web** | React 19 · Vite 5 · Vanilla CSS / Tailwind Design Tokens · Lucide Icons · Axios |
-| **Database & Cache** | MySQL 8.0 (InnoDB, utf8mb4) · Redis Alpine (Policy & Session Caching) |
-| **AI Classification** | Python 3.11+ · FastAPI · Uvicorn · Heuristic Regex + Remote LLM Provider |
-| **CI/CD & CLI** | Java 21 Standalone CLI · Maven 3.9 · GitHub Actions Matrix CI |
-| **Containerization** | Docker Engine · Multi-Stage Dockerfile · Docker Compose v2 |
+The Python FastAPI AI service combines regex heuristics with LLM intelligence to classify data field sensitivity:
+
+```mermaid
+flowchart LR
+    Input["Field Name / Sample Value\n(e.g., 'user_national_id')"] --> Regex["1. Fast Heuristic Regex\n(SSN, IBAN, Credit Card, Email)"]
+    Input --> LLM["2. Semantic AI Classifier\n(Context & Domain Analysis)"]
+    
+    Regex --> Aggregator["Confidence Score Aggregator\n(0.00 - 1.00)"]
+    LLM --> Aggregator
+    
+    Aggregator --> Pending["Pending Approval Queue"]
+    Pending --> Review{"Human Compliance Review"}
+    Review -->|Approve| Approved["ACTIVE Policy Tag"]
+    Review -->|Reject| Rejected["Discarded Tag"]
+```
+
+- **Advisory by Design:** AI decisions default to `PENDING` until approved by a `COMPLIANCE_OFFICER` or `ADMIN`.
+- **Fail Closed:** If the AI service is unreachable, PolicyMesh falls back safely to manual classification.
 
 ---
 
-## 📁 Project Directory Structure
+## 10. Cryptographic Lineage Ledger
+
+Every enforcement check creates an immutable ledger block linked to its predecessor:
+
+```mermaid
+flowchart LR
+    subgraph Block1["Block #1 (Genesis)"]
+        H0["Prev: 00000000..."]
+        D0["ALLOW: orders-api -> payments-api"]
+        H1["Hash: 3a9f1b..."]
+    end
+
+    subgraph Block2["Block #2"]
+        H1b["Prev: 3a9f1b..."]
+        D1["DENY: orders-api -> analytics-api"]
+        H2["Hash: 15251d..."]
+    end
+
+    subgraph Block3["Block #3"]
+        H2b["Prev: 15251d..."]
+        D2["ALLOW: web-app -> orders-api"]
+        H3["Hash: 6055a5..."]
+    end
+
+    Block1 --> Block2 --> Block3
+```
+
+$$\text{BlockHash} = \text{SHA-256}(\text{prevHash} + \text{decisionId} + \text{source} + \text{dest} + \text{dataClass} + \text{decision} + \text{timestamp})$$
+
+Any unauthorized modification of historical records in MySQL immediately invalidates subsequent hashes and is caught by `/api/v1/lineage/verify`.
+
+---
+
+## 11. Security Hardening & Penetration-Resistance
+
+PolicyMesh is hardened using defense-in-depth security controls:
+
+- **Tiered Defensive Rate Limiting:** Sliding-window bucket filter (`RateLimitingFilter.java`) throttling auth endpoints to 30 req/min and compute endpoints to 60 req/min.
+- **Fail-Closed RBAC:** Spring Security 6 enforces role separation (`ADMIN`, `COMPLIANCE_OFFICER`, `ENGINEER`, `VIEWER`) across all HTTP methods.
+- **Defensive Headers:** Pre-configured with HSTS (`max-age=31536000; includeSubDomains`), CSP (`frame-ancestors 'none'`), X-Frame-Options (`DENY`), and Referrer-Policy (`strict-origin-when-cross-origin`).
+- **No Client Secrets:** Frontend bundle contains zero backend keys, tokens, or passwords (`VITE_API_BASE_URL` only).
+- **Automated Pentest Suite:** 108/108 backend tests pass, verifying JWT forgery rejection, IDOR defense, SQL injection safety, and HMAC verification.
+
+---
+
+## 12. Tech Stack
+
+| Layer | Component | Technologies |
+|---|---|---|
+| **Frontend** | SPA Dashboard | React 19, Vite 8.2, Tailwind CSS v4, Lucide Icons, Recharts, Axios |
+| **Backend Core** | REST API & Engine | Java 21 LTS, Spring Boot 3.3.5, Spring Security 6, Spring Data JPA, Hibernate 6, Flyway |
+| **AI Service** | Sensitivity Engine | Python 3.11+, FastAPI, Uvicorn, Pydantic v2 Settings, HTTPX |
+| **Databases** | Persistence & Cache | MySQL 8.0 (Aiven Cloud Managed / Docker), Redis Alpine |
+| **Integration** | CI/CD & VCS | GitHub REST API, GitHub Webhooks, Standalone Java 21 CLI |
+| **Hosting** | Production | Vercel (Frontend), Render (Spring Boot & Python AI), Aiven (MySQL) |
+
+---
+
+## 13. Project Directory Structure
 
 ```text
 PolicyMesh/
-├── backend/                     # Spring Boot 3.2 REST API & Enforcement Engine
+├── backend/                     # Spring Boot 3.3.5 Backend & Governance Engine
 │   ├── src/main/java/com/policymesh/
-│   │   ├── ai/                  # AI Client integration & review workflow
+│   │   ├── ai/                  # Python AI Service HTTP client & reviews
 │   │   ├── audit/               # Audit logger & decision controllers
-│   │   ├── auth/                # JWT Auth, User entity, RBAC security config
-│   │   ├── ci/                  # CI scan persistence & GitHub Actions API
-│   │   ├── common/              # Global error handling & ProblemDetail DTOs
-│   │   ├── dev/                 # Demo environment seeder
+│   │   ├── auth/                # JWT Auth, User entity, RBAC SecurityConfig
+│   │   ├── ci/                  # CI scan runner, Git providers & history
+│   │   ├── common/              # RateLimitingFilter, EncryptionService, GlobalExceptionHandler
+│   │   ├── compiler/            # Safe YAML parser & AST compiler
 │   │   ├── enforcement/         # Runtime policy evaluation gateway
-│   │   ├── graph/               # Service graph & data flow topology engine
+│   │   ├── github/              # GitHub OAuth, repo scans & token manager
+│   │   ├── health/              # Lightweight public keep-alive (/health)
 │   │   ├── lineage/             # SHA-256 hash-chaining cryptographic ledger
-│   │   ├── policy/              # YAML parser, compiler, AST representation
-│   │   ├── reports/             # Compliance reporting & CSV exports
-│   │   ├── service/             # Service node registry
-│   │   └── settings/            # System configuration & health metrics
-│   └── src/main/resources/db/migration/  # Flyway schema migrations (V1__init_schema.sql)
+│   │   ├── policy/              # Policy repository & evaluation rules
+│   │   ├── reports/             # Compliance summaries & CSV exports
+│   │   ├── servicegraph/        # ServiceNode & DataFlowEdge graph engine
+│   │   ├── settings/            # User profile, system settings & password changes
+│   │   └── webhook/             # GitHub Webhook HMAC SHA-256 controller
+│   └── src/main/resources/      # application.properties & Flyway migrations
 │
-├── frontend/                    # React 19 + Vite modern dark-theme dashboard
-│   ├── public/                  # Static assets, logo.png, favicon.png
-│   └── src/
-│       ├── api/                 # Axios HTTP client with JWT interceptor
-│       ├── components/          # Reusable UI, Topbar, Sidebar, SearchableCombobox
-│       ├── context/             # AuthContext (JWT & session lifecycle)
-│       ├── hooks/               # useFormDraft, useQueryState
-│       └── pages/               # Dashboard, RuntimeMonitor, Lineage, CiCheck, etc.
+├── frontend/                    # React 19 + Vite Dark-Theme Dashboard
+│   ├── src/
+│   │   ├── api/                 # Axios client with JWT interceptors
+│   │   ├── components/          # Topbar, Sidebar, SearchableCombobox, Modals
+│   │   ├── context/             # AuthContext & ThemeContext (Light/Dark)
+│   │   ├── hooks/               # useFormDraft (sessionStorage), useMobile
+│   │   └── pages/               # Dashboard, Runtime, Policies, CI Check, Lineage, AI, GitHub
 │
-├── ai-service/                  # Python FastAPI AI schema classifier
-│   └── app/                     # Field sensitivity heuristics & LLM classifier
+├── ai-service/                  # Python 3.11+ FastAPI Schema Classifier
+│   ├── app/
+│   │   ├── config/              # Pydantic SecretStr settings
+│   │   ├── models/              # Classification request/response schemas
+│   │   ├── routers/             # /health, /classify, /rules endpoints
+│   │   └── services/            # Regex heuristics & LLM providers
 │
-├── ci-checker/                  # Standalone Java 21 CLI scanner for CI/CD gates
+├── ci-checker/                  # Standalone Java 21 CLI for Pre-Merge CI Gates
 │   └── src/main/java/com/policymesh/ci/
 │
 ├── policies/                    # Declarative YAML policies (EU, US, IN, GLOBAL)
-├── examples/                    # Sample service registries & data flow topologies
-├── infrastructure/              # Docker Compose definitions, configs & env templates
-└── docs/                        # Complete technical specs & architecture blueprints
+├── examples/                    # Sample service registries & data flow definitions
+├── infrastructure/              # Docker Compose definitions & configs
+└── docs/                        # Complete design documents & guides
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## 14. Quick Start Guide
 
-### Option A: Full Docker Compose Launch (Recommended)
-
-Start the entire PolicyMesh ecosystem (MySQL + Redis + Backend + Frontend + AI Service) with a single command:
+### Option A: Local Full-Stack Launch via Docker Compose
 
 ```bash
 # 1. Clone the repository
@@ -265,44 +371,44 @@ cd PolicyMesh
 # 2. Configure environment
 cp infrastructure/env/.env.example infrastructure/compose/.env
 
-# 3. Launch all services via Docker Compose
+# 3. Launch all services
 cd infrastructure/compose
 docker compose --env-file .env up -d
 ```
 
-#### Access PolicyMesh:
 - **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173)
-- **Backend REST API:** [http://localhost:8080](http://localhost:8080)
-- **AI Classification API:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Actuator Health:** [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- **Backend API:** [http://localhost:8080](http://localhost:8080)
+- **AI Service Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Keep-Alive Health:** [http://localhost:8080/health](http://localhost:8080/health)
 
 ---
 
-### Option B: Local Hybrid Development
+### Option B: Local Hybrid Development (Step-by-Step)
 
-#### 1. Start Infrastructure (MySQL + Redis)
+#### 1. Start MySQL & Redis
 ```bash
 cd infrastructure/compose
 docker compose up -d mysql redis
 ```
 
-#### 2. Run Backend API (Java 21)
-```bash
-cd backend
-$env:DB_USERNAME="root"
-$env:DB_PASSWORD="admin"
-$env:DB_NAME="policymeshdb"
-mvn spring-boot:run
-```
-
-#### 3. Run AI Classification Service (Python 3.11+)
+#### 2. Start Python AI Service
 ```bash
 cd ai-service
 pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-#### 4. Run Frontend Dashboard (Node.js 18+)
+#### 3. Start Spring Boot Backend (Java 21)
+```bash
+cd backend
+$env:DB_USERNAME="root"
+$env:DB_PASSWORD="admin"
+$env:DB_NAME="policymeshdb"
+$env:JWT_SECRET="super-secret-key-that-is-at-least-32-chars-long"
+mvn spring-boot:run
+```
+
+#### 4. Start React Frontend (Node.js 18+)
 ```bash
 cd frontend
 npm install
@@ -311,134 +417,112 @@ npm run dev
 
 ---
 
-## 🖥️ Interactive Web UI Walkthrough
+## 15. Production Deployment Architecture
 
-| View | Capabilities |
-|---|---|
-| **📊 Executive Dashboard** | Real-time compliance health score, active violations count, 24-hour decision trends, and topology overview. |
-| **⚡ Runtime Monitor** | Live zero-trust policy enforcement sandbox. Select services via **Searchable Comboboxes** and execute live evaluations. |
-| **🌐 Service Graph & Flows** | Interactive topological graph mapping cross-service pipelines and jurisdictional boundaries. |
-| **📜 Policy Manager** | Create, edit, activate, or archive declarative data-residency YAML rules. |
-| **🔗 Lineage Explorer** | Inspect cryptographic SHA-256 hash blocks, parent hashes, decision timestamps, and verify ledger integrity with 1 click. |
-| **🤖 AI Schema Classifier** | Automated sensitivity tagging (`PII`, `PCI`, `PHI`) for enterprise database fields with human review workflows. |
-| **🚦 CI/CD Gate Portal** | On-demand scan triggering for Git branches and commit hashes with violation diffs. |
+PolicyMesh is configured for continuous production deployment:
+
+| Service | Host | Config File | Live URL |
+|---|---|---|---|
+| **Frontend** | Vercel | [`vercel.json`](vercel.json) | [https://policymesh.vercel.app](https://policymesh.vercel.app) |
+| **Backend** | Render | [`render.yaml`](render.yaml) / Dockerfile | [https://policymesh-komp.onrender.com](https://policymesh-komp.onrender.com) |
+| **AI Service** | Render | [`render.yaml`](render.yaml) / Dockerfile | [https://policymesh-ai.onrender.com](https://policymesh-ai.onrender.com) |
+| **Database** | Aiven | Managed Cloud | MySQL 8.0 Cloud Instance |
 
 ---
 
-## 📡 REST API Reference
+## 16. REST API Reference
 
-Base URL: `http://localhost:8080/api/v1`  
-*All endpoints (except `/auth/*`) require a valid `Authorization: Bearer <token>` header.*
+Base URL: `https://policymesh-komp.onrender.com/api/v1`  
+*All endpoints except `/auth/*`, `/health`, and `/webhooks/*` require `Authorization: Bearer <token>`.*
 
 ```text
-Authentication
-├── POST   /auth/register           # Register new user account
-└── POST   /auth/login              # Authenticate & issue JWT
+Authentication & Public
+├── GET    /health                     # Lightweight keep-alive status (200 {"status":"ok"})
+├── POST   /api/v1/auth/register       # Register new user account
+└── POST   /api/v1/auth/login          # Authenticate & receive JWT
 
 Policy Management
-├── GET    /policies                # List all policies (supports filters)
-├── POST   /policies                # Create new policy rule
-├── GET    /policies/{id}           # Retrieve policy details
-├── PUT    /policies/{id}           # Update policy
-└── DELETE /policies/{id}           # Delete policy
+├── GET    /api/v1/policies            # List all policies (supports jurisdiction filter)
+├── POST   /api/v1/policies            # Create new policy (ADMIN, COMPLIANCE_OFFICER)
+├── POST   /api/v1/policies/yaml       # Import policy from raw YAML document
+├── PUT    /api/v1/policies/{id}       # Update policy
+└── DELETE /api/v1/policies/{id}       # Delete policy (ADMIN only)
 
-Services & Data Flows
-├── GET    /services                # List registered microservices
-├── POST   /services                # Register new service node
-├── GET    /edges                   # List registered data flow edges
-├── POST   /edges                   # Create new data flow edge
-├── GET    /graph                   # Fetch full topology graph
-└── POST   /graph/validate          # Validate graph against active policies
+Topology & Service Graph
+├── GET    /api/v1/services            # List registered microservices
+├── POST   /api/v1/services            # Register new service node (ADMIN, ENGINEER)
+├── GET    /api/v1/edges               # List data flow connections
+├── POST   /api/v1/edges               # Create data flow edge
+└── POST   /api/v1/graph/validate      # Validate entire topology graph
 
-Zero-Trust Enforcement & Lineage
-├── POST   /enforce/check           # Evaluate live transfer (ALLOW / DENY)
-├── GET    /lineage                 # Query cryptographic audit records
-├── GET    /lineage/{id}            # Get single lineage block
-└── GET    /lineage/verify          # Verify hash-chain cryptographic integrity
+Runtime Zero-Trust Enforcement & Lineage
+├── POST   /api/v1/enforce/check       # Evaluate live transfer (ALLOW / DENY / REROUTE)
+├── GET    /api/v1/lineage             # Query cryptographic audit records
+├── GET    /api/v1/lineage/{id}        # Get single lineage block
+└── GET    /api/v1/lineage/verify      # Cryptographic SHA-256 hash-chain verification
 
-CI/CD Compliance Gate
-├── POST   /ci/check                # Execute pre-merge compliance scan
-└── GET    /ci/scans/{id}           # Get past scan results & violations
+Shift-Left CI/CD & GitHub
+├── POST   /api/v1/ci/check            # Trigger commit/branch compliance scan
+├── GET    /api/v1/ci/scans            # View recent CI scan history
+├── GET    /api/v1/github/repos        # List authorized GitHub repositories
+└── POST   /api/webhooks/github        # Receive and verify GitHub webhook events
 
-AI Schema Sensitivity
-├── POST   /ai/classify             # Auto-classify field sensitivity
-├── POST   /ai/classify/{id}/approve# Human-in-the-loop approval
-└── POST   /ai/classify/{id}/reject # Human-in-the-loop rejection
+AI Sensitivity Classification
+├── POST   /api/v1/ai/classify         # Classify field sensitivity (FastAPI backend proxy)
+├── POST   /api/v1/ai/classify/{id}/approve # Approve classification (COMPLIANCE_OFFICER)
+└── POST   /api/v1/ai/classify/{id}/reject  # Reject classification
 
-Audit, Users & Reports
-├── GET    /audit/decisions         # Recent 100 enforcement decisions
-├── GET    /users                   # User management (ADMIN only)
-├── GET    /reports/summary         # Governance audit summary
-└── GET    /reports/export          # Download audit report CSV
+Reports & System Settings
+├── GET    /api/v1/reports/compliance  # Generate governance compliance report
+├── GET    /api/v1/reports/export/csv  # Download full audit history as CSV
+├── GET    /api/v1/settings/profile    # Current authenticated user profile
+└── POST   /api/v1/settings/change-password # Secure password update
 ```
 
 ---
 
-## 🔍 Standalone CI/CD Checker
+## 17. Standalone CI/CD Checker CLI
 
-The PolicyMesh CI Checker runs as a lightweight, **database-free** validation binary inside any continuous integration pipeline:
+PolicyMesh includes a zero-dependency Java 21 CLI scanner that can run inside any CI/CD system without a database:
 
 ```bash
-# Run standalone checker against policies and service topology
+# Build standalone JAR
+mvn clean package -pl ci-checker
+
+# Run scan on repository policies and topology definitions
 java -jar ci-checker/target/ci-checker-1.0.0.jar \
-  --policies policies/EU \
-  --services examples/services/services.json \
-  --dataflows examples/dataflows/cross-border-flow.json
-
-# Exit Codes:
-#   0 = PASS (100% Compliant)
-#   1 = VIOLATION (Blocked by Policy)
-#   2 = ERROR (Malformed input / missing files)
+  --policies policies/ \
+  --services examples/services.json \
+  --dataflows examples/dataflows.json
 ```
 
+**Exit Codes:**
+- `0`: PASS — All proposed data flow edges satisfy active residency policies.
+- `1`: VIOLATION — Disallowed cross-border or sensitivity flow detected.
+- `2`: ERROR — Malformed input YAML or missing files.
+
 ---
 
-## 🔐 Cryptographic Lineage Ledger
+## 18. Roadmap
 
-PolicyMesh incorporates a tamper-evident **write-ahead lineage ledger** modeled after blockchain cryptographic primitives:
+- [x] Declarative YAML policy compiler with SnakeYAML safe parsing
+- [x] Zero-trust runtime enforcement gateway with $< 1\text{ ms}$ evaluation
+- [x] Cryptographic SHA-256 lineage ledger with tamper-evident chain verification
+- [x] Python FastAPI AI sensitivity classifier with human-in-the-loop approvals
+- [x] GitHub OAuth integration with branch/commit scanning and HMAC webhook verification
+- [x] Tiered in-memory rate limiting filter and enterprise security headers
+- [x] Mobile-responsive dark-theme UI with bottom navigation
+- [ ] OpenPolicyAgent (OPA) Rego policy format cross-compilation
+- [ ] eBPF kernel-level network packet interceptor for Kubernetes meshes
+- [ ] Multi-tenant organization boundaries and enterprise SSO (SAML 2.0 / Okta)
 
-```mermaid
-flowchart LR
-    subgraph Block1["Block #10 (Genesis)"]
-        H0["Prev: 00000000..."]
-        D0["Decision: ALLOW\norders-api -> payments-api\nClass: PII"]
-        H1["Hash: 3a9f1b..."]
-    end
+---
 
-    subgraph Block2["Block #11"]
-        H1b["Prev: 3a9f1b..."]
-        D1["Decision: DENY\norders-api -> analytics-api\nClass: PII (Cross-Border)"]
-        H2["Hash: 15251d..."]
-    end
+## 19. License & Credits
 
-    subgraph Block3["Block #12"]
-        H2b["Prev: 15251d..."]
-        D2["Decision: ALLOW\nweb-app -> orders-api\nClass: NON_SENSITIVE"]
-        H3["Hash: 6055a5..."]
-    end
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
-    Block1 --> Block2 --> Block3
+```text
+PolicyMesh — Govern. Enforce. Trust.
+Built with ❤️ for DoraHacks 2.0 & Cloud-Native Governance
 ```
-
-- Each block computes `SHA-256(previousHash + decisionId + source + destination + dataClass + decision + timestamp)`.
-- If an attacker modifies any historic decision in the database, the cryptographic chain breaks immediately and is flagged by `/api/v1/lineage/verify`.
-
----
-
-## 🔒 Security & Compliance
-
-- **Zero-Trust Network Model:** Explicit authorization is required for every cross-region transfer.
-- **Role-Based Access Control (RBAC):** Principle of least privilege enforced on every endpoint.
-- **Robust Input Validation:** Strict regex and format validation prevents SQL injection and header tampering.
-- **No Hardcoded Secrets:** Dynamic environment variables with zero plaintext credentials in git history.
-- **Production Hardened:** 100% automated test suite coverage (`60/60` passing unit and integration tests).
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
-<div align="center">
-  <sub>Built with ❤️ for <b>DoraHacks 2.0</b> • PolicyMesh Engineering Team</sub>
-</div>
