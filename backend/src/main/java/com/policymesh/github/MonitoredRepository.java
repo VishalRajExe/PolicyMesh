@@ -64,6 +64,8 @@ public class MonitoredRepository {
 
   private Instant lastScanTime;
 
+  private Long webhookHookId;
+
   @Column(nullable = false)
   private Instant createdAt = Instant.now();
 
@@ -113,6 +115,8 @@ public class MonitoredRepository {
   public void setLastScanId(Long lastScanId) { this.lastScanId = lastScanId; }
   public Instant getLastScanTime() { return lastScanTime; }
   public void setLastScanTime(Instant lastScanTime) { this.lastScanTime = lastScanTime; }
+  public Long getWebhookHookId() { return webhookHookId; }
+  public void setWebhookHookId(Long webhookHookId) { this.webhookHookId = webhookHookId; }
   public Instant getCreatedAt() { return createdAt; }
   public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }

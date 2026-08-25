@@ -42,6 +42,8 @@ public class GitHubConnectController {
   private final MonitoredRepositoryRepository monitoredRepository;
   private final UserRepository userRepository;
   private final String frontendUrl;
+  private final String webhookUrl;
+  private final String webhookSecret;
 
   public GitHubConnectController(
       GitHubClientService gitHubClient,
@@ -50,7 +52,9 @@ public class GitHubConnectController {
       GitHubConnectionRepository connectionRepository,
       MonitoredRepositoryRepository monitoredRepository,
       UserRepository userRepository,
-      @Value("${app.frontend.url:${FRONTEND_URL:http://localhost:5173}}") String frontendUrl
+      @Value("${app.frontend.url:${FRONTEND_URL:http://localhost:5173}}") String frontendUrl,
+      @Value("${github.webhook.url:${GITHUB_WEBHOOK_URL:https://policymesh-komp.onrender.com/api/webhooks/github}}") String webhookUrl,
+      @Value("${github.webhook.secret:${GITHUB_WEBHOOK_SECRET:policymesh_webhook_secret_2026_secure}}") String webhookSecret
   ) {
     this.gitHubClient = gitHubClient;
     this.stateManager = stateManager;
@@ -59,6 +63,8 @@ public class GitHubConnectController {
     this.monitoredRepository = monitoredRepository;
     this.userRepository = userRepository;
     this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+    this.webhookUrl = webhookUrl != null ? webhookUrl.trim() : "https://policymesh-komp.onrender.com/api/webhooks/github";
+    this.webhookSecret = webhookSecret != null ? webhookSecret.trim() : "";
   }
 
   /**
@@ -218,7 +224,7 @@ public class GitHubConnectController {
   }
 
   /**
-   * Enables monitoring for a specific repository.
+   * Enables monitoring for a specific repository and automatically provisions the GitHub webhook.
    */
   @PostMapping("/repositories/{repoId}/monitor")
   @Transactional
@@ -239,21 +245,30 @@ public class GitHubConnectController {
         .orElse(new MonitoredRepository(user.getId(), repoId, fullName != null ? fullName : "repo-" + repoId,
             name != null ? name : "repo-" + repoId, owner != null ? owner : user.getEmail(), branch, isPrivate));
 
+    // Auto-provision webhook on GitHub if user has OAuth token
+    Optional<String> tokenOpt = gitHubClient.getDecryptedTokenForUser(user.getId());
+    if (tokenOpt.isPresent() && repo.getOwnerLogin() != null && repo.getRepoName() != null) {
+      gitHubClient.ensureRepositoryWebhook(tokenOpt.get(), repo.getOwnerLogin(), repo.getRepoName(), webhookUrl, webhookSecret)
+          .ifPresent(repo::setWebhookHookId);
+    }
+
     repo.setMonitored(true);
     repo.setUpdatedAt(Instant.now());
     monitoredRepository.save(repo);
 
-    log.info("User {} enabled monitoring for repository: {}", user.getEmail(), repo.getRepoFullName());
+    log.info("User {} enabled monitoring for repository: {} (Webhook Hook ID: {})",
+        user.getEmail(), repo.getRepoFullName(), repo.getWebhookHookId());
     return ResponseEntity.ok(Map.of(
         "status", "SUCCESS",
         "repoId", repoId,
         "isMonitored", true,
-        "message", "Repository monitoring enabled successfully."
+        "webhookConfigured", repo.getWebhookHookId() != null,
+        "message", "Repository monitoring enabled successfully. Webhook is active."
     ));
   }
 
   /**
-   * Disables monitoring for a specific repository.
+   * Disables monitoring for a specific repository and deactivates GitHub webhook.
    */
   @DeleteMapping("/repositories/{repoId}/monitor")
   @Transactional
@@ -264,6 +279,13 @@ public class GitHubConnectController {
     User user = getAuthenticatedUser(principal);
 
     monitoredRepository.findByUserIdAndGithubRepoId(user.getId(), repoId).ifPresent(repo -> {
+      // Remove webhook from GitHub if we created one
+      Optional<String> tokenOpt = gitHubClient.getDecryptedTokenForUser(user.getId());
+      if (tokenOpt.isPresent() && repo.getWebhookHookId() != null && repo.getOwnerLogin() != null && repo.getRepoName() != null) {
+        gitHubClient.removeRepositoryWebhook(tokenOpt.get(), repo.getOwnerLogin(), repo.getRepoName(), repo.getWebhookHookId());
+        repo.setWebhookHookId(null);
+      }
+
       repo.setMonitored(false);
       repo.setUpdatedAt(Instant.now());
       monitoredRepository.save(repo);

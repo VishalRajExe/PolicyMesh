@@ -178,4 +178,101 @@ public class GitHubClientService {
     return connectionRepository.findByUserId(userId)
         .map(conn -> encryptionService.decrypt(conn.getEncryptedAccessToken()));
   }
+
+  /**
+   * Automatically provisions or discovers the PolicyMesh webhook on the target GitHub repository.
+   *
+   * @param accessToken user's decrypted OAuth token
+   * @param owner repository owner username/org
+   * @param repo repository name
+   * @param webhookUrl destination PolicyMesh webhook URL
+   * @param webhookSecret secret for HMAC-SHA256 signature verification
+   * @return the hook ID if registered or found, or empty if creation was skipped/unauthorized
+   */
+  public Optional<Long> ensureRepositoryWebhook(String accessToken, String owner, String repo, String webhookUrl, String webhookSecret) {
+    if (accessToken == null || accessToken.isBlank() || webhookUrl == null || webhookUrl.isBlank()) {
+      return Optional.empty();
+    }
+
+    String listUrl = String.format("https://api.github.com/repos/%s/%s/hooks", owner, repo);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+    headers.set("X-GitHub-Api-Version", "2022-11-28");
+
+    // 1. Check if our webhook is already installed on the repo
+    try {
+      ResponseEntity<String> response = restTemplate.exchange(listUrl, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+      if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+        JsonNode array = mapper.readTree(response.getBody());
+        if (array.isArray()) {
+          for (JsonNode hook : array) {
+            String configUrl = hook.path("config").path("url").asText("");
+            if (configUrl.equalsIgnoreCase(webhookUrl.trim())) {
+              Long existingHookId = hook.path("id").asLong();
+              log.info("Discovered existing GitHub webhook ID: {} on {}/{}", existingHookId, owner, repo);
+              return Optional.of(existingHookId);
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.debug("Querying existing webhooks on {}/{} returned: {}", owner, repo, e.getMessage());
+    }
+
+    // 2. Automatically register the webhook via GitHub REST API
+    try {
+      HttpHeaders postHeaders = new HttpHeaders();
+      postHeaders.setBearerAuth(accessToken);
+      postHeaders.setContentType(MediaType.APPLICATION_JSON);
+      postHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
+      postHeaders.set("X-GitHub-Api-Version", "2022-11-28");
+
+      Map<String, Object> config = new HashMap<>();
+      config.put("url", webhookUrl.trim());
+      config.put("content_type", "json");
+      if (webhookSecret != null && !webhookSecret.isBlank()) {
+        config.put("secret", webhookSecret.trim());
+      }
+      config.put("insecure_ssl", "0");
+
+      Map<String, Object> body = Map.of(
+          "name", "web",
+          "active", true,
+          "events", List.of("push", "ping"),
+          "config", config
+      );
+
+      ResponseEntity<String> postRes = restTemplate.exchange(listUrl, HttpMethod.POST, new HttpEntity<>(body, postHeaders), String.class);
+      if (postRes.getStatusCode().is2xxSuccessful() && postRes.getBody() != null) {
+        JsonNode createdHook = mapper.readTree(postRes.getBody());
+        Long hookId = createdHook.path("id").asLong();
+        log.info("Automatically registered GitHub webhook ID: {} for {}/{}", hookId, owner, repo);
+        return Optional.of(hookId);
+      }
+    } catch (Exception e) {
+      log.warn("Auto-creation of GitHub webhook for {}/{} returned: {}. (Repository is still tracked in PolicyMesh)", owner, repo, e.getMessage());
+    }
+
+    return Optional.empty();
+  }
+
+  /**
+   * Deletes or unregisters the webhook from GitHub when repository monitoring is disabled.
+   */
+  public void removeRepositoryWebhook(String accessToken, String owner, String repo, Long hookId) {
+    if (accessToken == null || hookId == null) return;
+    String url = String.format("https://api.github.com/repos/%s/%s/hooks/%d", owner, repo, hookId);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+    headers.set("X-GitHub-Api-Version", "2022-11-28");
+
+    try {
+      restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+      log.info("Deleted GitHub webhook ID {} from {}/{}", hookId, owner, repo);
+    } catch (Exception e) {
+      log.debug("Failed deleting GitHub webhook {} from {}/{}: {}", hookId, owner, repo, e.getMessage());
+    }
+  }
 }
