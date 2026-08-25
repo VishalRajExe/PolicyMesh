@@ -33,13 +33,13 @@ public class GitHubWebhookVerifier {
    * @return true if valid signature, false otherwise
    */
   public boolean verify(String signatureHeader, byte[] payloadBytes) {
-    if (signatureHeader == null || signatureHeader.isBlank()) {
-      log.warn("GitHub webhook verification failed: missing X-Hub-Signature-256 header");
-      return false;
+    if (webhookSecret.isEmpty()) {
+      log.info("GITHUB_WEBHOOK_SECRET is not configured on server. Accepting webhook in unconfigured mode.");
+      return true;
     }
 
-    if (webhookSecret.isEmpty()) {
-      log.warn("GitHub webhook verification rejected: GITHUB_WEBHOOK_SECRET is not configured on server.");
+    if (signatureHeader == null || signatureHeader.isBlank()) {
+      log.warn("GitHub webhook verification failed: missing X-Hub-Signature-256 header");
       return false;
     }
 

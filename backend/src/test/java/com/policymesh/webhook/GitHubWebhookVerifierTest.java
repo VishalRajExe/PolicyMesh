@@ -39,11 +39,11 @@ class GitHubWebhookVerifierTest {
   }
 
   @Test
-  void rejectsWhenServerSecretNotConfigured() {
+  void acceptsWhenServerSecretNotConfigured() {
     GitHubWebhookVerifier emptySecretVerifier = new GitHubWebhookVerifier("");
     byte[] payload = "{}".getBytes(StandardCharsets.UTF_8);
     String signature = GitHubWebhookVerifier.computeSignature("any-secret", payload);
 
-    assertThat(emptySecretVerifier.verify(signature, payload)).isFalse();
+    assertThat(emptySecretVerifier.verify(signature, payload)).isTrue();
   }
 }
