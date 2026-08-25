@@ -1,10 +1,10 @@
 services:
-  # ── PolicyMesh Unified Enterprise Backend (Spring Boot + Python AI Engine) ───
+  # ── PolicyMesh Spring Boot Backend API ──────────────────────────────────────
   - type: web
     name: policymesh-backend
     runtime: docker
-    dockerContext: .
-    dockerfilePath: Dockerfile
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
     plan: starter
     healthCheckPath: /health
     envVars:
@@ -53,13 +53,10 @@ services:
       - key: AI_SERVICE_MODE
         value: "remote"
       - key: AI_SERVICE_URL
-        value: "http://127.0.0.1:8000"
-      - key: AI_PROVIDER
-        value: "mock"
-      - key: AI_MODEL
-        value: "gpt-4o-mini"
-      - key: AI_API_KEY
-        sync: false
+        fromService:
+          type: web
+          name: policymesh-ai-service
+          property: host
       - key: POLICYMESH_REDIS_ENABLED
         value: "false"
       - key: POLICYMESH_KAFKA_ENABLED
@@ -68,3 +65,23 @@ services:
         value: "false"
       - key: POLICYMESH_DEMO_SEED_ENDPOINT
         value: "true"
+
+  # ── PolicyMesh Python AI Classification Service ──────────────────────────────
+  - type: web
+    name: policymesh-ai-service
+    runtime: docker
+    dockerContext: ai-service
+    dockerfilePath: ai-service/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: mock
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: gpt-4o-mini
+      - key: ALLOWED_ORIGINS
+        value: "*"
