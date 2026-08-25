@@ -26,14 +26,28 @@ public class User {
   private String passwordHash;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(nullable = false, length = 64)
   private Role role = Role.ENGINEER;
 
-  @Column(nullable = false)
+  @Column(nullable = false, length = 50)
   private String status = "ACTIVE";
 
   @Column(nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
+
+  @Column(nullable = false)
+  private Instant updatedAt = Instant.now();
+
+  @jakarta.persistence.PrePersist
+  protected void onCreate() {
+    if (createdAt == null) createdAt = Instant.now();
+    if (updatedAt == null) updatedAt = Instant.now();
+  }
+
+  @jakarta.persistence.PreUpdate
+  protected void onUpdate() {
+    updatedAt = Instant.now();
+  }
 
   public User() {}
 
@@ -43,6 +57,7 @@ public class User {
     this.role = role != null ? role : Role.ENGINEER;
     this.status = "ACTIVE";
     this.createdAt = Instant.now();
+    this.updatedAt = Instant.now();
   }
 
   public Long getId() { return id; }
@@ -62,4 +77,7 @@ public class User {
 
   public Instant getCreatedAt() { return createdAt; }
   public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+  public Instant getUpdatedAt() { return updatedAt; }
+  public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
