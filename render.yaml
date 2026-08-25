@@ -77,11 +77,17 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: APP_PORT
+        value: "8000"
       - key: AI_PROVIDER
         value: mock
       - key: AI_API_KEY
         sync: false
       - key: AI_MODEL
-        value: gpt-4o-mini
+        sync: false
+      - key: AI_BASE_URL
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
       - key: ALLOWED_ORIGINS
         value: "*"

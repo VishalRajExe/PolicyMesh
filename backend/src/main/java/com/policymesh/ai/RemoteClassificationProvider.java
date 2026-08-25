@@ -21,8 +21,12 @@ public class RemoteClassificationProvider implements ClassificationProvider {
 
   public RemoteClassificationProvider(@Value("${policymesh.ai.service-url:http://localhost:8000}") String serviceUrl,
                                       LocalClassificationProvider fallback) {
+    String normalizedUrl = (serviceUrl != null && !serviceUrl.isBlank()) ? serviceUrl.trim() : "http://localhost:8000";
+    if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+      normalizedUrl = "http://" + normalizedUrl;
+    }
     this.client = RestClient.builder()
-        .baseUrl(serviceUrl)
+        .baseUrl(normalizedUrl)
         .requestFactory(factoryWithTimeouts())
         .build();
     this.fallback = fallback;
