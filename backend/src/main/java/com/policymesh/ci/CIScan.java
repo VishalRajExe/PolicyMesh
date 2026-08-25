@@ -16,44 +16,57 @@ public class CIScan {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-  @Column(nullable = false)
+  @Column(name = "commit_hash", nullable = false)
   private String commitHash;
   @Column(nullable = false)
   private String branch;
   @Column(nullable = false)
   private String status;
-  @Column(nullable = false)
+  @Column(name = "violation_count", nullable = false)
   private int violationCount;
-  @Column(nullable = false)
+  @Column(name = "started_at", nullable = false)
   private Instant startedAt = Instant.now();
+  @Column(name = "completed_at")
   private Instant completedAt;
 
+  @Column(name = "commit_message")
   private String commitMessage;
   private String author;
+  @Column(name = "parent_sha")
   private String parentSha;
 
+  @Column(name = "flows_checked")
   private int flowsChecked;
+  @Column(name = "passed_flows")
   private int passedFlows;
+  @Column(name = "failed_flows")
   private int failedFlows;
 
-  @Column(columnDefinition = "text")
+  @Column(name = "violations_json", columnDefinition = "text")
   private String violationsJson = "[]";
 
-  @Column(columnDefinition = "text")
+  @Column(name = "changed_files_json", columnDefinition = "text")
   private String changedFilesJson = "[]";
 
+  @Column(name = "github_overall_status")
   private String githubOverallStatus;
+  @Column(name = "github_total_checks")
   private int githubTotalChecks;
+  @Column(name = "github_passed_checks")
   private int githubPassedChecks;
+  @Column(name = "github_failed_checks")
   private int githubFailedChecks;
+  @Column(name = "github_skipped_checks")
   private int githubSkippedChecks;
+  @Column(name = "github_pending_checks")
   private int githubPendingChecks;
+  @Column(name = "merge_allowed")
   private Boolean mergeAllowed;
 
-  @Column(columnDefinition = "mediumtext")
+  @Column(name = "github_checks_json", columnDefinition = "mediumtext")
   private String githubChecksJson = "{}";
 
-  @Column(columnDefinition = "text")
+  @Column(name = "final_decision_json", columnDefinition = "text")
   private String finalDecisionJson = "{}";
 
   public Long getId() { return id; }

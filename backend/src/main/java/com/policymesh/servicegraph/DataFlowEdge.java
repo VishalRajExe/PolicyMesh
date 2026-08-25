@@ -5,16 +5,16 @@ import java.time.Instant;
 import java.util.*;
 
 @Entity
-@Table(name = "data_flow_edges", uniqueConstraints = @UniqueConstraint(columnNames = {"sourceServiceId", "destinationServiceId"}))
+@Table(name = "data_flow_edges", uniqueConstraints = @UniqueConstraint(columnNames = {"source_service_id", "destination_service_id"}))
 public class DataFlowEdge {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false)
+  @Column(name = "source_service_id", nullable = false)
   private Long sourceServiceId;
 
-  @Column(nullable = false)
+  @Column(name = "destination_service_id", nullable = false)
   private Long destinationServiceId;
 
   @ElementCollection(fetch = FetchType.EAGER)
@@ -22,10 +22,10 @@ public class DataFlowEdge {
   @Column(name = "data_class")
   private Set<String> dataClasses = new TreeSet<>();
 
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
-  @Column(nullable = false)
+  @Column(name = "updated_at", nullable = false)
   private Instant updatedAt = Instant.now();
 
   @PreUpdate

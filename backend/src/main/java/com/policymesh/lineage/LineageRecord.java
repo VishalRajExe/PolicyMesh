@@ -21,30 +21,31 @@ public class LineageRecord {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-  @Column(nullable = false, unique = true)
+  @Column(name = "decision_id", nullable = false, unique = true)
   private Long decisionId;
-  @Column(nullable = false)
+  @Column(name = "source_service", nullable = false)
   private String sourceService;
-  @Column(nullable = false)
+  @Column(name = "destination_service", nullable = false)
   private String destinationService;
-  @Column(nullable = false)
+  @Column(name = "source_region", nullable = false)
   private String sourceRegion;
-  @Column(nullable = false)
+  @Column(name = "destination_region", nullable = false)
   private String destinationRegion;
-  @Column(nullable = false)
+  @Column(name = "data_class", nullable = false)
   private String dataClass;
   @Column(nullable = false)
   private String decision;
   @Column(nullable = false)
   private String reason;
+  @Column(name = "policy_id")
   private String policyId;
-  @Column(length = 128)
+  @Column(name = "previous_hash", length = 128)
   private String previousHash;
-  @Column(nullable = false, length = 128)
+  @Column(name = "current_hash", nullable = false, length = 128)
   private String currentHash;
   @Column(length = 512)
   private String signature;
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
 
   public Long getId() { return id; }

@@ -22,13 +22,14 @@ public class ServiceNode {
   private String name;
   @Column(nullable = false)
   private String region;
+  @Column(name = "mesh_zone")
   private String meshZone;
   @Column(nullable = false)
   private String environment;
   private String description;
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
-  @Column(nullable = false)
+  @Column(name = "updated_at", nullable = false)
   private Instant updatedAt = Instant.now();
 
   @PreUpdate

@@ -16,9 +16,9 @@ public class AIClassification {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-  @Column(nullable = false)
+  @Column(name = "field_name", nullable = false)
   private String fieldName;
-  @Column(length = 2000)
+  @Column(name = "sample_value", length = 2000)
   private String sampleValue;
   @Column(nullable = false)
   private String classification;
@@ -28,8 +28,9 @@ public class AIClassification {
   private String status = "PENDING";
   @Column(nullable = false)
   private String provider;
+  @Column(name = "reviewed_by")
   private String reviewedBy;
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
   public Long getId() { return id; }

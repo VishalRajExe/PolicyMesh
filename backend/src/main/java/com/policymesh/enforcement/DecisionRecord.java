@@ -12,27 +12,28 @@ import java.time.Instant;
 
 /** Persisted audit trail of every runtime compliance decision; 1:1 with a LineageRecord. */
 @Entity
-@Table(name = "decisions", indexes = @Index(name = "idx_decision_created", columnList = "createdAt"))
+@Table(name = "decisions", indexes = @Index(name = "idx_decision_created", columnList = "created_at"))
 public class DecisionRecord {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-  @Column(nullable = false)
+  @Column(name = "source_service", nullable = false)
   private String sourceService;
-  @Column(nullable = false)
+  @Column(name = "destination_service", nullable = false)
   private String destinationService;
-  @Column(nullable = false)
+  @Column(name = "source_region", nullable = false)
   private String sourceRegion;
-  @Column(nullable = false)
+  @Column(name = "destination_region", nullable = false)
   private String destinationRegion;
-  @Column(nullable = false)
+  @Column(name = "data_class", nullable = false)
   private String dataClass;
   @Column(nullable = false)
   private String decision;
+  @Column(name = "policy_id")
   private String policyId;
   @Column(nullable = false)
   private String reason;
-  @Column(nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
   public Long getId() { return id; }
