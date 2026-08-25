@@ -5,6 +5,9 @@ export const githubApi = {
   getConnectUrl: () =>
     apiClient.get("/github/connect").then((r) => r.data),
 
+  connect: () =>
+    apiClient.get("/github/connect").then((r) => r.data),
+
   getAccount: () =>
     apiClient.get("/github/account").then((r) => r.data),
 

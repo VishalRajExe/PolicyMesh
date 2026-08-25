@@ -300,42 +300,71 @@ export default function GitHubScans() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div className="space-y-2 max-w-xl">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-brand)]">
-                    <GitBranch size={18} />
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-brand)]">
+                      <GitBranch size={18} />
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--color-text)]">
+                      Connect GitHub Account
+                    </h3>
                   </div>
-                  <h3 className="text-base font-bold text-[var(--color-text)]">
-                    Connect GitHub Account
-                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                    Authorize PolicyMesh to discover your repositories and automatically evaluate git push events against active data residency policies.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-[var(--color-text-faint)]">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck size={13} className="text-emerald-500" /> Read-only access
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck size={13} className="text-emerald-500" /> AES-256 encrypted at rest
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck size={13} className="text-emerald-500" /> Zero manual webhook setup
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                  Authorize PolicyMesh to discover your repositories and automatically evaluate git push events against active data residency policies.
-                </p>
-                <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-[var(--color-text-faint)]">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-emerald-500" /> Read-only access
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-emerald-500" /> AES-256 encrypted at rest
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-emerald-500" /> Zero manual webhook setup
-                  </span>
+
+                <div className="shrink-0">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleConnectGitHub}
+                    icon={GitBranch}
+                  >
+                    Connect with GitHub
+                  </Button>
                 </div>
               </div>
 
-              <div className="shrink-0">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleConnectGitHub}
-                  icon={GitBranch}
-                >
-                  Connect with GitHub
-                </Button>
-              </div>
+              {githubAccount?.oauthConfigured === false && (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <AlertCircle size={15} className="shrink-0 text-amber-400" />
+                    <span>OAuth App Credentials Setup Required</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                    To enable 1-click GitHub authorization, register an OAuth App in GitHub Developer Settings and configure the client credentials in your environment:
+                  </p>
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-amber-500/20 font-mono text-[10px] text-amber-100 space-y-1">
+                    <div>GITHUB_CLIENT_ID=&lt;your_github_client_id&gt;</div>
+                    <div>GITHUB_CLIENT_SECRET=&lt;your_github_client_secret&gt;</div>
+                    <div>GITHUB_REDIRECT_URI=https://policymesh-komp.onrender.com/api/v1/github/callback</div>
+                  </div>
+                  <div className="pt-1">
+                    <a
+                      href="https://github.com/settings/applications/new"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 hover:underline"
+                    >
+                      Create GitHub OAuth App <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

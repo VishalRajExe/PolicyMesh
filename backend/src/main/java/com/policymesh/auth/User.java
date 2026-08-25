@@ -35,7 +35,7 @@ public class User {
   @Column(nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
-  @Column(nullable = false)
+  @Column(name = "updated_at", columnDefinition = "DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)")
   private Instant updatedAt = Instant.now();
 
   @jakarta.persistence.PrePersist
