@@ -50,14 +50,18 @@ public class SecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain security(HttpSecurity http, JwtAuthenticationFilter filter) throws Exception {
+  SecurityFilterChain security(HttpSecurity http, JwtAuthenticationFilter filter, com.policymesh.common.RateLimitingFilter rateLimitingFilter) throws Exception {
     return http
         .csrf(c -> c.disable())
         .cors(c -> {}) // picks up the corsConfigurationSource bean by name
-        .headers(h -> h
-            .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
-            .frameOptions(f -> f.deny())
-            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'")))
+        .headers(h -> {
+          h.contentTypeOptions(org.springframework.security.config.Customizer.withDefaults());
+          h.frameOptions(f -> f.deny());
+          h.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000));
+          h.referrerPolicy(rp -> rp.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+          h.permissionsPolicy(pp -> pp.policy("camera=(), microphone=(), geolocation=()"));
+          h.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"));
+        })
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(e -> e
             .authenticationEntryPoint((req, res, ex) -> problem(res, HttpStatus.UNAUTHORIZED, "Authentication required: provide a valid bearer token", req))
@@ -66,31 +70,32 @@ public class SecurityConfig {
             .requestMatchers(org.springframework.http.HttpMethod.GET, "/health", "/").permitAll()
             .requestMatchers("/api/v1/auth/**", "/health", "/", "/actuator/**", "/api/webhooks/**", "/api/v1/webhooks/**", "/api/v1/github/callback").permitAll()
             .requestMatchers("/api/v1/users/roles").authenticated()
-            .requestMatchers("GET", "/api/v1/users/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
-            .requestMatchers("POST", "/api/v1/users/**").hasRole("ADMIN")
-            .requestMatchers("PUT", "/api/v1/users/**").hasRole("ADMIN")
-            .requestMatchers("DELETE", "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/users/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/users/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
             .requestMatchers("/api/v1/reports/**").authenticated()
             .requestMatchers("/api/v1/github/**").authenticated()
             .requestMatchers("/api/v1/settings/**").authenticated()
-            .requestMatchers("POST", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
-            .requestMatchers("PUT", "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
-            .requestMatchers("DELETE", "/api/v1/policies/**").hasRole("ADMIN")
-            .requestMatchers("POST", "/api/v1/services").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("PUT", "/api/v1/services/**").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("DELETE", "/api/v1/services/**").hasRole("ADMIN")
-            .requestMatchers("POST", "/api/v1/edges").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("PUT", "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("DELETE", "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/enforce/check").hasAnyRole("ADMIN", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/ci/check").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/policies/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
+            .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/policies/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/services").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/services/**").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/services/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/edges").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/edges/**").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/v1/edges/**").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/enforce/check").hasAnyRole("ADMIN", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/ci/check").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
             .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/ai/**").authenticated()
-            .requestMatchers("POST", "/api/v1/ai/classify", "/api/v1/ai/classifications").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/ai/classify/*/approve", "/api/v1/ai/classify/*/reject",
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/ai/classify", "/api/v1/ai/classifications").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/ai/classify/*/approve", "/api/v1/ai/classify/*/reject",
                              "/api/v1/ai/classifications/*/approve", "/api/v1/ai/classifications/*/reject").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER")
-            .requestMatchers("POST", "/api/v1/compiler/compile").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
-            .requestMatchers("POST", "/api/v1/dev/seed").hasRole("ADMIN")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/compiler/compile").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "ENGINEER")
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/dev/seed").hasRole("ADMIN")
             .anyRequest().authenticated())
+        .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
         .build();
   }
