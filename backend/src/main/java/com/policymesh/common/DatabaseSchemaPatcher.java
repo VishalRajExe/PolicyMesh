@@ -210,5 +210,8 @@ public class DatabaseSchemaPatcher {
     executeSql("ALTER TABLE users ADD COLUMN name VARCHAR(255) NULL", "users.name");
     executeSql("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'", "users.status");
     executeSql("ALTER TABLE users MODIFY COLUMN role VARCHAR(64) NOT NULL DEFAULT 'ENGINEER'", "users.role");
+
+    executeSql("ALTER TABLE policies ADD COLUMN allowed_regions TEXT NULL", "policies.allowed_regions");
+    executeSql("ALTER TABLE policies ADD COLUMN denied_regions TEXT NULL", "policies.denied_regions");
   }
 }

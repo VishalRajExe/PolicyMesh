@@ -23,14 +23,12 @@ public class Policy {
   @Column(name = "data_class", nullable = false)
   private String dataClass;
 
-  @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(name = "policy_allowed_regions", joinColumns = @JoinColumn(name = "policy_id"))
-  @Column(name = "region")
+  @Convert(converter = com.policymesh.common.StringSetConverter.class)
+  @Column(name = "allowed_regions", columnDefinition = "TEXT")
   private Set<String> allowedRegions = new TreeSet<>();
 
-  @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(name = "policy_denied_regions", joinColumns = @JoinColumn(name = "policy_id"))
-  @Column(name = "region")
+  @Convert(converter = com.policymesh.common.StringSetConverter.class)
+  @Column(name = "denied_regions", columnDefinition = "TEXT")
   private Set<String> deniedRegions = new TreeSet<>();
 
   @Enumerated(EnumType.STRING)
