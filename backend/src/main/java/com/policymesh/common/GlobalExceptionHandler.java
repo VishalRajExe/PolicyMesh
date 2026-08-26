@@ -72,15 +72,31 @@ public class GlobalExceptionHandler {
     return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported-media-type", "Unsupported Media Type", ex.getMessage(), req, null);
   }
 
+  @ExceptionHandler(org.yaml.snakeyaml.error.YAMLException.class)
+  public ProblemDetail yaml(org.yaml.snakeyaml.error.YAMLException ex, HttpServletRequest req) {
+    String msg = ex.getMessage();
+    String safeDetail = (msg != null && msg.contains("\n")) ? msg.split("\n")[0] : (msg != null ? msg : "Invalid YAML syntax");
+    return problem(HttpStatus.BAD_REQUEST, "malformed-yaml", "Invalid YAML Syntax", safeDetail, req, null);
+  }
+
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ProblemDetail integrity(DataIntegrityViolationException ex, HttpServletRequest req) {
-    return problem(HttpStatus.CONFLICT, "conflict", "Conflict", "The request conflicts with existing data", req, null);
+    return problem(HttpStatus.CONFLICT, "conflict", "Conflict", "The request conflicts with existing data or unique constraints", req, null);
+  }
+
+  @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+  public ProblemDetail database(org.springframework.dao.DataAccessException ex, HttpServletRequest req) {
+    log.error("Database access exception on {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
+    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "database-error", "Database Error", "Policy could not be saved. Please try again.", req, null);
   }
 
   @ExceptionHandler(Exception.class)
   public ProblemDetail unknown(Exception ex, HttpServletRequest req) {
-    log.error("Unhandled exception on {} {}", req.getMethod(), req.getRequestURI(), ex);
-    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal", "Internal Server Error", "An unexpected server error occurred", req, null);
+    log.error("Unhandled exception on {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage(), ex);
+    String detail = (ex.getMessage() != null && !ex.getMessage().isBlank() && !ex.getMessage().contains("Password") && !ex.getMessage().contains("jdbc:"))
+        ? ex.getMessage()
+        : "An unexpected server error occurred";
+    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal", "Internal Server Error", detail, req, null);
   }
 
   static ProblemDetail problem(HttpStatus status, String type, String title, String detail, HttpServletRequest req, Map<String, Object> properties) {
