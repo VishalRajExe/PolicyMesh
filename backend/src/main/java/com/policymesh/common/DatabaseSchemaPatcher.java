@@ -86,38 +86,20 @@ public class DatabaseSchemaPatcher {
         log.debug("Policies table note: {}", e.getMessage());
       }
 
-      // 6b. Ensure policy_allowed_regions table exists
+      // 6b. Ensure policy_allowed_regions table exists (no named FK to avoid conflicts)
       try {
-        stmt.execute("""
-            CREATE TABLE IF NOT EXISTS policy_allowed_regions (
-                policy_id       BIGINT              NOT NULL,
-                region          VARCHAR(100)        NOT NULL,
-                KEY idx_par_policy_id (policy_id),
-                CONSTRAINT fk_par_policy_id FOREIGN KEY (policy_id)
-                    REFERENCES policies (id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """);
-        log.info("Ensured 'policy_allowed_regions' table exists.");
+        stmt.execute("CREATE TABLE IF NOT EXISTS policy_allowed_regions (policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        log.warn("[SchemaPatcher] policy_allowed_regions: CREATE TABLE IF NOT EXISTS completed.");
       } catch (Exception e) {
-        // Table may already exist with different constraint name - that's fine
-        log.debug("policy_allowed_regions table note: {}", e.getMessage());
+        log.warn("[SchemaPatcher] policy_allowed_regions note: {}", e.getMessage());
       }
 
-      // 6c. Ensure policy_denied_regions table exists
+      // 6c. Ensure policy_denied_regions table exists (no named FK to avoid conflicts)
       try {
-        stmt.execute("""
-            CREATE TABLE IF NOT EXISTS policy_denied_regions (
-                policy_id       BIGINT              NOT NULL,
-                region          VARCHAR(100)        NOT NULL,
-                KEY idx_pdr_policy_id (policy_id),
-                CONSTRAINT fk_pdr_policy_id FOREIGN KEY (policy_id)
-                    REFERENCES policies (id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """);
-        log.info("Ensured 'policy_denied_regions' table exists.");
+        stmt.execute("CREATE TABLE IF NOT EXISTS policy_denied_regions (policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        log.warn("[SchemaPatcher] policy_denied_regions: CREATE TABLE IF NOT EXISTS completed.");
       } catch (Exception e) {
-        // Table may already exist with different constraint name - that's fine
-        log.debug("policy_denied_regions table note: {}", e.getMessage());
+        log.warn("[SchemaPatcher] policy_denied_regions note: {}", e.getMessage());
       }
     } catch (Exception e) {
       log.warn("Database schema patcher encountered an issue (can be ignored on in-memory DBs): {}", e.getMessage());
