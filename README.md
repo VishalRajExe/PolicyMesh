@@ -18,7 +18,7 @@
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
   <p align="center">
-    <a href="https://policymesh.vercel.app"><b>🌐 Live Web App</b></a> •
+    <a href="https://policy-mesh.vercel.app"><b>🌐 Live Web App</b></a> •
     <a href="https://policymesh-komp.onrender.com/health"><b>⚡ Public Health Endpoint</b></a> •
     <a href="#-rest-api-reference"><b>📡 API Reference</b></a> •
     <a href="#-quick-start-guide"><b>🚀 Quick Start</b></a>
@@ -423,7 +423,7 @@ PolicyMesh is configured for continuous production deployment:
 
 | Service | Host | Config File | Live URL |
 |---|---|---|---|
-| **Frontend** | Vercel | [`vercel.json`](vercel.json) | [https://policymesh.vercel.app](https://policymesh.vercel.app) |
+| **Frontend** | Vercel | [`vercel.json`](vercel.json) | [https://policy-mesh.vercel.app](https://policy-mesh.vercel.app) |
 | **Backend** | Render | [`render.yaml`](render.yaml) / Dockerfile | [https://policymesh-komp.onrender.com](https://policymesh-komp.onrender.com) |
 | **AI Service** | Render | [`render.yaml`](render.yaml) / Dockerfile | [https://policymesh-ai.onrender.com](https://policymesh-ai.onrender.com) |
 | **Database** | Aiven | Managed Cloud | MySQL 8.0 Cloud Instance |

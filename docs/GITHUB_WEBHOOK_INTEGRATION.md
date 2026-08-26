@@ -39,7 +39,7 @@ This guide describes how to configure the automated GitHub Webhook integration f
 1. In GitHub, go to **Settings** $\rightarrow$ **Developer settings** $\rightarrow$ **OAuth Apps** $\rightarrow$ **New OAuth App**.
 2. Fill in:
    - **Application name**: `PolicyMesh Compliance Guard`
-   - **Homepage URL**: `https://policymesh.vercel.app` (or `http://localhost:5173` for local dev)
+   - **Homepage URL**: `https://policy-mesh.vercel.app` (or `http://localhost:5173` for local dev)
    - **Authorization callback URL**: `https://<your-render-backend-url>.onrender.com/api/v1/github/callback` (or `http://localhost:8080/api/v1/github/callback` locally)
 3. Click **Register application**.
 4. Generate a **Client secret**.

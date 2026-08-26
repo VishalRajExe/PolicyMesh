@@ -9,7 +9,7 @@ This guide details the complete production deployment for PolicyMesh across **Ve
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Vercel (React + Vite)                    │
-│             https://policymesh.vercel.app                   │
+│             https://policy-mesh.vercel.app                  │
 └──────────────────────────────┬──────────────────────────────┘
                                │ HTTPS REST API
                                ▼
@@ -130,7 +130,7 @@ This guide details the complete production deployment for PolicyMesh across **Ve
 5. Configure Environment Variables:
    - `VITE_API_BASE_URL`: `https://policymesh-backend.onrender.com/api/v1` (Replace with your actual Render backend URL)
 6. Click **Deploy**.
-7. Once deployed, note your production Vercel URL (e.g. `https://policymesh.vercel.app`).
+7. Once deployed, note your production Vercel URL (e.g. `https://policy-mesh.vercel.app`).
 
 ---
 
