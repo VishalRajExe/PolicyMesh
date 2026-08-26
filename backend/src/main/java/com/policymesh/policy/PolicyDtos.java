@@ -42,8 +42,9 @@ public final class PolicyDtos {
                          int version, Instant createdAt, Instant updatedAt) {}
 
   public static Response from(Policy p) {
+    Set<String> allowed = p.getAllowedRegions() != null ? Set.copyOf(p.getAllowedRegions()) : Set.of();
+    Set<String> denied = p.getDeniedRegions() != null ? Set.copyOf(p.getDeniedRegions()) : Set.of();
     return new Response(p.getId(), p.getPolicyCode(), p.getName(), p.getJurisdiction(), p.getDataClass(),
-        Set.copyOf(p.getAllowedRegions()), Set.copyOf(p.getDeniedRegions()), p.getStatus(),
-        p.getVersion(), p.getCreatedAt(), p.getUpdatedAt());
+        allowed, denied, p.getStatus(), p.getVersion(), p.getCreatedAt(), p.getUpdatedAt());
   }
 }

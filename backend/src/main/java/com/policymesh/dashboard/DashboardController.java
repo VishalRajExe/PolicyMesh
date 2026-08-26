@@ -41,7 +41,7 @@ public class DashboardController {
     long allowed = decisions.countByDecision("ALLOW");
     long blocked = decisions.countByDecision("DENY");
     long total = allowed + blocked;
-    double score = total == 0 ? (violations == 0 ? 100.0 : 0.0) : Math.round(allowed * 1000.0 / total) / 10.0;
+    double score = total == 0 ? 0.0 : Math.round(allowed * 1000.0 / total) / 10.0;
     Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
     return new Summary(score, policies.count(), services.count(), allowed, blocked, violations,
         decisions.countByCreatedAtAfter(startOfDay), lineage.verify().valid());

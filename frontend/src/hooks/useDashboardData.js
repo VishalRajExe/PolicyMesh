@@ -3,7 +3,7 @@ import { dashboardApi, auditApi } from "../api";
 
 // Real empty baseline for newly registered users before data flows are registered.
 const FALLBACK_SUMMARY = {
-  complianceScore: 100,
+  complianceScore: 0,
   totalPolicies: 0,
   totalServices: 0,
   allowedTransfers: 0,

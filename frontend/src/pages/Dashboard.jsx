@@ -46,9 +46,9 @@ function relativeTime(ts) {
 }
 
 function formatComplianceScore(score) {
-  if (score == null) return "100%";
+  if (score == null) return "0%";
   const num = typeof score === "number" ? score : parseFloat(score);
-  if (isNaN(num)) return "100%";
+  if (isNaN(num)) return "0%";
   const pct = num <= 1 ? num * 100 : num;
   return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
 }
@@ -241,7 +241,76 @@ export default function Dashboard() {
   const activePoliciesCount = policies.length > 0 ? policies.filter((p) => p.status === "ACTIVE").length : (summary?.activePolicies || 0);
   const flowsCheckedCount = decisions.length > 0 ? decisions.length : ((summary?.allowedTransfers || 0) + (summary?.blockedTransfers || 0));
   const blockedFlowsCount = decisions.length > 0 ? decisions.filter((d) => d.decision === "DENY").length : (summary?.blockedTransfers || 0);
-  const complianceScore = flowsCheckedCount === 0 ? "100%" : `${Math.round(((flowsCheckedCount - blockedFlowsCount) / flowsCheckedCount) * 100)}%`;
+  const complianceScore = flowsCheckedCount === 0 ? "0%" : `${Math.round(((flowsCheckedCount - blockedFlowsCount) / flowsCheckedCount) * 100)}%`;
+
+  const now = Date.now();
+  const sevenDaysMs = 7 * 86400 * 1000;
+  const fourteenDaysMs = 14 * 86400 * 1000;
+
+  function calculateTrend(items, filterFn = () => true) {
+    if (!items || items.length === 0) {
+      return { delta: "No previous data", trend: "neutral", subtitle: "" };
+    }
+    const filtered = items.filter(filterFn);
+    if (filtered.length === 0) {
+      return { delta: "No activity yet", trend: "neutral", subtitle: "" };
+    }
+
+    const currentWeekCount = filtered.filter((item) => {
+      if (!item.createdAt) return false;
+      const t = new Date(item.createdAt).getTime();
+      return t >= now - sevenDaysMs;
+    }).length;
+
+    const previousWeekCount = filtered.filter((item) => {
+      if (!item.createdAt) return false;
+      const t = new Date(item.createdAt).getTime();
+      return t >= now - fourteenDaysMs && t < now - sevenDaysMs;
+    }).length;
+
+    if (previousWeekCount === 0 && currentWeekCount === 0) {
+      return { delta: "No previous data", trend: "neutral", subtitle: "" };
+    }
+    if (previousWeekCount === 0) {
+      return { delta: `+${currentWeekCount}`, trend: "neutral", subtitle: "this week" };
+    }
+
+    const pct = Math.round(((currentWeekCount - previousWeekCount) / previousWeekCount) * 100);
+    if (pct > 0) {
+      return { delta: `↑ ${pct}%`, trend: "up", subtitle: "from last week" };
+    } else if (pct < 0) {
+      return { delta: `↓ ${Math.abs(pct)}%`, trend: "down", subtitle: "from last week" };
+    }
+    return { delta: "0%", trend: "neutral", subtitle: "vs last week" };
+  }
+
+  function calculateComplianceTrend() {
+    if (flowsCheckedCount === 0 || decisions.length === 0) {
+      return { delta: "No previous data", trend: "neutral", subtitle: "" };
+    }
+    const currentWeekDecisions = decisions.filter((d) => d.createdAt && new Date(d.createdAt).getTime() >= now - sevenDaysMs);
+    const previousWeekDecisions = decisions.filter((d) => d.createdAt && new Date(d.createdAt).getTime() >= now - fourteenDaysMs && new Date(d.createdAt).getTime() < now - sevenDaysMs);
+
+    if (previousWeekDecisions.length === 0) {
+      return { delta: "No previous data", trend: "neutral", subtitle: "" };
+    }
+
+    const prevBlocked = previousWeekDecisions.filter((d) => d.decision === "DENY").length;
+    const prevScore = Math.round(((previousWeekDecisions.length - prevBlocked) / previousWeekDecisions.length) * 100);
+    const currBlocked = currentWeekDecisions.filter((d) => d.decision === "DENY").length;
+    const currScore = currentWeekDecisions.length > 0 ? Math.round(((currentWeekDecisions.length - currBlocked) / currentWeekDecisions.length) * 100) : 0;
+    const diff = currScore - prevScore;
+
+    if (diff > 0) return { delta: `↑ ${diff}%`, trend: "up", subtitle: "from last week" };
+    if (diff < 0) return { delta: `↓ ${Math.abs(diff)}%`, trend: "down", subtitle: "from last week" };
+    return { delta: "0%", trend: "neutral", subtitle: "vs last week" };
+  }
+
+  const totalPoliciesTrend = calculateTrend(policies);
+  const activePoliciesTrend = calculateTrend(policies, (p) => p.status === "ACTIVE");
+  const flowsCheckedTrend = calculateTrend(decisions);
+  const blockedFlowsTrend = calculateTrend(decisions, (d) => d.decision === "DENY");
+  const complianceTrend = calculateComplianceTrend();
 
   const roleName = user?.role ? toTitleCase(user.role) : "Compliance Officer";
 
@@ -278,40 +347,45 @@ export default function Dashboard() {
             color="purple"
             label="Total Policies"
             value={totalPoliciesCount}
-            delta="↑ 12%"
-            trend="up"
+            delta={totalPoliciesTrend.delta}
+            trend={totalPoliciesTrend.trend}
+            subtitle={totalPoliciesTrend.subtitle}
           />
           <StatCard
             icon={ShieldCheck}
             color="blue"
             label="Active Policies"
             value={activePoliciesCount}
-            delta="↑ 8%"
-            trend="up"
+            delta={activePoliciesTrend.delta}
+            trend={activePoliciesTrend.trend}
+            subtitle={activePoliciesTrend.subtitle}
           />
           <StatCard
             icon={GitBranch}
             color="green"
             label="Data Flows Checked"
             value={flowsCheckedCount.toLocaleString()}
-            delta="↑ 18%"
-            trend="up"
+            delta={flowsCheckedTrend.delta}
+            trend={flowsCheckedTrend.trend}
+            subtitle={flowsCheckedTrend.subtitle}
           />
           <StatCard
             icon={ShieldAlert}
             color="red"
             label="Blocked Flows"
             value={blockedFlowsCount}
-            delta="↓ 5%"
-            trend="down"
+            delta={blockedFlowsTrend.delta}
+            trend={blockedFlowsTrend.trend}
+            subtitle={blockedFlowsTrend.subtitle}
           />
           <StatCard
             icon={CheckCircle2}
             color="amber"
             label="Compliance Score"
             value={complianceScore}
-            delta="↑ 6%"
-            trend="up"
+            delta={complianceTrend.delta}
+            trend={complianceTrend.trend}
+            subtitle={complianceTrend.subtitle}
           />
         </div>
 

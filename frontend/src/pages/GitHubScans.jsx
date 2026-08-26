@@ -395,13 +395,13 @@ export default function GitHubScans() {
                 </select>
 
                 <div className="w-48 sm:w-60 relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)]" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] pointer-events-none" />
                   <input
                     type="text"
                     value={repoSearch}
                     onChange={(e) => setRepoSearch(e.target.value)}
                     placeholder="Search repositories..."
-                    className="field-input pl-8 text-xs py-1.5"
+                    className="field-input field-input-search !pl-9 text-xs py-1.5"
                   />
                 </div>
               </div>

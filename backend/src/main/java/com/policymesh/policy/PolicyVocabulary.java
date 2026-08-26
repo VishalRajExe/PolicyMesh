@@ -35,7 +35,11 @@ public final class PolicyVocabulary {
   public static String canonicalDataClass(String dataClass) {
     if (dataClass == null) return "";
     String upper = dataClass.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
-    return "NONSENSITIVE".equals(upper) ? "NON_SENSITIVE" : upper;
+    if ("NONSENSITIVE".equals(upper) || "GENERAL".equals(upper)) return "NON_SENSITIVE";
+    if ("HEALTH".equals(upper) || "HEALTHCARE".equals(upper) || "MEDICAL".equals(upper)) return "PHI";
+    if ("PAYMENT".equals(upper) || "PAYMENTS".equals(upper) || "FINANCIAL".equals(upper) || "CARD".equals(upper)) return "PCI";
+    if ("PERSONAL".equals(upper) || "IDENTITY".equals(upper)) return "PII";
+    return upper;
   }
 
   public static boolean isKnownDataClass(String dataClass) {
