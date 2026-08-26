@@ -62,6 +62,44 @@ public class DatabaseSchemaPatcher {
       } catch (Exception e) {
         log.debug("Role column modify skipped: {}", e.getMessage());
       }
+
+      // 6. Ensure policies and region tables exist
+      try {
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS policies (
+                id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+                policy_code     VARCHAR(100)        NOT NULL UNIQUE,
+                name            VARCHAR(255)        NOT NULL,
+                jurisdiction    VARCHAR(100)        NOT NULL,
+                data_class      VARCHAR(100)        NOT NULL,
+                status          VARCHAR(50)         NOT NULL DEFAULT 'DRAFT',
+                version         INT                 NOT NULL DEFAULT 1,
+                created_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+                updated_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+                INDEX idx_policies_policy_code (policy_code),
+                INDEX idx_policies_jurisdiction (jurisdiction),
+                INDEX idx_policy_data_class (data_class)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """);
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS policy_allowed_regions (
+                policy_id       BIGINT              NOT NULL,
+                region          VARCHAR(100)        NOT NULL,
+                INDEX idx_policy_allowed_regions (policy_id),
+                CONSTRAINT fk_allowed_policy FOREIGN KEY (policy_id) REFERENCES policies (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """);
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS policy_denied_regions (
+                policy_id       BIGINT              NOT NULL,
+                region          VARCHAR(100)        NOT NULL,
+                INDEX idx_policy_denied_regions (policy_id),
+                CONSTRAINT fk_denied_policy FOREIGN KEY (policy_id) REFERENCES policies (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """);
+      } catch (Exception e) {
+        log.debug("Policy tables initialization note: {}", e.getMessage());
+      }
     } catch (Exception e) {
       log.warn("Database schema patcher encountered an issue (can be ignored on in-memory DBs): {}", e.getMessage());
     }
