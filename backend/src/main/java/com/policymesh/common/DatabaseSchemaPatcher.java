@@ -63,7 +63,7 @@ public class DatabaseSchemaPatcher {
         log.debug("Role column modify skipped: {}", e.getMessage());
       }
 
-      // 6. Ensure policies and region tables exist
+      // 6a. Ensure policies table exists (Hibernate update may miss this)
       try {
         stmt.execute("""
             CREATE TABLE IF NOT EXISTS policies (
@@ -81,24 +81,43 @@ public class DatabaseSchemaPatcher {
                 INDEX idx_policy_data_class (data_class)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """);
+        log.info("Ensured 'policies' table exists.");
+      } catch (Exception e) {
+        log.debug("Policies table note: {}", e.getMessage());
+      }
+
+      // 6b. Ensure policy_allowed_regions table exists
+      try {
         stmt.execute("""
             CREATE TABLE IF NOT EXISTS policy_allowed_regions (
                 policy_id       BIGINT              NOT NULL,
                 region          VARCHAR(100)        NOT NULL,
-                INDEX idx_policy_allowed_regions (policy_id),
-                CONSTRAINT fk_allowed_policy FOREIGN KEY (policy_id) REFERENCES policies (id) ON DELETE CASCADE
+                KEY idx_par_policy_id (policy_id),
+                CONSTRAINT fk_par_policy_id FOREIGN KEY (policy_id)
+                    REFERENCES policies (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """);
+        log.info("Ensured 'policy_allowed_regions' table exists.");
+      } catch (Exception e) {
+        // Table may already exist with different constraint name - that's fine
+        log.debug("policy_allowed_regions table note: {}", e.getMessage());
+      }
+
+      // 6c. Ensure policy_denied_regions table exists
+      try {
         stmt.execute("""
             CREATE TABLE IF NOT EXISTS policy_denied_regions (
                 policy_id       BIGINT              NOT NULL,
                 region          VARCHAR(100)        NOT NULL,
-                INDEX idx_policy_denied_regions (policy_id),
-                CONSTRAINT fk_denied_policy FOREIGN KEY (policy_id) REFERENCES policies (id) ON DELETE CASCADE
+                KEY idx_pdr_policy_id (policy_id),
+                CONSTRAINT fk_pdr_policy_id FOREIGN KEY (policy_id)
+                    REFERENCES policies (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """);
+        log.info("Ensured 'policy_denied_regions' table exists.");
       } catch (Exception e) {
-        log.debug("Policy tables initialization note: {}", e.getMessage());
+        // Table may already exist with different constraint name - that's fine
+        log.debug("policy_denied_regions table note: {}", e.getMessage());
       }
     } catch (Exception e) {
       log.warn("Database schema patcher encountered an issue (can be ignored on in-memory DBs): {}", e.getMessage());
