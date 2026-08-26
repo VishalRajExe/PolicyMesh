@@ -87,7 +87,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(org.springframework.dao.DataAccessException.class)
   public ProblemDetail database(org.springframework.dao.DataAccessException ex, HttpServletRequest req) {
     log.error("Database access exception on {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
-    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "database-error", "Database Error", "Policy could not be saved. Please try again.", req, null);
+    String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+    if (detail == null || detail.isBlank() || detail.toLowerCase().contains("password") || detail.contains("jdbc:")) {
+      detail = "Policy could not be saved. Please check database constraints and try again.";
+    }
+    return problem(HttpStatus.INTERNAL_SERVER_ERROR, "database-error", "Database Error", detail, req, null);
   }
 
   @ExceptionHandler(Exception.class)

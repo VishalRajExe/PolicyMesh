@@ -2,14 +2,9 @@ package com.policymesh.policy;
 
 import com.policymesh.common.ApiException;
 import com.policymesh.events.EventPublisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,47 +15,17 @@ import java.util.TreeSet;
 @Service
 @Transactional
 public class PolicyService {
-  private static final Logger log = LoggerFactory.getLogger(PolicyService.class);
-
   private final PolicyRepository repo;
   private final EventPublisher events;
   private final PolicyCache cache;
   private final com.policymesh.compiler.PolicyCompiler compiler;
-  private final DataSource dataSource;
-
-  /** Tracks whether we've already ensured the region tables exist in this JVM run. */
-  private volatile boolean regionTablesEnsured = false;
 
   public PolicyService(PolicyRepository repo, EventPublisher events, PolicyCache cache,
-                       com.policymesh.compiler.PolicyCompiler compiler,
-                       DataSource dataSource) {
+                       com.policymesh.compiler.PolicyCompiler compiler) {
     this.repo = repo;
     this.events = events;
     this.cache = cache;
     this.compiler = compiler;
-    this.dataSource = dataSource;
-  }
-
-  /**
-   * Ensures policy_allowed_regions and policy_denied_regions tables exist.
-   * Called before any write operation so the tables are guaranteed to exist
-   * regardless of Flyway or Hibernate startup ordering.
-   */
-  private void ensureRegionTables() {
-    if (regionTablesEnsured) return;
-    try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-      stmt.execute("CREATE TABLE IF NOT EXISTS policy_allowed_regions " +
-          "(policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) " +
-          "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-      stmt.execute("CREATE TABLE IF NOT EXISTS policy_denied_regions " +
-          "(policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) " +
-          "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-      regionTablesEnsured = true;
-      log.warn("[PolicyService] Ensured policy region tables exist.");
-    } catch (Exception e) {
-      log.warn("[PolicyService] Region table ensure note: {}", e.getMessage());
-      regionTablesEnsured = true; // don't retry on every request
-    }
   }
 
   public List<PolicyDtos.Response> all() {
@@ -72,7 +37,6 @@ public class PolicyService {
   }
 
   public PolicyDtos.Response create(PolicyDtos.Request r) {
-    ensureRegionTables();
     Normalized n = normalize(r);
     if (repo.findByPolicyCodeIgnoreCase(n.policyCode()).isPresent()) {
       throw ApiException.conflict("Policy code already exists");
@@ -85,7 +49,6 @@ public class PolicyService {
   }
 
   public PolicyDtos.Response createFromYaml(String yaml) {
-    ensureRegionTables();
     var compiled = compiler.compile(yaml);
     if (repo.findByPolicyCodeIgnoreCase(compiled.policyCode()).isPresent()) {
       throw ApiException.conflict("Policy code already exists");
@@ -104,7 +67,6 @@ public class PolicyService {
   }
 
   public java.util.List<PolicyDtos.Response> importYaml(String yaml) {
-    ensureRegionTables();
     var compiledList = compiler.compileAll(yaml);
     java.util.List<PolicyDtos.Response> results = new java.util.ArrayList<>();
     for (var compiled : compiledList) {

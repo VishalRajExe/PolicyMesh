@@ -18,91 +18,197 @@ public class DatabaseSchemaPatcher {
     this.dataSource = dataSource;
   }
 
+  private void executeSql(String sql, String description) {
+    try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+      stmt.execute(sql);
+      log.info("[SchemaPatcher] {} succeeded.", description);
+    } catch (Exception e) {
+      log.info("[SchemaPatcher] {} note: {}", description, e.getMessage());
+    }
+  }
+
   @PostConstruct
   public void patchSchema() {
-    try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-      // 1. Patch 'updated_at' column
-      try {
-        stmt.execute("ALTER TABLE users ADD COLUMN updated_at DATETIME(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)");
-        log.info("Patched 'users' table with 'updated_at' column.");
-      } catch (Exception e) {
-        log.debug("Column 'updated_at' patch skipped: {}", e.getMessage());
-      }
+    // 1. Ensure core entity tables exist with InnoDB UTF8MB4
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS users (
+            id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+            email           VARCHAR(255)        NOT NULL UNIQUE,
+            password_hash   VARCHAR(255)        NOT NULL,
+            role            VARCHAR(64)         NOT NULL DEFAULT 'ENGINEER',
+            name            VARCHAR(255)        NULL,
+            enabled         BOOLEAN             NOT NULL DEFAULT TRUE,
+            status          VARCHAR(50)         NOT NULL DEFAULT 'ACTIVE',
+            created_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            updated_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+            INDEX idx_users_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create users table");
 
-      // 2. Patch 'enabled' column with DEFAULT TRUE
-      try {
-        stmt.execute("ALTER TABLE users ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE");
-        log.info("Patched 'users' table with 'enabled' column.");
-      } catch (Exception e) {
-        try {
-          stmt.execute("ALTER TABLE users MODIFY COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE");
-        } catch (Exception ignored) {}
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS policies (
+            id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+            policy_code     VARCHAR(100)        NOT NULL UNIQUE,
+            name            VARCHAR(255)        NOT NULL,
+            jurisdiction    VARCHAR(100)        NOT NULL,
+            data_class      VARCHAR(100)        NOT NULL,
+            status          VARCHAR(50)         NOT NULL DEFAULT 'DRAFT',
+            version         INT                 NOT NULL DEFAULT 1,
+            created_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            updated_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+            INDEX idx_policies_policy_code (policy_code),
+            INDEX idx_policies_jurisdiction (jurisdiction),
+            INDEX idx_policy_data_class (data_class)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create policies table");
 
-      // 3. Patch 'name' column
-      try {
-        stmt.execute("ALTER TABLE users ADD COLUMN name VARCHAR(255) NULL");
-        log.info("Patched 'users' table with 'name' column.");
-      } catch (Exception e) {
-        log.debug("Column 'name' patch skipped: {}", e.getMessage());
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS policy_allowed_regions (
+            policy_id       BIGINT              NOT NULL,
+            region          VARCHAR(100)        NOT NULL,
+            INDEX idx_par_policy_id (policy_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create policy_allowed_regions table");
 
-      // 4. Ensure 'status' column default
-      try {
-        stmt.execute("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'");
-      } catch (Exception e) {
-        try {
-          stmt.execute("ALTER TABLE users MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'");
-        } catch (Exception ignored) {}
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS policy_denied_regions (
+            policy_id       BIGINT              NOT NULL,
+            region          VARCHAR(100)        NOT NULL,
+            INDEX idx_pdr_policy_id (policy_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create policy_denied_regions table");
 
-      // 5. Ensure 'role' column has sufficient length and default
-      try {
-        stmt.execute("ALTER TABLE users MODIFY COLUMN role VARCHAR(64) NOT NULL DEFAULT 'ENGINEER'");
-      } catch (Exception e) {
-        log.debug("Role column modify skipped: {}", e.getMessage());
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS service_nodes (
+            id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+            name            VARCHAR(255)        NOT NULL UNIQUE,
+            region          VARCHAR(100)        NOT NULL,
+            mesh_zone       VARCHAR(100),
+            environment     VARCHAR(50)         NOT NULL DEFAULT 'production',
+            description     VARCHAR(1000),
+            created_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            updated_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+            INDEX idx_service_nodes_region (region)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create service_nodes table");
 
-      // 6a. Ensure policies table exists (Hibernate update may miss this)
-      try {
-        stmt.execute("""
-            CREATE TABLE IF NOT EXISTS policies (
-                id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-                policy_code     VARCHAR(100)        NOT NULL UNIQUE,
-                name            VARCHAR(255)        NOT NULL,
-                jurisdiction    VARCHAR(100)        NOT NULL,
-                data_class      VARCHAR(100)        NOT NULL,
-                status          VARCHAR(50)         NOT NULL DEFAULT 'DRAFT',
-                version         INT                 NOT NULL DEFAULT 1,
-                created_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-                updated_at      DATETIME(6)         NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-                INDEX idx_policies_policy_code (policy_code),
-                INDEX idx_policies_jurisdiction (jurisdiction),
-                INDEX idx_policy_data_class (data_class)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """);
-        log.info("Ensured 'policies' table exists.");
-      } catch (Exception e) {
-        log.debug("Policies table note: {}", e.getMessage());
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS data_flow_edges (
+            id                       BIGINT AUTO_INCREMENT PRIMARY KEY,
+            source_service_id        BIGINT NOT NULL,
+            destination_service_id   BIGINT NOT NULL,
+            created_at                DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            updated_at                DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+            INDEX idx_edges_source (source_service_id),
+            INDEX idx_edges_dest (destination_service_id),
+            UNIQUE KEY uk_source_dest (source_service_id, destination_service_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create data_flow_edges table");
 
-      // 6b. Ensure policy_allowed_regions table exists (no named FK to avoid conflicts)
-      try {
-        stmt.execute("CREATE TABLE IF NOT EXISTS policy_allowed_regions (policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        log.warn("[SchemaPatcher] policy_allowed_regions: CREATE TABLE IF NOT EXISTS completed.");
-      } catch (Exception e) {
-        log.warn("[SchemaPatcher] policy_allowed_regions note: {}", e.getMessage());
-      }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS data_flow_edge_classes (
+            edge_id                  BIGINT NOT NULL,
+            data_class               VARCHAR(100) NOT NULL,
+            INDEX idx_edge_classes (edge_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create data_flow_edge_classes table");
 
-      // 6c. Ensure policy_denied_regions table exists (no named FK to avoid conflicts)
-      try {
-        stmt.execute("CREATE TABLE IF NOT EXISTS policy_denied_regions (policy_id BIGINT NOT NULL, region VARCHAR(100) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        log.warn("[SchemaPatcher] policy_denied_regions: CREATE TABLE IF NOT EXISTS completed.");
-      } catch (Exception e) {
-        log.warn("[SchemaPatcher] policy_denied_regions note: {}", e.getMessage());
-      }
-    } catch (Exception e) {
-      log.warn("Database schema patcher encountered an issue (can be ignored on in-memory DBs): {}", e.getMessage());
-    }
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS decisions (
+            id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+            source_service          VARCHAR(255) NOT NULL,
+            destination_service     VARCHAR(255) NOT NULL,
+            source_region           VARCHAR(100) NOT NULL,
+            destination_region      VARCHAR(100) NOT NULL,
+            data_class              VARCHAR(255) NOT NULL,
+            decision                VARCHAR(20)  NOT NULL,
+            policy_id               VARCHAR(100),
+            reason                  VARCHAR(1000) NOT NULL,
+            created_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            INDEX idx_decisions_decision (decision),
+            INDEX idx_decision_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create decisions table");
+
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS lineage_records (
+            id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+            decision_id             BIGINT NOT NULL UNIQUE,
+            source_service          VARCHAR(255) NOT NULL,
+            destination_service     VARCHAR(255) NOT NULL,
+            source_region           VARCHAR(100) NOT NULL,
+            destination_region      VARCHAR(100) NOT NULL,
+            data_class              VARCHAR(255) NOT NULL,
+            decision                VARCHAR(50)  NOT NULL,
+            reason                  VARCHAR(1000) NOT NULL,
+            policy_id               VARCHAR(100),
+            previous_hash           VARCHAR(128),
+            current_hash            VARCHAR(128) NOT NULL,
+            signature               VARCHAR(512),
+            created_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            INDEX idx_lineage_current_hash (current_hash),
+            INDEX idx_lineage_decision (decision_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create lineage_records table");
+
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS ci_scans (
+            id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+            commit_hash             VARCHAR(100) NOT NULL,
+            branch                  VARCHAR(255) NOT NULL,
+            status                  VARCHAR(50)  NOT NULL,
+            violation_count         INT          NOT NULL DEFAULT 0,
+            started_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            completed_at            DATETIME(6),
+            violations_json         TEXT,
+            commit_message          VARCHAR(500),
+            parent_sha              VARCHAR(100),
+            flows_checked           INT DEFAULT 0,
+            passed_flows            INT DEFAULT 0,
+            failed_flows            INT DEFAULT 0,
+            changed_files_json      TEXT,
+            github_overall_status   VARCHAR(50),
+            github_total_checks     INT DEFAULT 0,
+            github_passed_checks    INT DEFAULT 0,
+            github_failed_checks    INT DEFAULT 0,
+            github_skipped_checks   INT DEFAULT 0,
+            github_pending_checks   INT DEFAULT 0,
+            merge_allowed           BOOLEAN DEFAULT TRUE,
+            github_checks_json      TEXT,
+            final_decision_json     TEXT,
+            INDEX idx_ci_scans_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create ci_scans table");
+
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS ai_classifications (
+            id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+            field_name              VARCHAR(255) NOT NULL,
+            sample_value            VARCHAR(2000),
+            classification          VARCHAR(100) NOT NULL,
+            confidence              DOUBLE       NOT NULL,
+            status                  VARCHAR(50)  NOT NULL DEFAULT 'PENDING',
+            reviewed_by             VARCHAR(255),
+            provider                VARCHAR(50)  NOT NULL DEFAULT 'heuristic',
+            created_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            INDEX idx_ai_class_field (field_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create ai_classifications table");
+
+    executeSql("""
+        CREATE TABLE IF NOT EXISTS webhook_deliveries (
+            id                      VARCHAR(128) PRIMARY KEY,
+            event                   VARCHAR(50)  NOT NULL,
+            status                  VARCHAR(50)  NOT NULL,
+            created_at              DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """, "Create webhook_deliveries table");
+
+    // 2. Patch columns for existing databases
+    executeSql("ALTER TABLE users ADD COLUMN updated_at DATETIME(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)", "users.updated_at");
+    executeSql("ALTER TABLE users ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE", "users.enabled");
+    executeSql("ALTER TABLE users ADD COLUMN name VARCHAR(255) NULL", "users.name");
+    executeSql("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'", "users.status");
+    executeSql("ALTER TABLE users MODIFY COLUMN role VARCHAR(64) NOT NULL DEFAULT 'ENGINEER'", "users.role");
   }
 }
