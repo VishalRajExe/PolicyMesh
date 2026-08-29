@@ -53,12 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -80,12 +80,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -145,7 +145,7 @@ jobs:
 
       - name: Upload surefire reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-checker-surefire-reports
           path: ci-checker/target/surefire-reports/**
@@ -153,7 +153,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload CI checker JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: policymesh-ci-jar
           path: ci-checker/target/policymesh-ci.jar
@@ -165,12 +165,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: '21', cache: maven }
 
       - name: Run backend tests
@@ -182,7 +182,7 @@ jobs:
         run: mvn --batch-mode package -DskipTests
 
       - name: Upload backend JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with: { name: backend-jar, path: backend/target/policy-mesh-backend-*.jar, retention-days: 7, if-no-files-found: error }
 
   compliance-check:
@@ -191,24 +191,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Download CI checker JAR
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: policymesh-ci-jar
           path: ci-checker/target
 
       - name: Download backend JAR
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: backend-jar
           path: backend-jar
@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload compliance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compliance-report
           path: |

@@ -42,7 +42,7 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # hashFiles() is only available in step contexts, so the guard lives on
       # each step below (a job-level if: cannot use it).
@@ -51,7 +51,7 @@ jobs:
       # exists instead of failing or pretending to test anything.
       - name: Setup Node.js
         if: hashFiles('frontend/package-lock.json') != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
